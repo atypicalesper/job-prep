@@ -104,6 +104,15 @@ node-interview-prep/
 ├── 11-security/                    ← OWASP, Node security
 │   └── 01-node-security/           (injection, XSS, helmet, rate limiting, prototype pollution)
 │
+├── 18-nextjs/                      ← Next.js App Router deep dives
+│   ├── 01-app-router-deep-dive.md  (routing, layouts, data fetching, caching, middleware)
+│   ├── 02-rendering-strategies.md  (SSG, ISR, SSR, PPR, generateStaticParams)
+│   ├── 03-server-actions-and-forms.md (useActionState, Zod, optimistic updates, security)
+│   ├── 04-authentication.md        (Auth.js v5, JWT vs DB sessions, RBAC, middleware)
+│   ├── 05-performance-and-seo.md   (Metadata API, next/image, Core Web Vitals, bundle analysis)
+│   ├── 06-tailwind-and-components.md (cva, cn(), design system, responsive patterns)
+│   └── 07-architecture-patterns.md (feature-based structure, Prisma singleton, env validation)
+│
 └── 12-interview-practice/          ← Final preparation
     ├── 01-rapid-fire-qa/
     │   ├── 01-javascript-rapid-fire.md   (50 questions)
