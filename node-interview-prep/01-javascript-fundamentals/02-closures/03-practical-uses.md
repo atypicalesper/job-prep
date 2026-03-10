@@ -1,0 +1,359 @@
+# Practical Uses of Closures
+
+Closures aren't just a theoretical concept — they power many real-world patterns in JavaScript. Here are the most important ones.
+
+---
+
+## 1. Data Privacy / Encapsulation
+
+Closures are the original way to create private variables in JavaScript (before `#privateFields` in classes):
+
+```javascript
+function createBankAccount(initialBalance) {
+  let balance = initialBalance; // truly private
+
+  return {
+    deposit(amount) {
+      if (amount <= 0) throw new Error('Amount must be positive');
+      balance += amount;
+      return balance;
+    },
+    withdraw(amount) {
+      if (amount > balance) throw new Error('Insufficient funds');
+      balance -= amount;
+      return balance;
+    },
+    getBalance() {
+      return balance;
+    }
+  };
+}
+
+const account = createBankAccount(1000);
+account.deposit(500);   // 1500
+account.withdraw(200);  // 1300
+account.getBalance();   // 1300
+
+// Cannot access or modify balance directly:
+console.log(account.balance); // undefined
+account.balance = 99999;       // does nothing to actual balance
+account.getBalance();          // still 1300
+```
+
+---
+
+## 2. Function Factories
+
+Create specialized functions based on parameters:
+
+```javascript
+function createValidator(min, max) {
+  return function validate(value) {
+    if (typeof value !== 'number') return { valid: false, error: 'Not a number' };
+    if (value < min) return { valid: false, error: `Below minimum ${min}` };
+    if (value > max) return { valid: false, error: `Above maximum ${max}` };
+    return { valid: true };
+  };
+}
+
+const validateAge     = createValidator(0, 120);
+const validateScore   = createValidator(0, 100);
+const validatePercent = createValidator(0, 1);
+
+validateAge(25);     // { valid: true }
+validateAge(150);    // { valid: false, error: 'Above maximum 120' }
+validateScore(85);   // { valid: true }
+```
+
+---
+
+## 3. Memoization
+
+Cache expensive function results:
+
+```javascript
+function memoize(fn) {
+  const cache = new Map();
+
+  return function memoized(...args) {
+    const key = JSON.stringify(args);
+
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+
+    const result = fn.apply(this, args);
+    cache.set(key, result);
+    return result;
+  };
+}
+
+// Fibonacci without memo: O(2^n) — exponential
+function fib(n) {
+  if (n <= 1) return n;
+  return fib(n - 1) + fib(n - 2);
+}
+
+// With memoization: O(n)
+const memoFib = memoize(function(n) {
+  if (n <= 1) return n;
+  return memoFib(n - 1) + memoFib(n - 2);
+});
+
+console.time('slow'); fib(40);      console.timeEnd('slow');   // ~1000ms
+console.time('fast'); memoFib(40);  console.timeEnd('fast');   // <1ms
+```
+
+---
+
+## 4. Debounce
+
+Delay execution until user stops doing something (e.g., typing):
+
+```javascript
+function debounce(fn, delay) {
+  let timerId;
+
+  return function debounced(...args) {
+    clearTimeout(timerId); // reset the timer on every call
+    timerId = setTimeout(() => {
+      fn.apply(this, args);
+    }, delay);
+  };
+}
+
+// Usage: Only fires 300ms after user stops typing
+const handleSearch = debounce((query) => {
+  fetchSearchResults(query);
+}, 300);
+
+searchInput.addEventListener('input', (e) => {
+  handleSearch(e.target.value);
+});
+```
+
+**How the closure works:** `timerId` is captured by `debounced`. Every call to `debounced` can read AND modify `timerId` — clearing the previous timer and setting a new one.
+
+---
+
+## 5. Throttle
+
+Limit how often a function can fire (e.g., scroll handler):
+
+```javascript
+function throttle(fn, interval) {
+  let lastTime = 0;
+
+  return function throttled(...args) {
+    const now = Date.now();
+    if (now - lastTime >= interval) {
+      lastTime = now;
+      fn.apply(this, args);
+    }
+  };
+}
+
+// Usage: handleScroll runs at most once per 100ms
+const handleScroll = throttle(() => {
+  updateScrollPosition();
+}, 100);
+
+window.addEventListener('scroll', handleScroll);
+```
+
+---
+
+## 6. Once — Execute Exactly Once
+
+```javascript
+function once(fn) {
+  let called = false;
+  let result;
+
+  return function(...args) {
+    if (!called) {
+      called = true;
+      result = fn.apply(this, args);
+    }
+    return result; // always returns first result
+  };
+}
+
+const initializeApp = once(() => {
+  console.log('App initialized!');
+  return 'init-result';
+});
+
+initializeApp(); // 'App initialized!' — runs
+initializeApp(); // silent — doesn't run again
+initializeApp(); // silent
+```
+
+---
+
+## 7. Partial Application
+
+Pre-fill some arguments:
+
+```javascript
+function partial(fn, ...presetArgs) {
+  return function(...laterArgs) {
+    return fn(...presetArgs, ...laterArgs);
+  };
+}
+
+function add(a, b, c) {
+  return a + b + c;
+}
+
+const add5 = partial(add, 5);        // a = 5 is preset
+const add5and3 = partial(add, 5, 3); // a = 5, b = 3 are preset
+
+add5(2, 3);     // 10 (5 + 2 + 3)
+add5and3(10);   // 18 (5 + 3 + 10)
+```
+
+---
+
+## 8. Currying
+
+Transform a multi-argument function into a chain of single-argument functions:
+
+```javascript
+function curry(fn) {
+  return function curried(...args) {
+    if (args.length >= fn.length) {
+      return fn(...args);
+    }
+    return function(...moreArgs) {
+      return curried(...args, ...moreArgs);
+    };
+  };
+}
+
+const curriedAdd = curry((a, b, c) => a + b + c);
+
+curriedAdd(1)(2)(3);     // 6
+curriedAdd(1, 2)(3);     // 6
+curriedAdd(1)(2, 3);     // 6
+curriedAdd(1, 2, 3);     // 6
+
+// Create specialized functions:
+const addTen = curriedAdd(10);
+addTen(5)(3); // 18
+```
+
+---
+
+## 9. Iterator / Generator Pattern (Without Generators)
+
+```javascript
+function createRange(start, end, step = 1) {
+  let current = start;
+
+  return {
+    next() {
+      if (current <= end) {
+        const value = current;
+        current += step;
+        return { value, done: false };
+      }
+      return { value: undefined, done: true };
+    },
+    [Symbol.iterator]() { return this; }
+  };
+}
+
+const range = createRange(1, 10, 2);
+for (const n of range) {
+  console.log(n); // 1, 3, 5, 7, 9
+}
+```
+
+---
+
+## 10. Async Operation with Retry Logic
+
+```javascript
+function withRetry(fn, maxRetries = 3, baseDelay = 1000) {
+  return async function retried(...args) {
+    let lastError;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn(...args);
+      } catch (err) {
+        lastError = err;
+        if (attempt < maxRetries) {
+          const delay = baseDelay * Math.pow(2, attempt); // exponential backoff
+          console.log(`Attempt ${attempt + 1} failed. Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    throw lastError;
+  };
+}
+
+const fetchWithRetry = withRetry(fetch, 3, 500);
+const data = await fetchWithRetry('/api/data');
+```
+
+---
+
+## 11. Event Bus / Pub-Sub
+
+```javascript
+function createEventBus() {
+  const listeners = new Map(); // closed over by all methods
+
+  return {
+    on(event, callback) {
+      if (!listeners.has(event)) listeners.set(event, new Set());
+      listeners.get(event).add(callback);
+      return () => listeners.get(event).delete(callback); // returns unsubscribe fn
+    },
+    emit(event, data) {
+      const callbacks = listeners.get(event);
+      if (callbacks) callbacks.forEach(cb => cb(data));
+    },
+    off(event, callback) {
+      listeners.get(event)?.delete(callback);
+    }
+  };
+}
+
+const bus = createEventBus();
+const unsub = bus.on('userLogin', (user) => console.log('User logged in:', user));
+bus.emit('userLogin', { name: 'Alice' }); // fires
+unsub(); // unsubscribe
+bus.emit('userLogin', { name: 'Bob' });   // won't fire
+```
+
+---
+
+## Interview Questions
+
+**Q: How would you implement a function that can only be called N times?**
+```javascript
+function times(fn, n) {
+  let count = 0;
+  return function(...args) {
+    if (count < n) {
+      count++;
+      return fn(...args);
+    }
+  };
+}
+const greetTwice = times(() => console.log('Hello'), 2);
+greetTwice(); // Hello
+greetTwice(); // Hello
+greetTwice(); // silent
+```
+
+**Q: What's the difference between debounce and throttle?**
+A: Debounce fires AFTER activity stops (waits for quiet period). Throttle fires at most once per interval (rate limiting). Debounce: search-as-you-type. Throttle: scroll handlers, resize.
+
+**Q: How does memoization use closures?**
+A: The `cache` (Map/object) is declared in the outer function and closed over by the inner function. Every call to the memoized function can read and write to the same `cache` object.
