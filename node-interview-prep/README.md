@@ -32,6 +32,8 @@ node-interview-prep/
 │   ├── 05-promises-async-await/
 │   ├── 06-generators-and-iterators/
 │   ├── 07-memory-and-garbage-collection/
+│   │   ├── 01-memory-leaks.md
+│   │   └── 02-gc-internals.md      (V8 GC, generational hypothesis, hidden classes)
 │   └── 08-miscellaneous/
 │
 ├── 02-nodejs-core/                 ← The core of Node.js interviews
@@ -40,7 +42,9 @@ node-interview-prep/
 │   ├── 03-streams/                 (4 types, backpressure, pipeline)
 │   ├── 04-buffers/                 (binary data, encodings, timing safety)
 │   ├── 05-modules/                 (CJS vs ESM, caching, circular deps)
-│   ├── 07-worker-threads/          (CPU-bound work, SharedArrayBuffer)
+│   ├── 06-child-processes/         (exec/spawn/fork/execFile, shell injection)
+│   ├── 07-worker-threads/          (CPU-bound work, SharedArrayBuffer, Atomics)
+│   ├── 08-cluster/                 (multi-core, rolling restart, IPC, vs Workers)
 │   └── 09-error-handling/          (operational vs programmer errors)
 │
 ├── 03-typescript/                  ← Modern Node.js is TypeScript
@@ -49,10 +53,12 @@ node-interview-prep/
 │   ├── 03-generics/                (constraints, infer, keyof)
 │   ├── 04-utility-types/           (built-in + implementing from scratch)
 │   ├── 05-advanced-patterns/       (mapped types, conditional, template literals)
-│   └── 06-tricky-questions/        (15 TypeScript output prediction questions)
+│   ├── 06-tricky-questions/        (15 TypeScript output prediction questions)
+│   └── 07-decorators/              (class/method/property/parameter + NestJS-style)
 │
 ├── 04-async-patterns/              ← Beyond basic async/await
-│   └── (EventEmitter, concurrency, pub-sub)
+│   ├── 01-event-emitter/           (API, async gotchas, typed events, async iteration)
+│   └── 02-concurrency/             (pLimit, Semaphore, batch, circuit breaker, Bull)
 │
 ├── 05-performance/                 ← Making Node.js fast
 │   └── 01-profiling/               (--prof, clinic.js, memory profiling)
@@ -64,24 +70,36 @@ node-interview-prep/
 │   │   ├── 03-indexes-and-performance.md
 │   │   ├── 04-transactions-and-acid.md
 │   │   └── 05-tricky-sql-questions.md  ← Must read!
-│   └── 03-redis/                   (all data types, caching, distributed lock)
+│   ├── 02-nosql/                   (MongoDB: embed vs ref, aggregation, transactions)
+│   ├── 03-redis/                   (all data types, caching, distributed lock, rate limiting)
+│   └── 04-orm/                     (Prisma N+1 fix, transactions, Sequelize)
 │
 ├── 07-api-design/                  ← Building great APIs
 │   ├── 01-rest/                    (principles, status codes, pagination, versioning)
+│   ├── 02-graphql/                 (N+1 problem, DataLoader, Apollo Server setup)
+│   ├── 03-websockets/              (ws library, Socket.io, Redis pub/sub scaling)
 │   └── 04-auth/                    (JWT deep dive, OAuth2 + PKCE, refresh tokens)
 │
 ├── 08-system-design/               ← Senior-level expected knowledge
-│   ├── 01-hld/                     (CAP theorem, scaling, caching, message queues)
-│   └── 02-lld/
-│       ├── 01-solid-principles.md  (all 5 with TypeScript examples)
-│       ├── 02-design-patterns.md   (Singleton, Factory, Builder, Adapter, Observer...)
-│       └── 03-lru-cache-implementation.md  (O(1) HashMap + doubly linked list)
+│   ├── 01-hld/
+│   │   ├── 01-fundamentals.md      (CAP, scaling, caching patterns, message queues)
+│   │   └── 02-case-studies.md      (URL shortener, chat app, rate limiter, notifications)
+│   ├── 02-lld/
+│   │   ├── 01-solid-principles.md  (all 5 with TypeScript examples)
+│   │   ├── 02-design-patterns.md   (Singleton, Factory, Builder, Adapter, Observer...)
+│   │   └── 03-lru-cache-implementation.md  (O(1) HashMap + doubly linked list)
+│   └── 03-sde3-senior-topics/
+│       ├── 01-engineering-excellence.md  (consistency, microservices, observability, clean arch)
+│       └── 02-production-engineering.md  (API optimization, DB HA, code review, memory leaks)
 │
 ├── 09-devops/                      ← Deployment knowledge
-│   └── 01-docker/                  (multi-stage builds, health checks, SIGTERM fix)
+│   ├── 01-docker/                  (multi-stage builds, health checks, SIGTERM fix)
+│   ├── 02-process-management/      (PM2 ecosystem.config.js, zero-downtime, graceful shutdown)
+│   ├── 03-kubernetes/              (Deployment, HPA, probes, rolling updates, Secrets)
+│   └── 04-cicd/                    (GitHub Actions full pipeline, caching, secrets)
 │
 ├── 10-testing/                     ← Quality engineering
-│   └── 01-jest/                    (unit, integration, mocking strategies)
+│   └── 01-jest/                    (unit, integration, mocking strategies, fake timers)
 │
 ├── 11-security/                    ← OWASP, Node security
 │   └── 01-node-security/           (injection, XSS, helmet, rate limiting, prototype pollution)
@@ -90,8 +108,13 @@ node-interview-prep/
     ├── 01-rapid-fire-qa/
     │   ├── 01-javascript-rapid-fire.md   (50 questions)
     │   └── 02-nodejs-rapid-fire.md       (50 questions)
-    └── 02-coding-challenges/
-        └── 01-common-algorithms.md       (Two Sum, LRU, debounce, Promise.all...)
+    ├── 02-coding-challenges/
+    │   ├── 01-common-algorithms.md       (Two Sum, LRU, debounce, Promise.all...)
+    │   └── 02-advanced-challenges.md     (Observable, deque, middleware compose)
+    ├── 03-behavioral/
+    │   └── 01-star-questions.md          (STAR framework, story templates, questions to ask)
+    └── 04-system-design-practice/
+        └── 01-design-questions.md        (Job queue, rate limiter, cache, leaderboard, logging)
 ```
 
 ---
@@ -149,6 +172,8 @@ node-interview-prep/
 | Design Patterns | Observer, Factory, Strategy, Decorator |
 | LRU Cache | O(1) HashMap + doubly linked list |
 | Redis | Distributed lock (NX+PX+Lua), rate limiting |
+| SDE3 Topics | Consistency models, saga pattern, observability, clean architecture |
+| Production Eng | API optimization, DB HA/downtime, code review, memory leak investigation |
 
 ---
 
@@ -166,6 +191,8 @@ These are the most interview-relevant files:
 - [02-nodejs-core/09-error-handling/06-tricky-questions.md](02-nodejs-core/09-error-handling/06-tricky-questions.md)
 - [03-typescript/06-tricky-questions/01-typescript-tricky-questions.md](03-typescript/06-tricky-questions/01-typescript-tricky-questions.md)
 - [06-databases/01-sql-fundamentals/05-tricky-sql-questions.md](06-databases/01-sql-fundamentals/05-tricky-sql-questions.md)
+- [12-interview-practice/04-system-design-practice/01-design-questions.md](12-interview-practice/04-system-design-practice/01-design-questions.md)
+- [12-interview-practice/03-behavioral/01-star-questions.md](12-interview-practice/03-behavioral/01-star-questions.md)
 
 ---
 
@@ -175,11 +202,11 @@ These are the most interview-relevant files:
 |-----|-------|
 | **Day 1** | JS Event Loop, Closures, Prototypes (tricky questions) |
 | **Day 2** | Promises, Async/Await, Generators + all async tricky questions |
-| **Day 3** | Node.js core: architecture, event loop phases, streams, modules |
-| **Day 4** | TypeScript: strict mode, generics, utility types, mapped types |
-| **Day 5** | SQL: joins, window functions, indexes, 35 tricky questions |
-| **Day 6** | System design: SOLID, design patterns, LRU cache, Redis, auth |
-| **Day 7** | 100 rapid-fire Q&A + coding challenges + review weak spots |
+| **Day 3** | Node.js core: architecture, event loop phases, streams, modules, child processes, cluster |
+| **Day 4** | TypeScript: strict mode, generics, utility types, mapped types, decorators |
+| **Day 5** | SQL: joins, window functions, indexes, 35 tricky questions + MongoDB + Redis |
+| **Day 6** | System design: SOLID, design patterns, case studies, SDE3 topics |
+| **Day 7** | 100 rapid-fire Q&A + coding challenges + system design practice + behavioral |
 
 ---
 
