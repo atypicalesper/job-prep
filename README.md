@@ -1,4 +1,4 @@
-# Senior Engineer Interview Prep
+# Node Engineer Interview Prep
 
 Comprehensive, structured preparation for Node.js / SDE Engineering interviews.
 
