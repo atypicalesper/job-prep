@@ -517,6 +517,214 @@ second macrotask
 
 ---
 
+## Q22: Promise.allSettled vs Promise.all vs Promise.race vs Promise.any
+
+```javascript
+const fast  = new Promise(resolve => setTimeout(() => resolve('fast'), 100));
+const slow  = new Promise(resolve => setTimeout(() => resolve('slow'), 300));
+const fail  = new Promise((_, reject) => setTimeout(() => reject('error'), 200));
+
+// Promise.all — rejects as soon as ANY rejects:
+Promise.all([fast, fail, slow])
+  .catch(e => console.log('all:', e));
+// Output: 'all: error' (after 200ms)
+
+// Promise.allSettled — waits for ALL, never rejects:
+Promise.allSettled([fast, fail, slow])
+  .then(results => console.log(results));
+// Output after 300ms:
+// [
+//   { status: 'fulfilled', value: 'fast' },
+//   { status: 'rejected',  reason: 'error' },
+//   { status: 'fulfilled', value: 'slow' }
+// ]
+
+// Promise.race — settles with first to settle (win OR fail):
+Promise.race([fast, fail, slow])
+  .then(v => console.log('race:', v));
+// Output: 'race: fast' (after 100ms — first to settle)
+
+// Promise.any — resolves with first to FULFILL (ignores rejects):
+Promise.any([fail, fast, slow])
+  .then(v => console.log('any:', v));
+// Output: 'any: fast' (after 100ms — first to fulfill)
+// If ALL reject → AggregateError
+```
+
+**Cheat sheet:**
+| Method | Resolves | Rejects |
+|--------|----------|---------|
+| `all` | all fulfilled | first rejection |
+| `allSettled` | always (with statuses) | never |
+| `race` | first to settle (any) | first to settle (rejection) |
+| `any` | first fulfilled | all rejected → AggregateError |
+
+---
+
+## Q23: Recursive setTimeout vs setInterval
+
+```javascript
+// setInterval — fixed gap from start of last execution:
+const id = setInterval(() => {
+  console.log('interval');
+  // if this takes 150ms and interval is 100ms:
+  // next call fires immediately after this one finishes (can stack up)
+}, 100);
+
+// Recursive setTimeout — fixed gap AFTER completion:
+function tick() {
+  console.log('tick');
+  // next call is exactly 100ms AFTER this completes
+  setTimeout(tick, 100);
+}
+setTimeout(tick, 100);
+```
+
+**When to prefer recursive setTimeout:**
+- When the callback takes variable time (no overlapping calls)
+- When you need to adjust delay dynamically
+- When you want to stop the loop cleanly from inside
+
+---
+
+## Q24: What Happens When You clearTimeout an Expired Timer?
+
+```javascript
+const id = setTimeout(() => console.log('fired'), 0);
+
+// The timer fires almost immediately.
+// Then later:
+setTimeout(() => {
+  clearTimeout(id); // clearing an already-fired timer
+  console.log('cleared (but already fired)');
+}, 100);
+```
+
+**Output:** `'fired'` then `'cleared (but already fired)'`
+
+`clearTimeout` on an already-fired or non-existent timer ID is a no-op. It doesn't throw. It's safe to always call `clearTimeout(id)` in cleanup even if you're not sure whether it fired.
+
+---
+
+## Q25: for await...of with Async Iterators
+
+```javascript
+async function* generate() {
+  yield 1;
+  await new Promise(resolve => setTimeout(resolve, 100));
+  yield 2;
+  yield 3;
+}
+
+async function main() {
+  console.log('start');
+  for await (const value of generate()) {
+    console.log(value);
+  }
+  console.log('end');
+}
+
+main();
+console.log('after main call'); // runs before 'start' completes?
+```
+
+**Output:**
+```
+start
+after main call
+1
+2
+3
+end
+```
+
+`main()` is async — `for await...of` suspends at each `await` inside the generator. Code after `main()` runs while main is suspended (it returned a pending Promise immediately).
+
+---
+
+## Q26: Microtask Flooding — Too Many Promises
+
+```javascript
+let count = 0;
+function floodMicrotasks() {
+  if (count < 1000000) {
+    count++;
+    Promise.resolve().then(floodMicrotasks); // queue a microtask
+  }
+}
+floodMicrotasks();
+setTimeout(() => console.log('macrotask — count:', count), 0);
+```
+
+**Output:** `'macrotask — count: 1000000'` (but possibly after a long delay)
+
+Microtasks drain **completely** before any macrotask runs. A million microtasks will all run before the setTimeout fires. This is why flooding microtasks starves I/O.
+
+Compare: `process.nextTick` has same behavior (but even higher priority).
+
+---
+
+## Q27: Async Function Called Without await — When Does It Run?
+
+```javascript
+async function fetchData() {
+  console.log('A');
+  const result = await Promise.resolve('data');
+  console.log('B', result);
+  return result;
+}
+
+console.log('1');
+const promise = fetchData(); // no await
+console.log('2');
+promise.then(v => console.log('3', v));
+console.log('4');
+```
+
+**Output:** `1 A 2 4 B data 3 data`
+
+**Step by step:**
+- `1` sync
+- `fetchData()` called → `A` sync, hits `await`, suspends
+- `2` sync
+- `.then(...)` registered on promise
+- `4` sync
+- Microtasks drain: resume fetchData → `B data`, returns `'data'`
+- Chained `.then` → `3 data`
+
+---
+
+## Q28: Event Loop with Real I/O — Order Guarantee
+
+```javascript
+const fs = require('fs');
+
+fs.readFile(__filename, () => {
+  console.log('readFile callback');   // poll phase
+  setTimeout(() => console.log('timeout inside I/O'), 0);
+  setImmediate(() => console.log('immediate inside I/O'));
+  process.nextTick(() => console.log('nextTick inside I/O'));
+  Promise.resolve().then(() => console.log('promise inside I/O'));
+});
+
+setTimeout(() => console.log('timeout outside I/O'), 0);
+setImmediate(() => console.log('immediate outside I/O'));
+```
+
+**Output (guaranteed order):**
+```
+immediate outside I/O       ← or timeout outside (indeterminate)
+readFile callback
+nextTick inside I/O         ← highest priority
+promise inside I/O          ← second
+immediate inside I/O        ← check phase (next)
+timeout inside I/O          ← timers phase (after check)
+```
+
+Inside an I/O callback: nextTick > Promise > setImmediate > setTimeout.
+
+---
+
 ## Quick Reference: Execution Order Rules
 
 ```
@@ -532,3 +740,12 @@ second macrotask
 ```
 
 **Memory trick:** "**S**ync → **N**ext → **P**romise → **M**acro → repeat"
+
+## Quick Reference: Promise Combinators
+
+| Method | Waits for | Short-circuits on | Returns |
+|--------|-----------|-------------------|---------|
+| `Promise.all(arr)` | all | first rejection | array of values |
+| `Promise.allSettled(arr)` | all | never | array of `{status,value/reason}` |
+| `Promise.race(arr)` | first | first settlement | single value/rejection |
+| `Promise.any(arr)` | first fulfill | all reject | single value / AggregateError |

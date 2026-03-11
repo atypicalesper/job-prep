@@ -406,6 +406,260 @@ const processed = await batchProcess(userIds, id => fetchUser(id), 5);
 
 ---
 
+## Q19: Unhandled Rejection — When Does It Crash?
+
+```javascript
+// Node.js v15+ crashes on unhandled rejection by default
+async function fail() {
+  throw new Error('oops');
+}
+
+// All of these create unhandled rejections:
+fail();                          // no .catch(), no await
+Promise.reject(new Error('x')); // no .catch()
+
+// Safe patterns:
+fail().catch(console.error);                      // option 1
+const p = fail(); p.catch(console.error);         // option 2
+process.on('unhandledRejection', (err) => {       // last resort
+  console.error('unhandled:', err);
+  process.exit(1);
+});
+
+// This does NOT cause unhandled rejection:
+async function handler() {
+  try {
+    await fail();
+  } catch (e) {
+    console.error(e); // handled
+  }
+}
+```
+
+---
+
+## Q20: Promise.resolve() on a Thenable
+
+```javascript
+const thenable = {
+  then(resolve) {
+    resolve(42);
+  }
+};
+
+Promise.resolve(thenable).then(v => console.log(v)); // ?
+
+// Is this a Promise?
+console.log(thenable instanceof Promise); // ?
+```
+
+**Output:** `42`, `false`
+
+`Promise.resolve()` checks if the argument has a `.then` method. If so, it treats it as a Promise (called a "thenable") and adopts its resolution. This is how third-party promise libraries interoperate with native Promises.
+
+---
+
+## Q21: async/await Error Stack Traces
+
+```javascript
+async function level3() {
+  throw new Error('deep error');
+}
+
+async function level2() {
+  await level3();
+}
+
+async function level1() {
+  await level2();
+}
+
+// With await — stack trace includes full chain:
+async function main() {
+  try {
+    await level1();
+  } catch(e) {
+    console.error(e.stack);
+    // Error: deep error
+    //   at level3 (...)
+    //   at level2 (...)   ← preserved because of await
+    //   at level1 (...)
+    //   at main (...)
+  }
+}
+
+// Without await — stack trace LOSES context:
+async function mainBad() {
+  try {
+    return level1(); // no await — returns Promise directly
+  } catch(e) {
+    // This catch NEVER runs — the rejection is in the returned Promise!
+  }
+}
+```
+
+---
+
+## Q22: Synchronous Throw Inside Promise Constructor
+
+```javascript
+const p1 = new Promise((resolve, reject) => {
+  throw new Error('sync error in executor');
+});
+
+p1.catch(e => console.log('caught:', e.message));
+// Output: 'caught: sync error in executor'
+
+// BUT: synchronous throw AFTER resolve() is still caught:
+const p2 = new Promise((resolve, reject) => {
+  resolve('value');
+  throw new Error('after resolve'); // still caught as rejection!
+});
+
+p2
+  .then(v => console.log('resolved:', v))
+  .catch(e => console.log('error:', e.message));
+// Output: 'resolved: value'
+// Why: once resolved, the promise state is locked. The throw is ignored.
+```
+
+Wait — actually the throw after resolve IS caught, but the promise is already resolved. Let me clarify:
+
+```javascript
+// After resolve(), subsequent throw is IGNORED:
+const p = new Promise((resolve) => {
+  resolve('ok');
+  throw new Error('too late'); // silently ignored
+});
+p.then(v => console.log(v)); // 'ok'
+```
+
+---
+
+## Q23: Detecting Whether Code Is Inside async Context
+
+```javascript
+// You cannot directly detect if you're in an async context.
+// But you can use AsyncLocalStorage for context propagation:
+const { AsyncLocalStorage } = require('async_hooks');
+const storage = new AsyncLocalStorage();
+
+async function handler(requestId) {
+  storage.run({ requestId }, async () => {
+    await doWork();
+  });
+}
+
+function doWork() {
+  const ctx = storage.getStore(); // available anywhere in the async chain
+  console.log('requestId:', ctx?.requestId);
+}
+```
+
+---
+
+## Q24: Promise Chaining — What Each .then Returns
+
+```javascript
+const p = Promise.resolve(1);
+
+const p1 = p.then(v => v + 1);          // returns Promise<2>
+const p2 = p.then(v => Promise.resolve(v + 1)); // returns Promise<2>
+const p3 = p.then(v => { v + 1 });      // returns Promise<undefined>
+const p4 = p.then(v => { return; });    // returns Promise<undefined>
+const p5 = p.then(() => { throw new Error('x'); }); // returns rejected Promise
+
+await Promise.allSettled([p1, p2, p3, p4, p5]).then(results =>
+  results.forEach(r => console.log(r.status, r.value ?? r.reason?.message))
+);
+// fulfilled 2
+// fulfilled 2
+// fulfilled undefined
+// fulfilled undefined
+// rejected  x
+```
+
+---
+
+## Q25: The Deferred Pattern
+
+```javascript
+// Sometimes you need to resolve a promise from outside:
+function createDeferred() {
+  let resolve, reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+const { promise, resolve } = createDeferred();
+
+// Resolve from outside:
+setTimeout(() => resolve('done'), 1000);
+
+const result = await promise; // waits for external resolve
+console.log(result); // 'done'
+
+// Real use case — waiting for a signal:
+const { promise: ready, resolve: markReady } = createDeferred();
+
+server.on('listening', markReady);
+await ready; // wait until server is actually listening
+```
+
+---
+
+## Q26: Promisifying Callback APIs
+
+```javascript
+const fs = require('fs');
+const { promisify } = require('util');
+
+// Manual promisify:
+function readFile(path, options) {
+  return new Promise((resolve, reject) => {
+    fs.readFile(path, options, (err, data) => {
+      if (err) reject(err);
+      else resolve(data);
+    });
+  });
+}
+
+// Auto promisify (requires standard Node.js callback convention: (err, result)):
+const readFileAsync = promisify(fs.readFile);
+
+// fs.promises — already promisified:
+const { readFile: readFileP } = require('fs').promises;
+
+// All three are equivalent:
+const data = await readFileP('./file.txt', 'utf8');
+```
+
+---
+
+## Q27: What Does await undefined Do?
+
+```javascript
+async function test() {
+  const a = await undefined;
+  const b = await null;
+  const c = await 0;
+  const d = await false;
+  const e = await '';
+
+  console.log(a, b, c, d, e);
+}
+test();
+```
+
+**Output:** `undefined null 0 false ''`
+
+`await` wraps any value in `Promise.resolve()`. Falsy values are still awaited correctly — they resolve to themselves. Each `await` still creates a microtask checkpoint (yields once to the event loop even for non-Promises).
+
+---
+
 ## Quick Reference: async/await Execution Order
 
 ```javascript
