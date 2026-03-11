@@ -1,6 +1,6 @@
 # Senior Engineer Interview Prep
 
-Comprehensive, structured preparation for senior Node.js / SDE3 engineering interviews.
+Comprehensive, structured preparation for Node.js / SDE Engineering interviews.
 
 ---
 
