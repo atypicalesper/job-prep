@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Menu, Search as SearchIcon } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Search from './Search';
+import KeyboardShortcuts from './KeyboardShortcuts';
 import type { NavItem, SearchItem } from '@/lib/docs';
 
 interface Props {
@@ -91,6 +92,7 @@ export default function Shell({ nav, searchIndex, children }: Props) {
       </div>
 
       {searchOpen && <Search index={searchIndex} onClose={() => setSearchOpen(false)} />}
+      <KeyboardShortcuts />
     </div>
   );
 }

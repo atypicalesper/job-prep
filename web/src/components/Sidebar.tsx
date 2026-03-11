@@ -73,8 +73,18 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
         ))}
       </nav>
 
-      <div className="px-5 py-3 text-xs border-t" style={{ color: 'var(--muted)', borderColor: 'var(--sidebar-border)' }}>
-        Senior Node.js Interview Prep
+      <div
+        className="px-4 py-3 text-xs border-t flex items-center justify-between"
+        style={{ color: 'var(--muted)', borderColor: 'var(--sidebar-border)' }}
+      >
+        <span>Senior Node.js Interview Prep</span>
+        <kbd
+          className="kbd cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
+          title="Keyboard shortcuts"
+          onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '?' }))}
+        >
+          ?
+        </kbd>
       </div>
     </aside>
   );
