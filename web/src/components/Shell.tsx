@@ -74,8 +74,9 @@ export default function Shell({ nav, searchIndex, children }: Props) {
           >
             <Menu size={20} style={{ color: 'var(--fg)' }} />
           </button>
-          <span className="flex-1 text-sm font-semibold truncate" style={{ color: 'var(--fg)' }}>
-            ⚡ Node Interview Prep
+          <span className="flex items-center gap-2 flex-1 min-w-0">
+            <img src="/logo.png" alt="logo" className="logo-img w-6 h-6 object-contain shrink-0" />
+            <span className="text-sm font-semibold truncate" style={{ color: 'var(--fg)' }}>Node Interview Prep</span>
           </span>
           <button
             onClick={() => setSearchOpen(true)}

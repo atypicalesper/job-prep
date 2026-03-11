@@ -67,8 +67,8 @@ export default function HomePage() {
             className="absolute -inset-4 rounded-2xl opacity-10 pointer-events-none blur-2xl"
             style={{ background: 'radial-gradient(ellipse at top left, var(--accent) 0%, transparent 70%)' }}
           />
-          <div className="relative flex items-center gap-3">
-            <span className="text-4xl drop-shadow-lg">⚡</span>
+          <div className="relative flex items-center gap-4">
+            <img src="/logo.png" alt="logo" className="logo-img w-14 h-14 object-contain shrink-0 drop-shadow-lg" />
             <h1 className="text-4xl font-bold hero-title">
               Node.js Interview Prep
             </h1>

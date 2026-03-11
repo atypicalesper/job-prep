@@ -47,7 +47,7 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
       <div className="flex items-center justify-between px-5 py-4 border-b"
         style={{ borderColor: 'var(--sidebar-border)' }}>
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <span className="text-lg font-bold" style={{ color: 'var(--accent)' }}>⚡</span>
+          <img src="/logo.png" alt="logo" className="logo-img w-8 h-8 object-contain shrink-0" />
           <span className="font-semibold text-sm leading-tight" style={{ color: 'var(--fg)' }}>
             Node Interview<br />
             <span style={{ color: 'var(--muted)', fontWeight: 400 }}>Prep Guide</span>

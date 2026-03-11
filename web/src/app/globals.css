@@ -293,6 +293,15 @@ body {
   color: var(--fg);
 }
 
+/* ── Logo image (invert in dark mode so black strokes become white) ──────────── */
+.logo-img {
+  filter: none;
+  transition: filter 0.3s ease;
+}
+.dark .logo-img {
+  filter: invert(1);
+}
+
 /* ── Hero gradient text ──────────────────────────────────────────────────────── */
 .hero-title {
   background: linear-gradient(135deg, var(--fg) 0%, var(--accent) 100%);
