@@ -1,0 +1,7 @@
+{
+  "files.exclude": {
+    "web/node_modules": true,
+    "web/.next": true,
+    "web/out": true
+  }
+}
