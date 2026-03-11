@@ -1,0 +1,223 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Fonts ─────────────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── CSS custom properties ──────────────────────────────────────────────────── */
+:root {
+  --bg: #ffffff;
+  --fg: #0f1117;
+  --sidebar-bg: #f8f9fa;
+  --sidebar-border: #e5e7eb;
+  --sidebar-hover: #f0f4ff;
+  --sidebar-active: #e8edff;
+  --sidebar-active-text: #4f46e5;
+  --code-bg: #1e1e2e;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --card-bg: #f8f9fa;
+  --card-border: #e5e7eb;
+}
+
+.dark {
+  --bg: #0f1117;
+  --fg: #e2e8f0;
+  --sidebar-bg: #0a0d14;
+  --sidebar-border: #1e2030;
+  --sidebar-hover: #141824;
+  --sidebar-active: #1a1f35;
+  --sidebar-active-text: #818cf8;
+  --code-bg: #0d1117;
+  --accent: #818cf8;
+  --accent-hover: #6366f1;
+  --muted: #94a3b8;
+  --border: #1e2030;
+  --card-bg: #141824;
+  --card-border: #1e2030;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: 'Inter', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ── Sidebar ───────────────────────────────────────────────────────────────── */
+.sidebar {
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ── Prose (markdown) ───────────────────────────────────────────────────────── */
+.prose {
+  color: var(--fg);
+  max-width: none;
+}
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  color: var(--fg);
+  scroll-margin-top: 5rem;
+}
+.prose h1 { font-size: 2rem; font-weight: 700; margin-bottom: 1rem; }
+.prose h2 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.4rem;
+  margin-top: 2.5rem;
+}
+.prose h3 { font-size: 1.15rem; font-weight: 600; margin-top: 1.75rem; }
+
+.prose a { color: var(--accent); text-decoration: none; }
+.prose a:hover { text-decoration: underline; }
+
+.prose strong { color: var(--fg); }
+
+.prose hr {
+  border-color: var(--border);
+  margin: 2rem 0;
+}
+
+.prose blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 1rem;
+  color: var(--muted);
+  margin: 1.5rem 0;
+  background: var(--card-bg);
+  border-radius: 0 6px 6px 0;
+  padding: 0.75rem 1rem;
+}
+
+/* ── Code ────────────────────────────────────────────────────────────────────── */
+.prose code:not(pre code) {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.15em 0.4em;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85em;
+  color: var(--accent);
+}
+
+.prose pre {
+  background: var(--code-bg) !important;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow-x: auto;
+  margin: 1.25rem 0;
+  padding: 0 !important;
+}
+
+.prose pre code {
+  display: block;
+  padding: 1.25rem 1.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: #cdd6f4;
+  background: transparent !important;
+}
+
+/* highlight.js theme (mocha) */
+.hljs { background: transparent !important; }
+.hljs-keyword, .hljs-selector-tag { color: #cba6f7; }
+.hljs-string, .hljs-attr { color: #a6e3a1; }
+.hljs-number { color: #fab387; }
+.hljs-comment { color: #6c7086; font-style: italic; }
+.hljs-built_in, .hljs-type { color: #89dceb; }
+.hljs-title, .hljs-title.function_ { color: #89b4fa; }
+.hljs-variable, .hljs-params { color: #cdd6f4; }
+.hljs-operator { color: #89dceb; }
+.hljs-literal { color: #fab387; }
+.hljs-meta { color: #f38ba8; }
+.hljs-tag { color: #f38ba8; }
+.hljs-name { color: #cba6f7; }
+.hljs-attribute { color: #89b4fa; }
+.hljs-symbol { color: #f9e2af; }
+
+/* ── Tables ──────────────────────────────────────────────────────────────────── */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 1.25rem 0;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.prose thead tr {
+  background: var(--card-bg);
+}
+.prose th {
+  padding: 0.6rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg);
+}
+.prose td {
+  padding: 0.55rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.prose tr:last-child td { border-bottom: none; }
+.prose tr:hover td { background: var(--sidebar-hover); }
+
+/* ── Lists ──────────────────────────────────────────────────────────────────── */
+.prose ul li::marker { color: var(--accent); }
+.prose ol li::marker { color: var(--accent); font-weight: 600; }
+
+/* ── Theme toggle animation ─────────────────────────────────────────────────── */
+.theme-toggle-track {
+  position: relative;
+  width: 64px;
+  height: 32px;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1.5px solid var(--border);
+  transition: border-color 0.3s ease;
+  overflow: hidden;
+}
+
+.theme-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+/* ── Utility ─────────────────────────────────────────────────────────────────── */
+.nav-active {
+  background-color: var(--sidebar-active);
+  color: var(--sidebar-active-text);
+  font-weight: 600;
+}
+
+.nav-item:hover {
+  background-color: var(--sidebar-hover);
+}
+
+/* Code block language label */
+.code-lang {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--muted);
+  padding: 0.4rem 1rem 0;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
