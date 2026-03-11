@@ -32,6 +32,13 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
     });
   }, { scope: sidebarRef, dependencies: [mounted] });
 
+  // Scroll active nav item into view whenever the page changes
+  useEffect(() => {
+    if (!mounted) return;
+    const active = sidebarRef.current?.querySelector('.nav-active') as HTMLElement | null;
+    active?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [pathname, mounted]);
+
   return (
     <aside
       ref={sidebarRef}

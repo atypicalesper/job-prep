@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
+import { BookOpen, ArrowRight, Clock } from 'lucide-react';
+import { getVisitedCountBySection, getRecent, type RecentPage } from '@/lib/progress';
 
 const SECTIONS = [
   { icon: '🧠', title: 'JavaScript Fundamentals', slug: '01-javascript-fundamentals', desc: 'Event loop, closures, prototypes, async/await, generators, memory leaks' },
@@ -23,8 +25,19 @@ export default function HomePage() {
   const gridRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
 
+  const [visitedCounts, setVisitedCounts] = useState<Record<string, number>>({});
+  const [recentPages, setRecentPages] = useState<RecentPage[]>([]);
+
+  useEffect(() => {
+    const counts: Record<string, number> = {};
+    for (const s of SECTIONS) {
+      counts[s.slug] = getVisitedCountBySection(s.slug);
+    }
+    setVisitedCounts(counts);
+    setRecentPages(getRecent().slice(0, 4));
+  }, []);
+
   useGSAP(() => {
-    // Hero entrance
     gsap.from(heroRef.current, {
       opacity: 0,
       y: -30,
@@ -32,7 +45,6 @@ export default function HomePage() {
       ease: 'power3.out',
     });
 
-    // Cards stagger in
     gsap.from('.topic-card', {
       opacity: 0,
       y: 40,
@@ -46,21 +58,31 @@ export default function HomePage() {
 
   return (
     <div className="px-4 sm:px-8 py-8 sm:py-10 max-w-5xl mx-auto" ref={gridRef}>
-      {/* Hero */}
-      <div ref={heroRef} className="mb-12">
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-4xl">⚡</span>
-          <h1 className="text-4xl font-bold" style={{ color: 'var(--fg)' }}>
-            Node.js Interview Prep
-          </h1>
+
+      {/* ── Hero ─────────────────────────────────────────────── */}
+      <div ref={heroRef} className="mb-10">
+        {/* Gradient glow behind title */}
+        <div className="relative mb-3">
+          <div
+            className="absolute -inset-4 rounded-2xl opacity-10 pointer-events-none blur-2xl"
+            style={{ background: 'radial-gradient(ellipse at top left, var(--accent) 0%, transparent 70%)' }}
+          />
+          <div className="relative flex items-center gap-3">
+            <span className="text-4xl drop-shadow-lg">⚡</span>
+            <h1 className="text-4xl font-bold hero-title">
+              Node.js Interview Prep
+            </h1>
+          </div>
         </div>
-        <p className="text-lg mb-6" style={{ color: 'var(--muted)' }}>
+
+        <p className="text-lg mb-6 max-w-2xl" style={{ color: 'var(--muted)' }}>
           Senior engineer interview guide — deep dives into JavaScript internals, Node.js architecture, TypeScript, system design, and more.
         </p>
+
         <div className="flex gap-3 flex-wrap">
           <Link
             href="/12-interview-practice/00-cheat-sheet/01-last-day-reference"
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105 active:scale-95"
+            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105 active:scale-95 hover:shadow-lg"
             style={{ backgroundColor: 'var(--accent)' }}
           >
             📋 Last-Day Cheat Sheet
@@ -75,47 +97,111 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {SECTIONS.map(s => (
-          <Link
-            key={s.slug}
-            href={`/${s.slug}`}
-            className="topic-card group block rounded-xl border p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
-            style={{
-              backgroundColor: 'var(--card-bg)',
-              borderColor: 'var(--card-border)',
-            }}
+      {/* ── Continue learning (only when visited pages exist) ── */}
+      {recentPages.length > 0 && (
+        <div className="mb-8">
+          <p
+            className="text-[11px] font-semibold uppercase tracking-wider mb-3 flex items-center gap-2"
+            style={{ color: 'var(--muted)' }}
           >
-            <div className="flex items-start gap-3">
-              <span className="text-2xl leading-none mt-0.5">{s.icon}</span>
-              <div>
-                <h2 className="font-semibold text-sm mb-1 group-hover:text-indigo-400 transition-colors"
-                  style={{ color: 'var(--fg)' }}>
-                  {s.title}
-                </h2>
-                <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
-                  {s.desc}
-                </p>
+            <Clock size={12} />
+            Continue learning
+          </p>
+          <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
+            {recentPages.map(p => (
+              <Link
+                key={p.slug}
+                href={'/' + p.slug}
+                className="recent-card shrink-0 flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm"
+                style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}
+              >
+                <BookOpen size={13} style={{ color: 'var(--accent)' }} className="shrink-0" />
+                <span
+                  className="truncate font-medium"
+                  style={{ color: 'var(--fg)', maxWidth: '180px' }}
+                >
+                  {p.title}
+                </span>
+                <ArrowRight size={12} style={{ color: 'var(--muted)' }} className="shrink-0" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Section grid ─────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {SECTIONS.map(s => {
+          const visited = visitedCounts[s.slug] ?? 0;
+          return (
+            <Link
+              key={s.slug}
+              href={`/${s.slug}`}
+              className="topic-card group block rounded-xl border p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+              style={{
+                backgroundColor: 'var(--card-bg)',
+                borderColor: 'var(--card-border)',
+              }}
+            >
+              {/* Accent bar on left edge */}
+              <div className="card-accent-bar" />
+
+              <div className="flex items-start gap-3">
+                {/* Icon with subtle background */}
+                <div
+                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-lg transition-all duration-200 group-hover:scale-110"
+                  style={{ background: 'var(--sidebar-active)' }}
+                >
+                  {s.icon}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <h2
+                      className="font-semibold text-sm group-hover:text-indigo-400 transition-colors truncate"
+                      style={{ color: 'var(--fg)' }}
+                    >
+                      {s.title}
+                    </h2>
+                    {visited > 0 && (
+                      <span className="visited-badge shrink-0">
+                        {visited}✓
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+                    {s.desc}
+                  </p>
+                </div>
               </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
 
-      {/* Stats bar */}
-      <div className="mt-10 flex gap-6 flex-wrap text-sm" style={{ color: 'var(--muted)' }}>
+      {/* ── Stats bar ─────────────────────────────────────────── */}
+      <div className="mt-10 flex gap-6 flex-wrap text-sm border-t pt-6" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
         {[
-          ['75+', 'Topic Files'],
+          ['77+', 'Topic Files'],
           ['500+', 'Code Examples'],
-          ['200+', 'Interview Q&As'],
-          ['11', 'Major Sections'],
+          ['250+', 'Interview Q&As'],
+          ['11',   'Major Sections'],
         ].map(([num, label]) => (
           <div key={label} className="flex items-baseline gap-1.5">
             <span className="text-xl font-bold" style={{ color: 'var(--accent)' }}>{num}</span>
             <span>{label}</span>
           </div>
         ))}
+
+        {/* Total visited pages */}
+        {Object.values(visitedCounts).reduce((a, b) => a + b, 0) > 0 && (
+          <div className="flex items-baseline gap-1.5 ml-auto">
+            <span className="text-xl font-bold" style={{ color: 'var(--success)' }}>
+              {Object.values(visitedCounts).reduce((a, b) => a + b, 0)}
+            </span>
+            <span>pages read</span>
+          </div>
+        )}
       </div>
     </div>
   );
