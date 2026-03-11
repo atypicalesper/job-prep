@@ -4,6 +4,12 @@ import path from 'path';
 // Absolute path to the markdown content directory
 const DOCS_ROOT = path.join(process.cwd(), '..', 'node-interview-prep');
 
+export interface Heading {
+  depth: number;
+  text: string;
+  id: string;
+}
+
 export interface SearchItem {
   title: string;
   slug: string[];
@@ -138,6 +144,28 @@ export function getPrevNext(currentSlug: string[]): {
     prev: idx > 0 ? flat[idx - 1] : null,
     next: idx < flat.length - 1 ? flat[idx + 1] : null,
   };
+}
+
+/** Extract h2/h3 headings from markdown for table of contents */
+export function extractHeadings(markdown: string): Heading[] {
+  const headings: Heading[] = [];
+  const regex = /^(#{2,3})\s+(.+)$/gm;
+  let match;
+  while ((match = regex.exec(markdown)) !== null) {
+    const depth = match[1].length;
+    // Strip inline markdown (bold, italic, code, links) for display and ID
+    const text = match[2]
+      .trim()
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/[*_`]/g, '');
+    const id = text
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+    headings.push({ depth, text, id });
+  }
+  return headings;
 }
 
 /** Build a flat search index of all docs for client-side search */

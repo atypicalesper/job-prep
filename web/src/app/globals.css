@@ -222,6 +222,29 @@ body {
   letter-spacing: 0.05em;
 }
 
+/* ── Copy button ─────────────────────────────────────────────────────────────── */
+.copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 5px;
+  font-size: 0.7rem;
+  font-family: 'JetBrains Mono', monospace;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+  background: rgba(255,255,255,0.08);
+  color: var(--muted);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.prose pre:hover .copy-btn { opacity: 1; }
+.copy-btn.copied {
+  background: rgba(166, 227, 161, 0.15);
+  color: #a6e3a1;
+  border-color: rgba(166, 227, 161, 0.3);
+}
+
 /* ── Search ──────────────────────────────────────────────────────────────────── */
 .search-highlight {
   background-color: var(--accent);
