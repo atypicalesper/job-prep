@@ -4,6 +4,13 @@ import path from 'path';
 // Absolute path to the markdown content directory
 const DOCS_ROOT = path.join(process.cwd(), '..', 'node-interview-prep');
 
+export interface SearchItem {
+  title: string;
+  slug: string[];
+  excerpt: string;
+  section: string;
+}
+
 export interface NavItem {
   title: string;
   slug: string[];
@@ -11,7 +18,7 @@ export interface NavItem {
 }
 
 /** Convert a file/directory name like "01-event-loop" → "Event Loop" */
-function humanize(name: string): string {
+export function humanize(name: string): string {
   return name
     .replace(/^\d+-/, '')           // strip leading "01-"
     .replace(/-/g, ' ')             // dashes → spaces
@@ -131,4 +138,25 @@ export function getPrevNext(currentSlug: string[]): {
     prev: idx > 0 ? flat[idx - 1] : null,
     next: idx < flat.length - 1 ? flat[idx + 1] : null,
   };
+}
+
+/** Build a flat search index of all docs for client-side search */
+export function buildSearchIndex(): SearchItem[] {
+  const slugs = getAllDocSlugs();
+  return slugs.map(slug => {
+    const doc = getDocContent(slug)!;
+    // Strip markdown to get a plain-text excerpt
+    const plain = doc.content
+      .replace(/^#{1,6}\s+.+$/gm, '')
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/`[^`]+`/g, '')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/[*_~>#|\\-]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const section = slug[0] ? humanize(slug[0]) : '';
+
+    return { title: doc.title, slug, excerpt: plain.slice(0, 160), section };
+  });
 }

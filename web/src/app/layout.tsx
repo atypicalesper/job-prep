@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { ThemeProvider } from 'next-themes';
-import { buildNavTree } from '@/lib/docs';
-import Sidebar from '@/components/Sidebar';
+import { buildNavTree, buildSearchIndex } from '@/lib/docs';
+import Shell from '@/components/Shell';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -11,17 +11,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const nav = buildNavTree();
+  const searchIndex = buildSearchIndex();
 
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          <div className="flex min-h-screen">
-            <Sidebar nav={nav} />
-            <main className="flex-1 min-w-0 overflow-x-hidden">
-              {children}
-            </main>
-          </div>
+          <Shell nav={nav} searchIndex={searchIndex}>
+            {children}
+          </Shell>
         </ThemeProvider>
       </body>
     </html>

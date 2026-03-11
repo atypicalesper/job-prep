@@ -45,7 +45,7 @@ export default function HomePage() {
   }, { scope: gridRef });
 
   return (
-    <div className="px-8 py-10 max-w-5xl mx-auto" ref={gridRef}>
+    <div className="px-4 sm:px-8 py-8 sm:py-10 max-w-5xl mx-auto" ref={gridRef}>
       {/* Hero */}
       <div ref={heroRef} className="mb-12">
         <div className="flex items-center gap-3 mb-3">

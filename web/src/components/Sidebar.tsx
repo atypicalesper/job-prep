@@ -5,15 +5,16 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Search } from 'lucide-react';
 import type { NavItem } from '@/lib/docs';
 import ThemeToggle from './ThemeToggle';
 
 interface Props {
   nav: NavItem[];
+  onSearchOpen?: () => void;
 }
 
-export default function Sidebar({ nav }: Props) {
+export default function Sidebar({ nav, onSearchOpen }: Props) {
   const pathname = usePathname();
   const sidebarRef = useRef<HTMLElement>(null);
   const [mounted, setMounted] = useState(false);
@@ -48,7 +49,18 @@ export default function Sidebar({ nav }: Props) {
         <ThemeToggle />
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      {/* Search button */}
+      <button
+        onClick={onSearchOpen}
+        className="mx-3 mt-3 flex items-center gap-2 w-[calc(100%-1.5rem)] rounded-lg px-3 py-2 text-sm transition-colors hover:bg-[var(--sidebar-hover)]"
+        style={{ color: 'var(--muted)', border: '1px solid var(--sidebar-border)' }}
+      >
+        <Search size={14} />
+        <span className="flex-1 text-left text-xs">Search…</span>
+        <span className="text-[10px] opacity-60">⌘K</span>
+      </button>
+
+      <nav className="flex-1 px-3 py-3 space-y-1">
         {nav.map(section => (
           <NavNode key={section.slug.join('/')} item={section} pathname={pathname} depth={0} />
         ))}

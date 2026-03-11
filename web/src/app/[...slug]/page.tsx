@@ -27,7 +27,7 @@ export default function DocPage({ params }: PageProps) {
   const { prev, next } = getPrevNext(params.slug);
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-10">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-xs mb-6 flex-wrap" style={{ color: 'var(--muted)' }}>
         <Link href="/" className="hover:underline" style={{ color: 'var(--accent)' }}>Home</Link>
@@ -53,7 +53,7 @@ export default function DocPage({ params }: PageProps) {
 
       {/* Prev / Next navigation */}
       {(prev || next) && (
-        <div className="mt-14 pt-6 border-t grid grid-cols-2 gap-4" style={{ borderColor: 'var(--border)' }}>
+        <div className="mt-14 pt-6 border-t grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ borderColor: 'var(--border)' }}>
           {prev ? (
             <Link
               href={'/' + prev.slug.join('/')}
