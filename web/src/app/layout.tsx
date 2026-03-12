@@ -7,7 +7,7 @@ import './globals.css';
 
 // ─── Microsoft Clarity ────────────────────────────────────────────────────────
 // Paste your Project ID from clarity.microsoft.com → Settings → Overview
-const CLARITY_ID = 'REPLACE_WITH_YOUR_CLARITY_ID';
+const CLARITY_ID = 'vuib7s6gsr';
 
 export const metadata: Metadata = {
   title: 'Node.js Interview Prep',
