@@ -101,10 +101,10 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
           href="https://ko-fi.com/cyberesper"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:opacity-90 hover:scale-105 active:scale-95 shrink-0"
-          style={{ backgroundColor: '#FF5E5B', color: '#fff' }}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:scale-105 active:scale-95 shrink-0"
+          style={{ border: '1px solid var(--sidebar-border)', color: 'var(--muted)', backgroundColor: 'var(--sidebar-hover)' }}
         >
-          ☕ Ko-fi
+          ☕ ko-fi
         </a>
         <kbd
           className="kbd cursor-pointer opacity-60 hover:opacity-100 transition-opacity ml-auto"
