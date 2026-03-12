@@ -4,6 +4,7 @@ const repoName = 'job-prep';
 
 const nextConfig = {
   output: 'export',
+  trailingSlash: true,
   // GitHub Pages serves project sites under /repo-name
   basePath: isProd ? `/${repoName}` : '',
   assetPrefix: isProd ? `/${repoName}/` : '',
