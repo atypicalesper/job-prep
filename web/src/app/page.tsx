@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRef, useState, useEffect } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
@@ -69,7 +70,7 @@ export default function HomePage() {
             style={{ background: 'radial-gradient(ellipse at top left, var(--accent) 0%, transparent 70%)' }}
           />
           <div className="relative flex items-center gap-4">
-            <img src="/logo.png" alt="logo" className="logo-img w-14 h-14 object-contain shrink-0 drop-shadow-lg" />
+            <Image src="/logo.png" alt="logo" width={56} height={56} className="logo-img object-contain shrink-0 drop-shadow-lg" unoptimized />
             <h1 className="text-4xl font-bold hero-title">
               Node.js SWE Interview Prep
             </h1>
@@ -89,7 +90,7 @@ export default function HomePage() {
             📋 Last-Day Cheat Sheet
           </Link>
           <Link
-            href="/01-javascript-fundamentals/01-event-loop/01-event-loop-deep-dive"
+            href="/01-javascript-fundamentals/01-event-loop/01-what-is-event-loop"
             className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105 active:scale-95 border"
             style={{ color: 'var(--fg)', borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
           >
