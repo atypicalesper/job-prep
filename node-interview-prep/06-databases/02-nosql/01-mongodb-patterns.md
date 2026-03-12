@@ -297,3 +297,27 @@ A: Single-document operations are always ACID (atomically written). Multi-docume
 
 **Q: What is the `$lookup` equivalent to in SQL?**
 A: `$lookup` is a LEFT JOIN. It joins documents from another collection based on matching fields. Result is an array of matched documents embedded in the parent. Use `$unwind` to deconstruct the array (turning 1 parent with N children into N documents). Performance note: `$lookup` is more expensive in MongoDB than joins in PostgreSQL — normalize your schema carefully.
+
+**Q: What is the difference between `$match` placed before vs after `$group`?**
+A: `$match` before `$group` filters documents before aggregation — indexes can be used, reducing the number of docs processed. `$match` after `$group` filters the aggregated results. Always push `$match` as early as possible in the pipeline. MongoDB optimizer will move a trailing `$match` before a `$sort` if it can, but won't always move it before `$group`.
+
+**Q: What is an upsert race condition and how do you prevent it?**
+A: When two concurrent upserts match zero documents and both try to insert, one will fail with a duplicate key error (if a unique index exists). Without a unique index, you get two documents inserted. Fix: always have a unique index on the filter field used for upserts. Catch and retry `E11000 duplicate key` errors — the second writer's upsert will then match the inserted doc and update it.
+
+**Q: How does `$addToSet` differ from `$push`?**
+A: `$push` always appends to an array (allows duplicates). `$addToSet` only appends if the value doesn't already exist (set semantics). `$addToSet` is atomic but requires a full array scan to check for duplicates — avoid on large arrays. For large sets, consider a separate collection with a unique index instead.
+
+**Q: What is projection exclusion vs inclusion and can you mix them?**
+```javascript
+// Inclusion: specify fields to return (all others omitted)
+db.users.find({}, { name: 1, email: 1 })      // returns _id, name, email
+
+// Exclusion: specify fields to omit (all others returned)
+db.users.find({}, { password: 0, token: 0 })  // returns everything except these
+
+// ❌ Cannot mix inclusion and exclusion (except _id):
+db.users.find({}, { name: 1, password: 0 })   // Error!
+
+// ✅ _id is special — can be excluded from an inclusion projection:
+db.users.find({}, { name: 1, email: 1, _id: 0 })  // returns only name, email
+```

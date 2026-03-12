@@ -52,8 +52,8 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <Image src="/logo.png" alt="logo" width={32} height={32} className="logo-img object-contain shrink-0" unoptimized />
           <span className="font-semibold text-sm leading-tight" style={{ color: 'var(--fg)' }}>
-            Node Interview<br />
-            <span style={{ color: 'var(--muted)', fontWeight: 400 }}>Prep Guide</span>
+            Node.js SWE<br />
+            <span style={{ color: 'var(--muted)', fontWeight: 400 }}>Interview Prep</span>
           </span>
         </Link>
         <ThemeToggle />
@@ -93,12 +93,20 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
       </nav>
 
       <div
-        className="px-4 py-3 text-xs border-t flex items-center justify-between"
+        className="px-4 py-3 text-xs border-t flex items-center justify-between gap-2"
         style={{ color: 'var(--muted)', borderColor: 'var(--sidebar-border)' }}
       >
-        <span>Senior Node.js Interview Prep</span>
+        <a
+          href="https://ko-fi.com/cyberesper"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:opacity-90 hover:scale-105 active:scale-95 shrink-0"
+          style={{ backgroundColor: '#FF5E5B', color: '#fff' }}
+        >
+          ☕ Ko-fi
+        </a>
         <kbd
-          className="kbd cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
+          className="kbd cursor-pointer opacity-60 hover:opacity-100 transition-opacity ml-auto"
           title="Keyboard shortcuts"
           onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '?' }))}
         >

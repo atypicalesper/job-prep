@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Search as SearchIcon, X, ArrowRight, Clock, TrendingUp } from 'lucide-react';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
 import type { SearchItem } from '@/lib/docs';
 
 interface Props {
@@ -63,7 +65,14 @@ export default function Search({ index, onClose }: Props) {
   const [results, setResults]   = useState<SearchItem[]>([]);
   const [selected, setSelected] = useState(0);
   const [recents, setRecents]   = useState<string[]>([]);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef    = useRef<HTMLInputElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const panelRef    = useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    gsap.from(backdropRef.current, { opacity: 0, duration: 0.2 });
+    gsap.from(panelRef.current, { opacity: 0, y: -14, scale: 0.97, duration: 0.24, ease: 'power3.out' });
+  });
 
   useEffect(() => { setRecents(loadRecentSearches()); }, []);
   useEffect(() => { inputRef.current?.focus(); }, []);
@@ -98,11 +107,13 @@ export default function Search({ index, onClose }: Props) {
 
   return (
     <div
+      ref={backdropRef}
       className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[10vh]"
       style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
       onClick={() => handleClose()}
     >
       <div
+        ref={panelRef}
         className="w-full max-w-xl rounded-2xl overflow-hidden shadow-2xl"
         style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--border)' }}
         onClick={e => e.stopPropagation()}

@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X, Keyboard } from 'lucide-react';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
 
 const SHORTCUTS = [
   { category: 'Navigation', items: [
@@ -21,29 +23,24 @@ const SHORTCUTS = [
   ]},
 ];
 
-export default function KeyboardShortcuts() {
-  const [open, setOpen] = useState(false);
+function ShortcutsPanel({ onClose }: { onClose: () => void }) {
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const panelRef    = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key === '?') { e.preventDefault(); setOpen(v => !v); }
-      if (e.key === 'Escape') setOpen(false);
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
-  if (!open) return null;
+  useGSAP(() => {
+    gsap.from(backdropRef.current, { opacity: 0, duration: 0.18 });
+    gsap.from(panelRef.current, { opacity: 0, y: 20, scale: 0.96, duration: 0.26, ease: 'back.out(1.4)' });
+  });
 
   return (
     <div
+      ref={backdropRef}
       className="fixed inset-0 z-50 flex items-center justify-center px-4"
       style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
-      onClick={() => setOpen(false)}
+      onClick={onClose}
     >
       <div
+        ref={panelRef}
         className="w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl"
         style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--border)' }}
         onClick={e => e.stopPropagation()}
@@ -60,7 +57,7 @@ export default function KeyboardShortcuts() {
             </span>
           </div>
           <button
-            onClick={() => setOpen(false)}
+            onClick={onClose}
             className="p-1 rounded hover:bg-[var(--card-bg)] transition-colors"
             aria-label="Close"
           >
@@ -106,4 +103,22 @@ export default function KeyboardShortcuts() {
       </div>
     </div>
   );
+}
+
+export default function KeyboardShortcuts() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === '?') { e.preventDefault(); setOpen(v => !v); }
+      if (e.key === 'Escape') setOpen(false);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  if (!open) return null;
+  return <ShortcutsPanel onClose={() => setOpen(false)} />;
 }

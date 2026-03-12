@@ -43,22 +43,28 @@ export default function TableOfContents({ headings }: Props) {
         >
           On this page
         </p>
-        <ul className="space-y-0.5">
-          {headings.map(h => (
-            <li key={h.id}>
-              <a
-                href={`#${h.id}`}
-                className="block text-[12px] leading-snug py-0.5 transition-colors hover:text-[var(--accent)]"
-                style={{
-                  paddingLeft: h.depth === 3 ? '0.75rem' : '0',
-                  color: active === h.id ? 'var(--accent)' : 'var(--muted)',
-                  fontWeight: active === h.id ? 600 : 400,
-                }}
-              >
-                {h.text}
-              </a>
-            </li>
-          ))}
+        <ul className="space-y-0.5 border-l" style={{ borderColor: 'var(--border)' }}>
+          {headings.map(h => {
+            const isActive = active === h.id;
+            return (
+              <li key={h.id}>
+                <a
+                  href={`#${h.id}`}
+                  className="block text-[12px] leading-snug py-0.5 hover:text-[var(--accent)]"
+                  style={{
+                    paddingLeft: h.depth === 3 ? '1.25rem' : '0.625rem',
+                    color: isActive ? 'var(--accent)' : 'var(--muted)',
+                    fontWeight: isActive ? 600 : 400,
+                    borderLeft: `2px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
+                    marginLeft: '-1px',
+                    transition: 'color 0.2s, border-color 0.2s, font-weight 0s',
+                  }}
+                >
+                  {h.text}
+                </a>
+              </li>
+            );
+          })}
         </ul>
       </nav>
     </aside>

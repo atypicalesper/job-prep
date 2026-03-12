@@ -407,3 +407,22 @@ body {
   h2, h3 { page-break-after: avoid; }
   .prose a { color: #4f46e5; text-decoration: underline; }
 }
+
+/* ── Directory index card entrance animation ────────────────────────────── */
+@keyframes dir-card-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.dir-card {
+  animation: dir-card-in 0.3s ease both;
+  animation-delay: var(--stagger, 0ms);
+}
+
+/* ── Smooth page content fade on load ───────────────────────────────────── */
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-content {
+  animation: page-fade-in 0.35s ease both;
+}

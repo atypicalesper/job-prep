@@ -6,14 +6,18 @@ export default function ReadingProgress() {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+    let rafId = 0;
     function update() {
-      const el = document.documentElement;
-      const total = el.scrollHeight - el.clientHeight;
-      setProgress(total > 0 ? (el.scrollTop / total) * 100 : 0);
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const el = document.documentElement;
+        const total = el.scrollHeight - el.clientHeight;
+        setProgress(total > 0 ? (el.scrollTop / total) * 100 : 0);
+      });
     }
     window.addEventListener('scroll', update, { passive: true });
     update();
-    return () => window.removeEventListener('scroll', update);
+    return () => { window.removeEventListener('scroll', update); cancelAnimationFrame(rafId); };
   }, []);
 
   return (

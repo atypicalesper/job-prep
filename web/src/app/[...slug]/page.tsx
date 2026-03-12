@@ -1,11 +1,12 @@
+import React from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getDocContent, getPrevNext, getAllDocSlugs, getAllDirSlugs, extractHeadings } from '@/lib/docs';
+import { getDocContent, getDirInfo, getPrevNext, getAllDocSlugs, getAllDirSlugs, extractHeadings } from '@/lib/docs';
 import MarkdownContent from '@/components/MarkdownContent';
 import TableOfContents from '@/components/TableOfContents';
 import ReadingProgress from '@/components/ReadingProgress';
 import DocPageClient from '@/components/DocPageClient';
-import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, FolderOpen } from 'lucide-react';
 
 interface PageProps {
   params: { slug: string[] };
@@ -25,14 +26,109 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps) {
   const doc = getDocContent(params.slug);
-  return {
-    title: doc ? `${doc.title} — Node Interview Prep` : 'Not Found',
-  };
+  if (doc) return { title: `${doc.title} — Node Interview Prep` };
+  const dir = getDirInfo(params.slug);
+  if (dir) return { title: `${dir.title} — Node Interview Prep` };
+  return { title: 'Not Found' };
+}
+
+/** Breadcrumb strip shared by doc and dir pages */
+function Breadcrumb({ slug }: { slug: string[] }) {
+  return (
+    <nav className="flex items-center gap-2 text-xs flex-wrap" style={{ color: 'var(--muted)' }}>
+      <Link href="/" className="hover:underline" style={{ color: 'var(--accent)' }}>Home</Link>
+      {slug.map((segment, i) => {
+        const href  = '/' + slug.slice(0, i + 1).join('/');
+        const label = segment.replace(/^\d+-/, '').replace(/-/g, ' ');
+        const isLast = i === slug.length - 1;
+        return (
+          <span key={i} className="flex items-center gap-2">
+            <ChevronRight size={12} />
+            {isLast ? (
+              <span style={{ color: 'var(--fg)' }} className="capitalize">{label}</span>
+            ) : (
+              <Link href={href} className="hover:underline capitalize">{label}</Link>
+            )}
+          </span>
+        );
+      })}
+    </nav>
+  );
 }
 
 export default function DocPage({ params }: PageProps) {
   const doc = getDocContent(params.slug);
-  if (!doc) notFound();
+
+  // ── Directory index page ────────────────────────────────────────────────
+  if (!doc) {
+    const dir = getDirInfo(params.slug);
+    if (!dir) notFound();
+
+    return (
+      <div className="page-content max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        <Breadcrumb slug={params.slug} />
+
+        <div className="flex items-center gap-3 mt-6 mb-2">
+          <FolderOpen size={22} style={{ color: 'var(--accent)' }} />
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--fg)' }}>{dir.title}</h1>
+        </div>
+        <p className="text-sm mb-8" style={{ color: 'var(--muted)' }}>
+          {dir.children.length} {dir.children.length === 1 ? 'section' : 'sections'}
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {dir.children.map((child, i) => {
+            const href = '/' + child.slug.join('/');
+            const stagger = { '--stagger': `${i * 60}ms` } as React.CSSProperties;
+            if (child.children) {
+              // Subsection card
+              return (
+                <div
+                  key={href}
+                  className="dir-card rounded-xl border p-5"
+                  style={{ ...stagger, backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}
+                >
+                  <Link
+                    href={href}
+                    className="font-semibold text-sm hover:text-indigo-400 transition-colors block mb-3"
+                    style={{ color: 'var(--fg)' }}
+                  >
+                    {child.title} →
+                  </Link>
+                  <ul className="space-y-1.5">
+                    {child.children.map(gc => (
+                      <li key={gc.slug.join('/')}>
+                        <Link
+                          href={'/' + gc.slug.join('/')}
+                          className="text-xs hover:underline"
+                          style={{ color: 'var(--muted)' }}
+                        >
+                          {gc.title}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            }
+            // Direct file card
+            return (
+              <Link
+                key={href}
+                href={href}
+                className="dir-card rounded-xl border p-5 block transition-all hover:-translate-y-1 hover:shadow-md"
+                style={{ ...stagger, backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}
+              >
+                <span className="font-semibold text-sm" style={{ color: 'var(--fg)' }}>{child.title}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Regular doc page ────────────────────────────────────────────────────
 
   const { prev, next } = getPrevNext(params.slug);
   const headings = extractHeadings(doc.content);
@@ -49,29 +145,12 @@ export default function DocPage({ params }: PageProps) {
         nextHref={nextHref}
       />
 
-      <div className="flex gap-10 max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      <div className="page-content flex gap-10 max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
         <div className="flex-1 min-w-0">
 
           {/* Breadcrumb + meta row */}
           <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-            <nav className="flex items-center gap-2 text-xs flex-wrap" style={{ color: 'var(--muted)' }}>
-              <Link href="/" className="hover:underline" style={{ color: 'var(--accent)' }}>Home</Link>
-              {params.slug.map((segment, i) => {
-                const href  = '/' + params.slug.slice(0, i + 1).join('/');
-                const label = segment.replace(/^\d+-/, '').replace(/-/g, ' ');
-                const isLast = i === params.slug.length - 1;
-                return (
-                  <span key={i} className="flex items-center gap-2">
-                    <ChevronRight size={12} />
-                    {isLast ? (
-                      <span style={{ color: 'var(--fg)' }} className="capitalize">{label}</span>
-                    ) : (
-                      <Link href={href} className="hover:underline capitalize">{label}</Link>
-                    )}
-                  </span>
-                );
-              })}
-            </nav>
+            <Breadcrumb slug={params.slug} />
 
             {/* Reading time */}
             <span className="reading-badge">

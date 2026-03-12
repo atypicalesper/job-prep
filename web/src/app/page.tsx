@@ -8,17 +8,18 @@ import { BookOpen, ArrowRight, Clock } from 'lucide-react';
 import { getVisitedCountBySection, getRecent, type RecentPage } from '@/lib/progress';
 
 const SECTIONS = [
-  { icon: '🧠', title: 'JavaScript Fundamentals', slug: '01-javascript-fundamentals', desc: 'Event loop, closures, prototypes, async/await, generators, memory leaks' },
+  { icon: '🧠', title: 'JavaScript Fundamentals', slug: '01-javascript-fundamentals', desc: 'Event loop, closures, prototypes, async/await, generators, memory management' },
   { icon: '⚙️', title: 'Node.js Core', slug: '02-nodejs-core', desc: 'V8, libuv, streams, buffers, worker threads, cluster, child processes' },
-  { icon: '🔷', title: 'TypeScript', slug: '03-typescript', desc: 'Type system, generics, utility types, decorators, strict mode patterns' },
-  { icon: '🚀', title: 'Performance', slug: '05-performance', desc: 'Profiling, memory leaks, caching strategies, flame graphs, V8 optimization' },
-  { icon: '🗄️', title: 'Databases', slug: '06-databases', desc: 'SQL joins, window functions, Redis patterns, transactions, indexing' },
-  { icon: '🌐', title: 'API Design', slug: '07-api-design', desc: 'REST, GraphQL, HTTP/2, WebSockets, auth, rate limiting, Express vs Fastify' },
+  { icon: '🔷', title: 'TypeScript', slug: '03-typescript', desc: 'Type system, generics, utility types, decorators, advanced patterns' },
+  { icon: '🔀', title: 'Async Patterns', slug: '04-async-patterns', desc: 'EventEmitter, concurrency control, async iterators, Kafka, p-limit' },
+  { icon: '🚀', title: 'Performance', slug: '05-performance', desc: 'Profiling, memory leaks, caching strategies, CPU optimization, flame graphs' },
+  { icon: '🗄️', title: 'Databases', slug: '06-databases', desc: 'SQL, MongoDB, Redis — queries, indexes, transactions, schema design' },
+  { icon: '🌐', title: 'API Design', slug: '07-api-design', desc: 'REST, GraphQL, gRPC, WebSockets, JWT/OAuth2, Express vs Fastify' },
   { icon: '🏗️', title: 'System Design', slug: '08-system-design', desc: 'HLD, SOLID, design patterns, microservices, event sourcing, CQRS' },
-  { icon: '🐳', title: 'DevOps', slug: '09-devops', desc: 'Docker multi-stage, CI/CD, serverless, Lambda patterns, containers' },
-  { icon: '🧪', title: 'Testing', slug: '10-testing', desc: 'Jest, mocking strategies, Testcontainers, integration tests, race conditions' },
-  { icon: '🔒', title: 'Security', slug: '11-security', desc: 'OWASP Top 10, injection, XSS, CSRF, auth vulnerabilities, helmet' },
-  { icon: '💬', title: 'Interview Practice', slug: '12-interview-practice', desc: '100 rapid-fire Q&As, coding challenges, behavioral stories, cheat sheet' },
+  { icon: '🐳', title: 'DevOps', slug: '09-devops', desc: 'Docker, Kubernetes, CI/CD, serverless, Lambda, process management' },
+  { icon: '🧪', title: 'Testing', slug: '10-testing', desc: 'Jest, mocking strategies, Testcontainers, integration tests' },
+  { icon: '🔒', title: 'Security', slug: '11-security', desc: 'OWASP Top 10, injection, XSS, CSRF, auth, helmet, rate limiting' },
+  { icon: '💬', title: 'Interview Practice', slug: '12-interview-practice', desc: 'Rapid-fire Q&As, coding challenges, behavioral stories, cheat sheet' },
 ];
 
 export default function HomePage() {
@@ -70,13 +71,13 @@ export default function HomePage() {
           <div className="relative flex items-center gap-4">
             <img src="/logo.png" alt="logo" className="logo-img w-14 h-14 object-contain shrink-0 drop-shadow-lg" />
             <h1 className="text-4xl font-bold hero-title">
-              Node.js Interview Prep
+              Node.js SWE Interview Prep
             </h1>
           </div>
         </div>
 
         <p className="text-lg mb-6 max-w-2xl" style={{ color: 'var(--muted)' }}>
-          Senior engineer interview guide — deep dives into JavaScript internals, Node.js architecture, TypeScript, system design, and more.
+          Software engineer interview guide — deep dives into JavaScript internals, Node.js architecture, TypeScript, databases, system design, and more.
         </p>
 
         <div className="flex gap-3 flex-wrap">
@@ -180,12 +181,12 @@ export default function HomePage() {
       </div>
 
       {/* ── Stats bar ─────────────────────────────────────────── */}
-      <div className="mt-10 flex gap-6 flex-wrap text-sm border-t pt-6" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
+      <div className="mt-10 flex gap-6 flex-wrap items-center text-sm border-t pt-6" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
         {[
-          ['77+', 'Topic Files'],
+          ['120+', 'Topic Files'],
           ['500+', 'Code Examples'],
-          ['250+', 'Interview Q&As'],
-          ['11',   'Major Sections'],
+          ['300+', 'Interview Q&As'],
+          ['12',   'Major Sections'],
         ].map(([num, label]) => (
           <div key={label} className="flex items-baseline gap-1.5">
             <span className="text-xl font-bold" style={{ color: 'var(--accent)' }}>{num}</span>
@@ -193,15 +194,26 @@ export default function HomePage() {
           </div>
         ))}
 
-        {/* Total visited pages */}
-        {Object.values(visitedCounts).reduce((a, b) => a + b, 0) > 0 && (
-          <div className="flex items-baseline gap-1.5 ml-auto">
-            <span className="text-xl font-bold" style={{ color: 'var(--success)' }}>
-              {Object.values(visitedCounts).reduce((a, b) => a + b, 0)}
-            </span>
-            <span>pages read</span>
-          </div>
-        )}
+        <div className="ml-auto flex items-center gap-3">
+          {/* Total visited pages */}
+          {Object.values(visitedCounts).reduce((a, b) => a + b, 0) > 0 && (
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl font-bold" style={{ color: 'var(--success)' }}>
+                {Object.values(visitedCounts).reduce((a, b) => a + b, 0)}
+              </span>
+              <span>pages read</span>
+            </div>
+          )}
+          <a
+            href="https://ko-fi.com/cyberesper"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90 hover:scale-105 active:scale-95"
+            style={{ backgroundColor: '#FF5E5B', color: '#fff' }}
+          >
+            ☕ Support on Ko-fi
+          </a>
+        </div>
       </div>
     </div>
   );

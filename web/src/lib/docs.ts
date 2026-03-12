@@ -71,26 +71,28 @@ export function buildNavTree(dir: string = DOCS_ROOT, prefix: string[] = []): Na
 
 /** Resolve a slug array to a file path and return its content */
 export function getDocContent(slug: string[]): { content: string; title: string } | null {
-  // Try slug as-is (a .md file)
   const mdPath = path.join(DOCS_ROOT, ...slug) + '.md';
   if (fs.existsSync(mdPath)) {
     const content = fs.readFileSync(mdPath, 'utf-8');
     const title = extractTitle(content) ?? humanize(slug[slug.length - 1]);
     return { content, title };
   }
-
-  // Try as directory — look for index or first .md file
-  const dirPath = path.join(DOCS_ROOT, ...slug);
-  if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
-    const files = fs.readdirSync(dirPath).filter(f => f.endsWith('.md')).sort();
-    if (files.length > 0) {
-      const content = fs.readFileSync(path.join(dirPath, files[0]), 'utf-8');
-      const title = extractTitle(content) ?? humanize(slug[slug.length - 1]);
-      return { content, title };
-    }
-  }
-
   return null;
+}
+
+export interface DirInfo {
+  title: string;
+  children: NavItem[];
+}
+
+/** Resolve a slug to a directory and return its children for an index page */
+export function getDirInfo(slug: string[]): DirInfo | null {
+  const dirPath = path.join(DOCS_ROOT, ...slug);
+  if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) return null;
+  const title = humanize(slug[slug.length - 1]);
+  const children = buildNavTree(dirPath, slug);
+  if (children.length === 0) return null;
+  return { title, children };
 }
 
 function extractTitle(markdown: string): string | null {
