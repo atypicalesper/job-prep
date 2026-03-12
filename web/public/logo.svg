@@ -6,86 +6,76 @@
   <circle cx="100" cy="95"  r="1"   stroke="none" fill="black" opacity="0.5"/>
   <circle cx="15"  cy="100" r="0.8" stroke="none" fill="black" opacity="0.35"/>
   <circle cx="55"  cy="8"   r="0.8" stroke="none" fill="black" opacity="0.4"/>
-  <!-- 4-pointed star -->
-  <path d="M112 50 L113.2 53 L116 50 L113.2 47Z" stroke="none" fill="black" opacity="0.45"/>
+  <!-- 4-pointed star sparkle -->
+  <path d="M112 50 L113.5 53.5 L117 50 L113.5 46.5Z" stroke="none" fill="black" opacity="0.45"/>
 
   <!-- ── Saturn (bottom-left) ───────────────────────────── -->
   <circle cx="22" cy="88" r="10" stroke-width="1.6"/>
-  <!-- crater details -->
   <circle cx="19" cy="85" r="1.5" stroke-width="1"/>
   <circle cx="25" cy="90" r="1"   stroke-width="0.9"/>
-  <!-- ring -->
   <ellipse cx="22" cy="88" rx="17" ry="5" stroke-width="1.3"
     transform="rotate(-18 22 88)"/>
 
   <!-- ── Floating code snippets ────────────────────────── -->
-  <!-- </> top-right -->
-  <text x="82" y="22" font-family="monospace" font-size="11" font-weight="bold"
+  <text x="80" y="22"
+    font-family="monospace" font-size="11" font-weight="bold"
     stroke="none" fill="black" opacity="0.82">&lt;/&gt;</text>
 
-  <!-- { } mid-right -->
-  <text x="96" y="60" font-family="monospace" font-size="9"
+  <text x="96" y="60"
+    font-family="monospace" font-size="9"
     stroke="none" fill="black" opacity="0.65">{ }</text>
 
-  <!-- semicolons drifting (shooting-star style) -->
-  <text x="6" y="55" font-family="monospace" font-size="8"
+  <text x="6" y="55"
+    font-family="monospace" font-size="8"
     stroke="none" fill="black" opacity="0.5">;</text>
-  <text x="104" cy="78" x="104" y="78" font-family="monospace" font-size="7"
+
+  <text x="103" y="78"
+    font-family="monospace" font-size="7"
     stroke="none" fill="black" opacity="0.4">;</text>
 
-  <!-- console.log hint -->
-  <text x="58" y="110" font-family="monospace" font-size="6.5"
+  <text x="52" y="110"
+    font-family="monospace" font-size="6.5"
     stroke="none" fill="black" opacity="0.55">console.log()</text>
 
-  <!-- tiny coffee cup bottom-right -->
-  <!-- cup body -->
+  <!-- ── Coffee cup (bottom-right) ────────────────────── -->
   <rect x="97" y="96" width="13" height="10" rx="2" stroke-width="1.2"/>
-  <!-- handle -->
   <path d="M110 99 Q115 99 115 102 Q115 105 110 105" stroke-width="1.2"/>
-  <!-- steam -->
   <path d="M101 95 Q102 92 101 90" stroke-width="1" opacity="0.6"/>
   <path d="M105 95 Q106 91 105 89" stroke-width="1" opacity="0.6"/>
 
-  <!-- ── Astronaut (centre-right, falling/floating pose) ── -->
-  <!-- helmet visor ring -->
+  <!-- ── Astronaut ──────────────────────────────────────── -->
+  <!-- helmet -->
   <circle cx="72" cy="30" r="9" stroke-width="1.8"/>
-  <!-- visor window -->
-  <path d="M66 28 Q72 23 78 28" stroke-width="1.1" opacity="0.5"/>
+  <!-- visor glare -->
+  <path d="M66 28 Q72 23 78 28" stroke-width="1.1" opacity="0.45"/>
 
-  <!-- torso (tilted) -->
+  <!-- torso -->
   <path d="M69 39 Q65 50 62 58" stroke-width="2"/>
 
-  <!-- left arm (reaching up/out) -->
+  <!-- left arm (up/out) -->
   <path d="M70 43 Q78 38 84 40" stroke-width="1.7"/>
-  <!-- hand -->
   <circle cx="84" cy="40" r="1.8" stroke-width="1.2"/>
 
   <!-- right arm (down-left) -->
   <path d="M68 46 Q62 48 57 50" stroke-width="1.7"/>
   <circle cx="57" cy="50" r="1.8" stroke-width="1.2"/>
 
-  <!-- left leg (kicked up) -->
+  <!-- left leg -->
   <path d="M62 58 Q56 63 52 68" stroke-width="1.8"/>
-  <!-- boot -->
   <path d="M52 68 Q49 70 48 73 Q52 74 55 72 Q55 70 52 68Z" stroke-width="1.2"/>
 
-  <!-- right leg (bent forward) -->
+  <!-- right leg (bent) -->
   <path d="M62 58 Q68 63 72 68" stroke-width="1.8"/>
-  <!-- boot -->
   <path d="M72 68 Q75 70 76 73 Q72 75 69 72 Q69 70 72 68Z" stroke-width="1.2"/>
 
-  <!-- backpack (jetpack nub) -->
+  <!-- jetpack -->
   <rect x="60" y="41" width="8" height="11" rx="2" stroke-width="1.2" opacity="0.75"/>
-  <!-- jetpack flames (tiny) -->
   <path d="M62 52 Q61 57 62 59" stroke-width="1" opacity="0.5"/>
   <path d="M65 52 Q66 57 65 59" stroke-width="1" opacity="0.5"/>
 
-  <!-- orbit dotted path around astronaut -->
-  <circle cx="72" cy="52" r="26"
-    stroke-width="0.7" opacity="0.18"
-    stroke-dasharray="3 4"/>
-
-  <!-- tiny planet on orbit -->
+  <!-- orbit ring -->
+  <circle cx="72" cy="52" r="26" stroke-width="0.7" opacity="0.18" stroke-dasharray="3 4"/>
+  <!-- small planet on orbit -->
   <circle cx="96" cy="52" r="4" stroke-width="1.3"/>
 
 </svg>
