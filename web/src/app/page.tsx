@@ -65,8 +65,16 @@ export default function HomePage() {
       <div ref={heroRef} className="mb-10">
         {/* Gradient glow behind title */}
         <div className="relative mb-3">
+          {/* Dot grid background */}
           <div
-            className="absolute -inset-4 rounded-2xl opacity-10 pointer-events-none blur-2xl"
+            className="absolute -inset-6 rounded-2xl pointer-events-none opacity-[0.035] dark:opacity-[0.06]"
+            style={{
+              backgroundImage: 'radial-gradient(circle, var(--fg) 1px, transparent 1px)',
+              backgroundSize: '20px 20px',
+            }}
+          />
+          <div
+            className="absolute -inset-4 rounded-2xl opacity-[0.12] pointer-events-none blur-2xl"
             style={{ background: 'radial-gradient(ellipse at top left, var(--accent) 0%, transparent 70%)' }}
           />
           <div className="relative flex items-center gap-4">
@@ -190,8 +198,8 @@ export default function HomePage() {
           ['12',   'Major Sections'],
         ].map(([num, label]) => (
           <div key={label} className="flex items-baseline gap-1.5">
-            <span className="text-xl font-bold" style={{ color: 'var(--accent)' }}>{num}</span>
-            <span>{label}</span>
+            <span className="text-2xl font-extrabold tabular-nums" style={{ color: 'var(--accent)', letterSpacing: '-0.02em' }}>{num}</span>
+            <span className="text-xs">{label}</span>
           </div>
         ))}
 

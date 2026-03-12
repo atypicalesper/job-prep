@@ -62,8 +62,8 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
       {/* Search button */}
       <button
         onClick={onSearchOpen}
-        className="mx-3 mt-3 flex items-center gap-2 w-[calc(100%-1.5rem)] rounded-lg px-3 py-2 text-sm transition-colors hover:bg-[var(--sidebar-hover)]"
-        style={{ color: 'var(--muted)', border: '1px solid var(--sidebar-border)' }}
+        className="mx-3 mt-3 flex items-center gap-2 w-[calc(100%-1.5rem)] rounded-lg px-3 py-2 text-sm transition-all hover:bg-[var(--sidebar-hover)] hover:border-[var(--accent)] focus:outline-none"
+        style={{ color: 'var(--muted)', border: '1px solid var(--sidebar-border)', transition: 'background 0.15s, border-color 0.15s' }}
       >
         <Search size={14} />
         <span className="flex-1 text-left text-xs">Search…</span>
