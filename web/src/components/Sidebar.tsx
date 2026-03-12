@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { ChevronRight, Search } from 'lucide-react';
+import Image from 'next/image';
+import { ChevronRight, Search, ChevronsUpDown } from 'lucide-react';
 import type { NavItem } from '@/lib/docs';
 import ThemeToggle from './ThemeToggle';
 
@@ -18,6 +19,8 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
   const pathname = usePathname();
   const sidebarRef = useRef<HTMLElement>(null);
   const [mounted, setMounted] = useState(false);
+  // collapseKey: increment to collapse all; negative to expand all
+  const [collapseKey, setCollapseKey] = useState(0);
 
   useEffect(() => setMounted(true), []);
 
@@ -47,7 +50,7 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
       <div className="flex items-center justify-between px-5 py-4 border-b"
         style={{ borderColor: 'var(--sidebar-border)' }}>
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <img src="/logo.png" alt="logo" className="logo-img w-8 h-8 object-contain shrink-0" />
+          <Image src="/logo.png" alt="logo" width={32} height={32} className="logo-img object-contain shrink-0" unoptimized />
           <span className="font-semibold text-sm leading-tight" style={{ color: 'var(--fg)' }}>
             Node Interview<br />
             <span style={{ color: 'var(--muted)', fontWeight: 400 }}>Prep Guide</span>
@@ -67,9 +70,25 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
         <span className="text-[10px] opacity-60">⌘K</span>
       </button>
 
-      <nav className="flex-1 px-3 py-3 space-y-1">
+      {/* Nav header with collapse/expand all */}
+      <div className="flex items-center justify-between px-3 pt-3 pb-1">
+        <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+          Topics
+        </span>
+        <button
+          onClick={() => setCollapseKey(k => k + 1)}
+          className="flex items-center gap-1 text-[10px] rounded px-1.5 py-0.5 transition-colors hover:bg-[var(--sidebar-hover)]"
+          style={{ color: 'var(--muted)' }}
+          title="Collapse all sections"
+        >
+          <ChevronsUpDown size={11} />
+          Collapse
+        </button>
+      </div>
+
+      <nav className="flex-1 px-3 pb-3 space-y-1">
         {nav.map(section => (
-          <NavNode key={section.slug.join('/')} item={section} pathname={pathname} depth={0} />
+          <NavNode key={section.slug.join('/')} item={section} pathname={pathname} depth={0} collapseKey={collapseKey} />
         ))}
       </nav>
 
@@ -99,9 +118,9 @@ function isAncestorActive(item: NavItem, pathname: string): boolean {
 }
 
 /** Recursive nav node — renders as collapsible group OR a leaf link */
-function NavNode({ item, pathname, depth }: { item: NavItem; pathname: string; depth: number }) {
+function NavNode({ item, pathname, depth, collapseKey }: { item: NavItem; pathname: string; depth: number; collapseKey: number }) {
   const active = isAncestorActive(item, pathname);
-  const [open, setOpen] = useState(() => active || depth === 0);
+  const [open, setOpen] = useState(() => active);
   const contentRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<HTMLSpanElement>(null);
 
@@ -109,6 +128,16 @@ function NavNode({ item, pathname, depth }: { item: NavItem; pathname: string; d
   useEffect(() => {
     if (active && !open) setOpen(true);
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Collapse all when collapseKey increments (except currently active)
+  useEffect(() => {
+    if (collapseKey === 0) return;
+    if (!active) {
+      setOpen(false);
+      if (contentRef.current) gsap.set(contentRef.current, { height: 0, opacity: 0 });
+      if (arrowRef.current) gsap.set(arrowRef.current, { rotation: 0 });
+    }
+  }, [collapseKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function toggle() {
     const next = !open;
@@ -183,7 +212,7 @@ function NavNode({ item, pathname, depth }: { item: NavItem; pathname: string; d
           style={{ borderColor: 'var(--sidebar-border)', marginLeft: `calc(${paddingLeft} + 6px)`, paddingLeft: '10px' }}
         >
           {item.children.map(child => (
-            <NavNode key={child.slug.join('/')} item={child} pathname={pathname} depth={depth + 1} />
+            <NavNode key={child.slug.join('/')} item={child} pathname={pathname} depth={depth + 1} collapseKey={collapseKey} />
           ))}
         </div>
       </div>

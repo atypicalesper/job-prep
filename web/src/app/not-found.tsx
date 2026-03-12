@@ -1,14 +1,18 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function NotFound() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] px-4 text-center">
       {/* Floating astronaut illustration */}
-      <img
+      <Image
         src="/logo.png"
         alt="lost in space"
-        className="logo-img w-32 h-32 object-contain mb-8 opacity-80"
+        width={128}
+        height={128}
+        className="logo-img object-contain mb-8 opacity-80"
         style={{ animation: 'float 4s ease-in-out infinite' }}
+        unoptimized
       />
 
       <h1 className="text-6xl font-bold mb-3" style={{ color: 'var(--accent)' }}>

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getDocContent, getPrevNext, getAllDocSlugs, extractHeadings } from '@/lib/docs';
+import { getDocContent, getPrevNext, getAllDocSlugs, getAllDirSlugs, extractHeadings } from '@/lib/docs';
 import MarkdownContent from '@/components/MarkdownContent';
 import TableOfContents from '@/components/TableOfContents';
 import ReadingProgress from '@/components/ReadingProgress';
@@ -18,8 +18,9 @@ function readingTime(markdown: string): string {
 }
 
 export async function generateStaticParams() {
-  const slugs = getAllDocSlugs();
-  return slugs.map(slug => ({ slug }));
+  const fileSlugs = getAllDocSlugs();
+  const dirSlugs = getAllDirSlugs();
+  return [...fileSlugs, ...dirSlugs].map(slug => ({ slug }));
 }
 
 export async function generateMetadata({ params }: PageProps) {

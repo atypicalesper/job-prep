@@ -118,6 +118,26 @@ export function getAllDocSlugs(): string[][] {
   return slugs;
 }
 
+/** Return all directory slugs (so /section/subsection URLs don't 404) */
+export function getAllDirSlugs(): string[][] {
+  const slugs: string[][] = [];
+
+  function walk(dir: string, prefix: string[]) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue;
+      if (entry.isDirectory()) {
+        const slug = [...prefix, entry.name];
+        slugs.push(slug);
+        walk(path.join(dir, entry.name), slug);
+      }
+    }
+  }
+
+  walk(DOCS_ROOT, []);
+  return slugs;
+}
+
 /** Get the flat ordered list of all doc slugs for prev/next navigation */
 function flattenNav(items: NavItem[]): NavItem[] {
   const result: NavItem[] = [];
