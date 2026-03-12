@@ -23,12 +23,26 @@ export interface NavItem {
   children?: NavItem[];
 }
 
+const ACRONYMS: Record<string, string> = {
+  cicd: 'CI/CD',
+  api: 'API',
+  hld: 'HLD',
+  lld: 'LLD',
+  sql: 'SQL',
+  nosql: 'NoSQL',
+  orm: 'ORM',
+  jwt: 'JWT',
+  grpc: 'gRPC',
+  qa: 'Q&A',
+};
+
 /** Convert a file/directory name like "01-event-loop" → "Event Loop" */
 export function humanize(name: string): string {
   return name
     .replace(/^\d+-/, '')           // strip leading "01-"
-    .replace(/-/g, ' ')             // dashes → spaces
-    .replace(/\b\w/g, c => c.toUpperCase()); // title case
+    .split('-')
+    .map(word => ACRONYMS[word.toLowerCase()] ?? (word.charAt(0).toUpperCase() + word.slice(1)))
+    .join(' ');
 }
 
 /** Recursively build the navigation tree from the docs directory */
