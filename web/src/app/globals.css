@@ -437,6 +437,12 @@ body {
   .prose a { color: #4f46e5; text-decoration: underline; }
 }
 
+/* ── Sidebar sections: hidden until GSAP animates them in ───────────────── */
+.sidebar-section {
+  opacity: 0;
+  transform: translateX(-12px);
+}
+
 /* ── Directory index card entrance animation ────────────────────────────── */
 @keyframes dir-card-in {
   from { opacity: 0; transform: translateY(12px) scale(0.98); }

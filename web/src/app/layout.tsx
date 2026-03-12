@@ -11,6 +11,11 @@ const CLARITY_ID = 'vuib7s6gsr';
 export const metadata: Metadata = {
   title: 'Node.js Interview Prep',
   description: 'Node.js software engineer interview preparation — JavaScript, TypeScript, system design, databases, and more.',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
