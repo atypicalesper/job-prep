@@ -78,7 +78,7 @@ export default function HomePage() {
             style={{ background: 'radial-gradient(ellipse at top left, var(--accent) 0%, transparent 70%)' }}
           />
           <div className="relative flex items-center gap-4">
-            <Image src="/logo.png" alt="logo" width={72} height={72} className="logo-img object-contain shrink-0 drop-shadow-lg" unoptimized />
+            <Image src="/logo.svg" alt="logo" width={72} height={72} className="logo-img object-contain shrink-0 drop-shadow-lg" unoptimized />
             <h1 className="text-4xl font-bold hero-title">
               Node.js SWE Interview Prep
             </h1>
@@ -213,15 +213,6 @@ export default function HomePage() {
               <span>pages read</span>
             </div>
           )}
-          <a
-            href="https://ko-fi.com/cyberesper"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90 hover:scale-105 active:scale-95"
-            style={{ backgroundColor: '#FF5E5B', color: '#fff' }}
-          >
-            ☕ Support on Ko-fi
-          </a>
         </div>
       </div>
     </div>

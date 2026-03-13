@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description: 'Node.js software engineer interview preparation — JavaScript, TypeScript, system design, databases, and more.',
   icons: {
     icon: [
-      { url: '/logo.png', type: 'image/png' },
+      { url: '/logo.svg', type: 'image/svg+xml' },
     ],
   },
 };

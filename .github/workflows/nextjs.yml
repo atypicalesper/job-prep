@@ -67,13 +67,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('web/package-lock.json', 'web/yarn.lock') }}-
       - name: Install dependencies
-        run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }} --prefer-offline
-        working-directory: web
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: cd web && ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }} --prefer-offline
         env:
           npm_config_prefer_offline: true
       - name: Build with Next.js
-        run: ${{ steps.detect-package-manager.outputs.runner }} next build
-        working-directory: web
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 15
+          max_attempts: 3
+          command: cd web && ${{ steps.detect-package-manager.outputs.runner }} next build
         env:
           NODE_OPTIONS: --max-old-space-size=4096
       - name: Upload artifact
