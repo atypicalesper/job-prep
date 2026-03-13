@@ -6,7 +6,7 @@ export default function NotFound() {
     <div className="flex flex-col items-center justify-center min-h-[70vh] px-4 text-center">
       {/* Floating astronaut illustration */}
       <Image
-        src="/logo.svg"
+        src={`${process.env.NEXT_PUBLIC_BASE_PATH}/logo.svg`}
         alt="lost in space"
         width={128}
         height={128}

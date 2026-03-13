@@ -46,7 +46,7 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
       <div className="flex items-center justify-between px-5 py-4 border-b"
         style={{ borderColor: 'var(--sidebar-border)' }}>
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <Image src="/logo.svg" alt="logo" width={32} height={32} className="logo-img object-contain shrink-0" unoptimized />
+          <Image src={`${process.env.NEXT_PUBLIC_BASE_PATH}/logo.svg`} alt="logo" width={32} height={32} className="logo-img object-contain shrink-0" unoptimized />
           <span className="font-semibold text-sm leading-tight" style={{ color: 'var(--fg)' }}>
             Node.js SWE<br />
             <span style={{ color: 'var(--muted)', fontWeight: 400 }}>Interview Prep</span>

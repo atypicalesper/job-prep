@@ -1,15 +1,20 @@
 /** @type {import('next').NextConfig} */
 const isProd = process.env.NODE_ENV === 'production';
 const repoName = 'job-prep';
+const basePath = isProd ? `/${repoName}` : '';
 
 const nextConfig = {
   output: 'export',
   trailingSlash: true,
-  // GitHub Pages serves project sites under /repo-name
-  basePath: isProd ? `/${repoName}` : '',
+  basePath,
   assetPrefix: isProd ? `/${repoName}/` : '',
+  // Expose basePath to client/server components — unoptimized mode bypasses
+  // the image loader that would otherwise prepend basePath automatically
+  env: {
+    NEXT_PUBLIC_BASE_PATH: basePath,
+  },
   images: {
-    unoptimized: true, // required for static export
+    unoptimized: true,
   },
 };
 

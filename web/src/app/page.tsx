@@ -78,7 +78,7 @@ export default function HomePage() {
             style={{ background: 'radial-gradient(ellipse at top left, var(--accent) 0%, transparent 70%)' }}
           />
           <div className="relative flex items-center gap-4">
-            <Image src="/logo.svg" alt="logo" width={72} height={72} className="logo-img object-contain shrink-0 drop-shadow-lg" unoptimized />
+            <Image src={`${process.env.NEXT_PUBLIC_BASE_PATH}/logo.svg`} alt="logo" width={72} height={72} className="logo-img object-contain shrink-0 drop-shadow-lg" unoptimized />
             <h1 className="text-4xl font-bold hero-title">
               Node.js SWE Interview Prep
             </h1>
