@@ -4,8 +4,6 @@ import { buildNavTree, buildSearchIndex } from '@/lib/docs';
 import Shell from '@/components/Shell';
 import './globals.css';
 
-// ─── Microsoft Clarity ────────────────────────────────────────────────────────
-// Paste your Project ID from clarity.microsoft.com → Settings → Overview
 const CLARITY_ID = 'vuib7s6gsr';
 
 export const metadata: Metadata = {
