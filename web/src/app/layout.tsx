@@ -6,12 +6,14 @@ import './globals.css';
 
 const CLARITY_ID = 'vuib7s6gsr';
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 export const metadata: Metadata = {
   title: 'Node.js Interview Prep',
   description: 'Node.js software engineer interview preparation — JavaScript, TypeScript, system design, databases, and more.',
   icons: {
     icon: [
-      { url: '/logo.svg', type: 'image/svg+xml' },
+      { url: `${basePath}/logo.svg`, type: 'image/svg+xml' },
     ],
   },
 };
