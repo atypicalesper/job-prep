@@ -89,25 +89,50 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
       </nav>
 
       <div
-        className="px-4 py-3 text-xs border-t flex items-center justify-between gap-2"
-        style={{ color: 'var(--muted)', borderColor: 'var(--sidebar-border)' }}
+        className="px-4 pt-3 pb-2 border-t space-y-2"
+        style={{ borderColor: 'var(--sidebar-border)' }}
       >
-        <a
-          href="https://ko-fi.com/cyberesper"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:scale-105 active:scale-95 shrink-0"
-          style={{ border: '1px solid var(--sidebar-border)', color: 'var(--muted)', backgroundColor: 'var(--sidebar-hover)' }}
-        >
-          ☕ ko-fi
-        </a>
-        <kbd
-          className="kbd cursor-pointer opacity-60 hover:opacity-100 transition-opacity ml-auto"
-          title="Keyboard shortcuts"
-          onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '?' }))}
-        >
-          ?
-        </kbd>
+        {/* Row: ko-fi + shortcuts */}
+        <div className="flex items-center justify-between gap-2">
+          <a
+            href="https://ko-fi.com/cyberesper"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:scale-105 active:scale-95"
+            style={{ border: '1px solid var(--sidebar-border)', color: 'var(--muted)', backgroundColor: 'var(--sidebar-hover)' }}
+          >
+            ☕ ko-fi
+          </a>
+          <kbd
+            className="kbd cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
+            title="Keyboard shortcuts"
+            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '?' }))}
+          >
+            ?
+          </kbd>
+        </div>
+
+        {/* Row: contribute + developed by */}
+        <div className="flex items-center justify-between gap-2">
+          <a
+            href="https://github.com/atypicalesper/job-prep"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-[10px] transition-colors hover:opacity-100 opacity-60"
+            style={{ color: 'var(--accent)' }}
+          >
+            ↗ contribute
+          </a>
+          <span className="text-[10px] opacity-40" style={{ color: 'var(--muted)' }}>
+            by <a
+              href="https://atypicalesper.github.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:opacity-100 transition-opacity"
+              style={{ color: 'var(--accent)' }}
+            >atypicalesper</a>
+          </span>
+        </div>
       </div>
     </aside>
   );
