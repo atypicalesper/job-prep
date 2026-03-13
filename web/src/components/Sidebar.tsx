@@ -18,30 +18,25 @@ interface Props {
 export default function Sidebar({ nav, onSearchOpen }: Props) {
   const pathname = usePathname();
   const sidebarRef = useRef<HTMLElement>(null);
-  const [mounted, setMounted] = useState(false);
   // collapseKey: increment to collapse all; negative to expand all
   const [collapseKey, setCollapseKey] = useState(0);
 
-  useEffect(() => setMounted(true), []);
-
   useGSAP(() => {
-    if (!mounted) return;
     gsap.to('.sidebar-section', {
       opacity: 1,
       x: 0,
-      duration: 0.3,
-      stagger: 0.03,
+      duration: 0.2,
+      stagger: 0.02,
       ease: 'power2.out',
       clearProps: 'transform',
     });
-  }, { scope: sidebarRef, dependencies: [mounted] });
+  }, { scope: sidebarRef });
 
   // Scroll active nav item into view whenever the page changes
   useEffect(() => {
-    if (!mounted) return;
     const active = sidebarRef.current?.querySelector('.nav-active') as HTMLElement | null;
     active?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [pathname, mounted]);
+  }, [pathname]);
 
   return (
     <aside
@@ -51,7 +46,7 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
       <div className="flex items-center justify-between px-5 py-4 border-b"
         style={{ borderColor: 'var(--sidebar-border)' }}>
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <Image src="/logo.svg" alt="logo" width={32} height={32} className="logo-img object-contain shrink-0" unoptimized />
+          <Image src="/logo.png" alt="logo" width={32} height={32} className="logo-img object-contain shrink-0" unoptimized />
           <span className="font-semibold text-sm leading-tight" style={{ color: 'var(--fg)' }}>
             Node.js SWE<br />
             <span style={{ color: 'var(--muted)', fontWeight: 400 }}>Interview Prep</span>
