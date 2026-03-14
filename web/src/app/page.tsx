@@ -80,13 +80,13 @@ export default function HomePage() {
           <div className="relative flex items-center gap-4">
             <Image src={`${process.env.NEXT_PUBLIC_BASE_PATH}/logo.svg`} alt="logo" width={72} height={72} className="logo-img object-contain shrink-0 drop-shadow-lg" unoptimized />
             <h1 className="text-4xl font-bold hero-title">
-              Node.js SWE Interview Prep
+              SWE Interview Prep
             </h1>
           </div>
         </div>
 
         <p className="text-lg mb-6 max-w-2xl" style={{ color: 'var(--muted)' }}>
-          Software engineer interview guide — deep dives into JavaScript internals, Node.js architecture, TypeScript, databases, system design, and more.
+          Software engineer interview guide — JavaScript, React, Node.js, TypeScript, DSA, system design, databases, and more.
         </p>
 
         <div className="flex gap-3 flex-wrap">
