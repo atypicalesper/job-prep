@@ -221,6 +221,6 @@ export function buildSearchIndex(): SearchItem[] {
 
     const section = slug[0] ? humanize(slug[0]) : '';
 
-    return { title: doc.title, slug, excerpt: plain.slice(0, 160), section };
+    return { title: doc.title, slug, excerpt: plain, section };
   });
 }

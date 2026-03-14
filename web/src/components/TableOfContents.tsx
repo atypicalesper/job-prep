@@ -35,8 +35,8 @@ export default function TableOfContents({ headings }: Props) {
   if (headings.length < 3) return null;
 
   return (
-    <aside className="hidden xl:block w-52 shrink-0">
-      <nav className="sticky top-8">
+    <aside className="hidden xl:block w-52 shrink-0 self-start sticky top-8">
+      <nav>
         <p
           className="text-[11px] font-semibold uppercase tracking-wider mb-3"
           style={{ color: 'var(--muted)' }}
