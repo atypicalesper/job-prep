@@ -21,16 +21,6 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
   // collapseKey: increment to collapse all; negative to expand all
   const [collapseKey, setCollapseKey] = useState(0);
 
-  useGSAP(() => {
-    gsap.to('.sidebar-section', {
-      opacity: 1,
-      x: 0,
-      duration: 0.2,
-      stagger: 0.02,
-      ease: 'power2.out',
-      clearProps: 'transform',
-    });
-  }, { scope: sidebarRef });
 
   // Scroll active nav item into view whenever the page changes
   useEffect(() => {

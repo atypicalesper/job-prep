@@ -63,7 +63,7 @@ export default function Shell({ nav, searchIndex, children }: Props) {
       </div>
 
       {/* Main area */}
-      <div className="flex-1 min-w-0 overflow-x-hidden flex flex-col">
+      <div className="flex-1 min-w-0 overflow-x-clip flex flex-col">
         {/* Mobile top bar */}
         <header
           className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b md:hidden"
