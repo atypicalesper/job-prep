@@ -77,7 +77,7 @@ export default function Shell({ nav, searchIndex, children }: Props) {
             <Menu size={20} style={{ color: 'var(--fg)' }} />
           </button>
           <span className="flex items-center gap-2 flex-1 min-w-0">
-            <Image src={`${process.env.NEXT_PUBLIC_BASE_PATH}/logo.svg`} alt="logo" width={24} height={24} className="logo-img object-contain shrink-0" unoptimized />
+            <Image src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/logo.svg`} alt="logo" width={24} height={24} className="logo-img object-contain shrink-0" unoptimized />
             <span className="text-sm font-semibold truncate" style={{ color: 'var(--fg)' }}>SWE Interview Prep</span>
           </span>
           <button
