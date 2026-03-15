@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useLayoutEffect } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { BookOpen, ArrowRight, Clock } from 'lucide-react';
@@ -13,14 +13,21 @@ const SECTIONS = [
   { icon: '⚙️', title: 'Node.js Core', slug: '02-nodejs-core', desc: 'V8, libuv, streams, buffers, worker threads, cluster, child processes' },
   { icon: '🔷', title: 'TypeScript', slug: '03-typescript', desc: 'Type system, generics, utility types, decorators, advanced patterns' },
   { icon: '🔀', title: 'Async Patterns', slug: '04-async-patterns', desc: 'EventEmitter, concurrency control, async iterators, Kafka, p-limit' },
-  { icon: '🚀', title: 'Performance', slug: '05-performance', desc: 'Profiling, memory leaks, caching strategies, CPU optimization, flame graphs' },
-  { icon: '🗄️', title: 'Databases', slug: '06-databases', desc: 'SQL, MongoDB, Redis — queries, indexes, transactions, schema design' },
-  { icon: '🌐', title: 'API Design', slug: '07-api-design', desc: 'REST, GraphQL, gRPC, WebSockets, JWT/OAuth2, Express vs Fastify' },
-  { icon: '🏗️', title: 'System Design', slug: '08-system-design', desc: 'HLD, SOLID, design patterns, microservices, event sourcing, CQRS' },
-  { icon: '🐳', title: 'DevOps', slug: '09-devops', desc: 'Docker, Kubernetes, CI/CD, serverless, Lambda, process management' },
+  { icon: '🚀', title: 'Performance', slug: '05-performance', desc: 'Profiling, memory leaks, caching, observability, error tracking' },
+  { icon: '🗄️', title: 'Databases', slug: '06-databases', desc: 'SQL, MongoDB, Redis, sharding, migrations, CQRS, connection pooling' },
+  { icon: '🌐', title: 'API Design', slug: '07-api-design', desc: 'REST, GraphQL, gRPC, WebSockets, tRPC, OpenAPI, Federation' },
+  { icon: '🏗️', title: 'System Design', slug: '08-system-design', desc: 'HLD, SOLID, microservices, event sourcing, distributed systems, CAP' },
+  { icon: '🐳', title: 'DevOps', slug: '09-devops', desc: 'Docker, Kubernetes, CI/CD, serverless, feature flags, monorepos' },
   { icon: '🧪', title: 'Testing', slug: '10-testing', desc: 'Jest, mocking strategies, Testcontainers, integration tests' },
-  { icon: '🔒', title: 'Security', slug: '11-security', desc: 'OWASP Top 10, injection, XSS, CSRF, auth, helmet, rate limiting' },
-  { icon: '💬', title: 'Interview Practice', slug: '12-interview-practice', desc: 'Rapid-fire Q&As, coding challenges, behavioral stories, cheat sheet' },
+  { icon: '🔒', title: 'Security', slug: '11-security', desc: 'OWASP Top 10, supply chain attacks, SBOM, secrets management, Vault' },
+  { icon: '💬', title: 'Interview Practice', slug: '12-interview-practice', desc: 'Rapid-fire Q&As, behavioral stories, system design practice, cheat sheet' },
+  { icon: '⚛️', title: 'React', slug: '13-react', desc: 'Virtual DOM, hooks, concurrent features, state management, React 19' },
+  { icon: '📊', title: 'DSA', slug: '14-dsa', desc: 'Trees, graphs, DP, sliding window, binary search, tries, union-find' },
+  { icon: '🖥️', title: 'Browser Internals', slug: '15-browser-internals', desc: 'Critical rendering path, V8 engine, hidden classes, GC, Web APIs' },
+  { icon: '⚡', title: 'Concurrency Models', slug: '16-concurrency-models', desc: 'JS event loop vs Go goroutines vs Python asyncio vs Java virtual threads' },
+  { icon: '📈', title: 'Frontend Perf', slug: '17-frontend-perf', desc: 'Core Web Vitals, LCP/INP/CLS, bundle splitting, tree shaking' },
+  { icon: '▲', title: 'Next.js', slug: '18-nextjs', desc: 'App Router, layouts, streaming, caching, Server Actions, middleware' },
+  { icon: '🟡', title: 'Runtimes', slug: '19-runtimes', desc: 'Bun, Deno, edge computing, Cloudflare Workers, V8 isolates' },
 ];
 
 export default function HomePage() {
@@ -30,7 +37,7 @@ export default function HomePage() {
   const [visitedCounts, setVisitedCounts] = useState<Record<string, number>>({});
   const [recentPages, setRecentPages] = useState<RecentPage[]>([]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const counts: Record<string, number> = {};
     for (const s of SECTIONS) {
       counts[s.slug] = getVisitedCountBySection(s.slug);
@@ -192,10 +199,10 @@ export default function HomePage() {
       {/* ── Stats bar ─────────────────────────────────────────── */}
       <div className="mt-10 flex gap-6 flex-wrap items-center text-sm border-t pt-6" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
         {[
-          ['120+', 'Topic Files'],
-          ['500+', 'Code Examples'],
-          ['300+', 'Interview Q&As'],
-          ['12',   'Major Sections'],
+          ['160+', 'Topic Files'],
+          ['600+', 'Code Examples'],
+          ['400+', 'Interview Q&As'],
+          ['19',   'Major Sections'],
         ].map(([num, label]) => (
           <div key={label} className="flex items-baseline gap-1.5">
             <span className="text-2xl font-extrabold tabular-nums" style={{ color: 'var(--accent)', letterSpacing: '-0.02em' }}>{num}</span>
