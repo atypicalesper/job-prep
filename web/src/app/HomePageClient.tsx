@@ -9,26 +9,26 @@ import { BookOpen, ArrowRight, Clock } from 'lucide-react';
 import { getVisitedCountBySection, getRecent, type RecentPage } from '@/lib/progress';
 
 const SECTIONS: { icon: string; title: string; slug: string; desc: string; badge?: string }[] = [
-  { icon: '🧠', title: 'JavaScript Fundamentals', slug: '01-javascript-fundamentals', desc: 'Event loop, closures, prototypes, this keyword, async/await, generators, OOP, functional programming, memory & GC' },
+  { icon: '🧠', title: 'JavaScript Fundamentals', slug: '01-javascript-fundamentals', desc: 'Event loop, closures, prototypes, this keyword, async/await, generators, OOP, functional programming, memory & GC, polyfills, hoisting, coercion' },
   { icon: '⚙️', title: 'Node.js Core', slug: '02-nodejs-core', desc: 'V8, libuv, streams, buffers, modules, worker threads, cluster, child processes, HTTP internals, async context, anti-patterns' },
   { icon: '🔷', title: 'TypeScript', slug: '03-typescript', desc: 'Type system, generics, utility types, decorators, advanced patterns, module augmentation, TS+React, modern features, OOP' },
   { icon: '🔀', title: 'Async Patterns', slug: '04-async-patterns', desc: 'EventEmitter, concurrency control, async iterators, Kafka, RabbitMQ, p-limit, backpressure' },
   { icon: '🚀', title: 'Performance', slug: '05-performance', desc: 'Profiling, memory leaks, CPU optimization, caching strategies, observability, error tracking, flame graphs' },
   { icon: '🗄️', title: 'Databases', slug: '06-databases', desc: 'SQL, NoSQL, Redis, ORMs, connection pooling, sharding, zero-downtime migrations, CQRS, indexing' },
-  { icon: '🌐', title: 'API Design', slug: '07-api-design', desc: 'REST, GraphQL, gRPC, WebSockets, tRPC, OpenAPI, federation, auth patterns, networking, WebSockets at scale' },
+  { icon: '🌐', title: 'API Design', slug: '07-api-design', desc: 'REST, GraphQL, gRPC, WebSockets, SSE, CORS, tRPC, OpenAPI, federation, auth patterns, networking' },
   { icon: '🏗️', title: 'System Design', slug: '08-system-design', desc: 'HLD, LLD, SOLID, microservices, event sourcing, distributed systems, CAP, SDE3 senior topics' },
   { icon: '🐳', title: 'DevOps', slug: '09-devops', desc: 'Docker, Kubernetes, CI/CD, process management, serverless, feature flags, monorepo tooling' },
   { icon: '🧪', title: 'Testing', slug: '10-testing', desc: 'Unit tests, Jest, integration testing, E2E testing, mocking strategies, Testcontainers' },
   { icon: '🔒', title: 'Security', slug: '11-security', desc: 'OWASP Top 10, Node.js security, supply chain attacks, SBOM, secrets management' },
   { icon: '💬', title: 'Interview Practice', slug: '12-interview-practice', desc: 'Rapid-fire Q&As, behavioral STAR stories, system design walkthroughs, last-day cheat sheet' },
   { icon: '⚛️', title: 'React', slug: '13-react', desc: 'Core concepts, hooks, concurrent features, advanced patterns, state management (Zustand/Redux/Jotai), React 19' },
-  { icon: '📊', title: 'DSA', slug: '14-dsa', desc: 'Arrays, strings, trees, graphs, DP, sliding window, binary search, tries, union-find, heaps, backtracking, bit manipulation' },
-  { icon: '🖥️', title: 'Browser Internals', slug: '15-browser-internals', desc: 'Critical rendering path, V8 engine deep dive, hidden classes, GC, Web APIs, event loop in the browser' },
+  { icon: '📊', title: 'DSA', slug: '14-dsa', desc: 'Big Tech roadmap, arrays, strings, trees, graphs, DP, sliding window, binary search, tries, union-find, heaps, backtracking, bit manipulation' },
+  { icon: '🖥️', title: 'Browser Internals', slug: '15-browser-internals', desc: 'Critical rendering path, V8 deep dive, Web Workers, Service Workers, web storage, cookies, IndexedDB, PWA' },
   { icon: '⚡', title: 'Concurrency Models', slug: '16-concurrency-models', desc: 'JS event loop vs Go goroutines vs Python asyncio vs Java virtual threads — side-by-side comparison' },
-  { icon: '📈', title: 'Frontend Perf', slug: '17-frontend-perf', desc: 'Core Web Vitals, LCP/INP/CLS, bundle splitting, tree shaking, image optimization, lazy loading' },
+  { icon: '📈', title: 'Frontend Perf', slug: '17-frontend-perf', desc: 'Core Web Vitals, LCP/INP/CLS, code splitting, tree shaking, lazy loading, image optimization, bundle analysis' },
   { icon: '▲', title: 'Next.js', slug: '18-nextjs', desc: 'App Router, rendering strategies, Server Actions, authentication, performance & SEO, Tailwind, architecture patterns' },
   { icon: '🟡', title: 'Runtimes', slug: '19-runtimes', desc: 'Bun, Deno, edge computing, Cloudflare Workers, V8 isolates — when and why to use each' },
-  { icon: '🤖', title: 'AI/ML Engineering', slug: '20-ai-ml-engineering', desc: 'RAG, vector DBs, LangChain, LangGraph, agents, MCP, fine-tuning (LoRA/QLoRA), AI evaluation, multimodal, AI security, production AI, roadmap', badge: 'NEW' },
+  { icon: '🤖', title: 'AI/ML Engineering', slug: '20-ai-ml-engineering', desc: 'RAG, vector DBs (ChromaDB/Pinecone/pgvector/FAISS), embedding models, LangChain, LangGraph, agents, MCP, fine-tuning, evaluation, n8n, Playwright', badge: 'NEW' },
 ];
 
 interface Props {
@@ -236,9 +236,9 @@ export default function HomePageClient({ pageCounts }: Props) {
       {/* ── Stats bar ─────────────────────────────────────────── */}
       <div className="mt-10 flex gap-6 flex-wrap items-center text-sm border-t pt-6" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
         {[
-          ['230+', 'Topic Files'],
-          ['900+', 'Code Examples'],
-          ['550+', 'Interview Q&As'],
+          ['250+', 'Topic Files'],
+          ['950+', 'Code Examples'],
+          ['600+', 'Interview Q&As'],
           ['20',   'Major Sections'],
         ].map(([num, label]) => (
           <div key={label} className="flex items-baseline gap-1.5">
