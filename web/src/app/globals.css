@@ -23,6 +23,7 @@ html {
   --accent: #4f46e5;
   --accent-hover: #4338ca;
   --accent-glow: rgba(79, 70, 229, 0.12);
+  --accent-rgb: 79, 70, 229;
   --muted: #6b7280;
   --border: #e4e7eb;
   --card-bg: #f4f5f7;
@@ -42,6 +43,7 @@ html {
   --accent: #818cf8;
   --accent-hover: #6366f1;
   --accent-glow: rgba(129, 140, 248, 0.12);
+  --accent-rgb: 129, 140, 248;
   --muted: #94a3b8;
   --border: #141724;
   --card-bg: #0f1220;
@@ -137,14 +139,13 @@ body {
 .prose pre {
   background: var(--code-bg) !important;
   border: 1px solid var(--border);
-  border-top: 2px solid rgba(129, 140, 248, 0.35);
+  border-top: 2px solid rgba(var(--accent-rgb), 0.3);
   border-radius: 10px;
   overflow-x: auto;
   margin: 1.25rem 0;
   padding: 0 !important;
 }
 .dark .prose pre {
-  border-top-color: rgba(129, 140, 248, 0.3);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
 }
 

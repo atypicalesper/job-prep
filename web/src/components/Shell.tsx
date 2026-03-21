@@ -7,6 +7,7 @@ import { Menu, Search as SearchIcon } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Search from './Search';
 import KeyboardShortcuts from './KeyboardShortcuts';
+import ThemeToggle from './ThemeToggle';
 import type { NavItem, SearchItem } from '@/lib/docs';
 
 interface Props {
@@ -80,6 +81,7 @@ export default function Shell({ nav, searchIndex, children }: Props) {
             <Image src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/logo.svg`} alt="logo" width={24} height={24} className="logo-img object-contain shrink-0" unoptimized />
             <span className="text-sm font-semibold truncate" style={{ color: 'var(--fg)' }}>SWE Interview Prep</span>
           </span>
+          <ThemeToggle />
           <button
             onClick={() => setSearchOpen(true)}
             className="p-1.5 rounded-md transition-colors hover:bg-[var(--sidebar-hover)]"

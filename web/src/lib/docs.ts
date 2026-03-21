@@ -34,6 +34,14 @@ const ACRONYMS: Record<string, string> = {
   jwt: 'JWT',
   grpc: 'gRPC',
   qa: 'Q&A',
+  ai: 'AI',
+  ml: 'ML',
+  rag: 'RAG',
+  ui: 'UI',
+  ux: 'UX',
+  dsa: 'DSA',
+  sse: 'SSE',
+  e2e: 'E2E',
 };
 
 /** Convert a file/directory name like "01-event-loop" → "Event Loop" */

@@ -1,7 +1,8 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getDocContent, getDirInfo, getPrevNext, getAllDocSlugs, getAllDirSlugs, extractHeadings } from '@/lib/docs';
+import { getDocContent, getDirInfo, getPrevNext, getAllDocSlugs, getAllDirSlugs, extractHeadings, humanize } from '@/lib/docs';
+import type { NavItem } from '@/lib/docs';
 import MarkdownContent from '@/components/MarkdownContent';
 import TableOfContents from '@/components/TableOfContents';
 import ReadingProgress from '@/components/ReadingProgress';
@@ -14,8 +15,14 @@ interface PageProps {
 
 function readingTime(markdown: string): string {
   const words = markdown.trim().split(/\s+/).length;
-  const mins  = Math.ceil(words / 200);
+  const mins  = Math.ceil(words / 250);
   return `${mins} min read`;
+}
+
+/** Count total leaf-file descendants of a NavItem */
+function flatCount(item: NavItem): number {
+  if (!item.children) return 1;
+  return item.children.reduce((sum, c) => sum + flatCount(c), 0);
 }
 
 export async function generateStaticParams() {
@@ -39,15 +46,15 @@ function Breadcrumb({ slug }: { slug: string[] }) {
       <Link href="/" className="hover:underline" style={{ color: 'var(--accent)' }}>Home</Link>
       {slug.map((segment, i) => {
         const href  = '/' + slug.slice(0, i + 1).join('/');
-        const label = segment.replace(/^\d+-/, '').replace(/-/g, ' ');
+        const label = humanize(segment);
         const isLast = i === slug.length - 1;
         return (
           <span key={i} className="flex items-center gap-2">
             <ChevronRight size={12} />
             {isLast ? (
-              <span style={{ color: 'var(--fg)' }} className="capitalize">{label}</span>
+              <span style={{ color: 'var(--fg)' }}>{label}</span>
             ) : (
-              <Link href={href} className="hover:underline capitalize">{label}</Link>
+              <Link href={href} className="hover:underline">{label}</Link>
             )}
           </span>
         );
@@ -81,6 +88,7 @@ export default function DocPage({ params }: PageProps) {
             const href = '/' + child.slug.join('/');
             const stagger = { '--stagger': `${i * 60}ms` } as React.CSSProperties;
             if (child.children) {
+              const count = flatCount(child);
               // Subsection card
               return (
                 <div
@@ -88,13 +96,21 @@ export default function DocPage({ params }: PageProps) {
                   className="dir-card rounded-xl border p-5"
                   style={{ ...stagger, backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}
                 >
-                  <Link
-                    href={href}
-                    className="font-semibold text-sm hover:text-indigo-400 transition-colors block mb-3"
-                    style={{ color: 'var(--fg)' }}
-                  >
-                    {child.title} →
-                  </Link>
+                  <div className="flex items-center justify-between mb-3">
+                    <Link
+                      href={href}
+                      className="font-semibold text-sm hover:text-indigo-400 transition-colors"
+                      style={{ color: 'var(--fg)' }}
+                    >
+                      {child.title} →
+                    </Link>
+                    <span
+                      className="text-[10px] font-medium px-1.5 py-0.5 rounded-md shrink-0 ml-2"
+                      style={{ backgroundColor: 'var(--sidebar-active)', color: 'var(--sidebar-active-text)' }}
+                    >
+                      {count} {count === 1 ? 'file' : 'files'}
+                    </span>
+                  </div>
                   <ul className="space-y-1.5">
                     {child.children.map(gc => (
                       <li key={gc.slug.join('/')}>
@@ -116,10 +132,10 @@ export default function DocPage({ params }: PageProps) {
               <Link
                 key={href}
                 href={href}
-                className="dir-card rounded-xl border p-5 block transition-all hover:-translate-y-1 hover:shadow-md"
+                className="dir-card rounded-xl border p-5 block transition-all hover:-translate-y-1 hover:shadow-md group"
                 style={{ ...stagger, backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}
               >
-                <span className="font-semibold text-sm" style={{ color: 'var(--fg)' }}>{child.title}</span>
+                <span className="font-semibold text-sm group-hover:text-indigo-400 transition-colors" style={{ color: 'var(--fg)' }}>{child.title}</span>
               </Link>
             );
           })}
@@ -164,17 +180,17 @@ export default function DocPage({ params }: PageProps) {
 
           {/* Keyboard nav hint */}
           {(prev || next) && (
-            <div
-              className="mt-6 flex items-center justify-center gap-3 text-xs"
-              style={{ color: 'var(--muted)' }}
-            >
-              <span>
-                <kbd className="kbd">[</kbd> prev
-              </span>
-              <span className="opacity-40">·</span>
-              <span>
-                next <kbd className="kbd">]</kbd>
-              </span>
+            <div className="mt-6 flex justify-center">
+              <div
+                className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border"
+                style={{ color: 'var(--muted)', borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
+              >
+                <kbd className="kbd">[</kbd>
+                <span>prev</span>
+                <span className="opacity-30 mx-0.5">·</span>
+                <span>next</span>
+                <kbd className="kbd">]</kbd>
+              </div>
             </div>
           )}
 
