@@ -3,12 +3,35 @@
 import { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import Image from 'next/image';
-import { ChevronRight, Search, ChevronsUpDown } from 'lucide-react';
+import { ChevronRight, Search } from 'lucide-react';
 import type { NavItem } from '@/lib/docs';
 import ThemeToggle from './ThemeToggle';
+
+// Icons for top-level sections (matches DOCS_ROOT directory order)
+const SECTION_ICONS: Record<string, string> = {
+  '01-javascript-fundamentals': '🧠',
+  '02-nodejs-core': '⚙️',
+  '03-typescript': '🔷',
+  '04-async-patterns': '🔀',
+  '05-performance': '🚀',
+  '06-databases': '🗄️',
+  '07-api-design': '🌐',
+  '08-system-design': '🏗️',
+  '09-devops': '🐳',
+  '10-testing': '🧪',
+  '11-security': '🔒',
+  '12-interview-practice': '💬',
+  '13-react': '⚛️',
+  '14-dsa': '📊',
+  '15-browser-internals': '🖥️',
+  '16-concurrency-models': '⚡',
+  '17-frontend-perf': '📈',
+  '18-nextjs': '▲',
+  '19-runtimes': '🟡',
+  '20-ai-ml-engineering': '🤖',
+};
 
 interface Props {
   nav: NavItem[];
@@ -18,11 +41,17 @@ interface Props {
 export default function Sidebar({ nav, onSearchOpen }: Props) {
   const pathname = usePathname();
   const sidebarRef = useRef<HTMLElement>(null);
-  // collapseKey: increment to collapse all; negative to expand all
-  const [collapseKey, setCollapseKey] = useState(0);
 
+  // Which top-level section is open — only one at a time (accordion)
+  const activeTopSlug = nav.find(s => isAncestorActive(s, pathname))?.slug[0] ?? null;
+  const [openSlug, setOpenSlug] = useState<string | null>(activeTopSlug);
 
-  // Scroll active nav item into view whenever the page changes
+  // When route changes, ensure the active section is open
+  useEffect(() => {
+    if (activeTopSlug) setOpenSlug(activeTopSlug);
+  }, [activeTopSlug]);
+
+  // Scroll active item into view
   useEffect(() => {
     const active = sidebarRef.current?.querySelector('.nav-active') as HTMLElement | null;
     active?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -31,13 +60,20 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
   return (
     <aside
       ref={sidebarRef}
-      className="sidebar w-64 shrink-0 h-screen sticky top-0 flex flex-col overflow-y-auto"
+      className="sidebar w-56 shrink-0 h-screen sticky top-0 flex flex-col overflow-y-auto"
     >
-      <div className="flex items-center justify-between px-5 py-4 border-b"
-        style={{ borderColor: 'var(--sidebar-border)' }}>
+      {/* Header */}
+      <div
+        className="flex items-center justify-between px-4 py-3 border-b shrink-0"
+        style={{ borderColor: 'var(--sidebar-border)' }}
+      >
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <Image src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/logo.svg`} alt="logo" width={32} height={32} className="logo-img object-contain shrink-0" unoptimized />
-          <span className="font-semibold text-sm leading-tight" style={{ color: 'var(--fg)' }}>
+          <Image
+            src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/logo.svg`}
+            alt="logo" width={26} height={26}
+            className="logo-img object-contain shrink-0" unoptimized
+          />
+          <span className="font-semibold text-xs leading-tight" style={{ color: 'var(--fg)' }}>
             SWE<br />
             <span style={{ color: 'var(--muted)', fontWeight: 400 }}>Interview Prep</span>
           </span>
@@ -45,143 +81,204 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
         <ThemeToggle />
       </div>
 
-      {/* Search button */}
+      {/* Search */}
       <button
         onClick={onSearchOpen}
-        className="mx-3 mt-3 flex items-center gap-2 w-[calc(100%-1.5rem)] rounded-lg px-3 py-2 text-sm transition-all hover:bg-[var(--sidebar-hover)] hover:border-[var(--accent)] focus:outline-none"
-        style={{ color: 'var(--muted)', border: '1px solid var(--sidebar-border)', transition: 'background 0.15s, border-color 0.15s' }}
+        className="mx-2.5 mt-2.5 flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-all hover:bg-[var(--sidebar-hover)]"
+        style={{ color: 'var(--muted)', border: '1px solid var(--sidebar-border)' }}
       >
-        <Search size={14} />
-        <span className="flex-1 text-left text-xs">Search…</span>
-        <span className="text-[10px] opacity-60">⌘K</span>
+        <Search size={12} />
+        <span className="flex-1 text-left">Search…</span>
+        <span className="text-[10px] opacity-50">⌘K</span>
       </button>
 
-      {/* Nav header with collapse/expand all */}
-      <div className="flex items-center justify-between px-3 pt-3 pb-1">
+      {/* Section label */}
+      <div className="px-3 pt-2.5 pb-1">
         <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
           Topics
         </span>
-        <button
-          onClick={() => setCollapseKey(k => k + 1)}
-          className="flex items-center gap-1 text-[10px] rounded px-1.5 py-0.5 transition-colors hover:bg-[var(--sidebar-hover)]"
-          style={{ color: 'var(--muted)' }}
-          title="Collapse all sections"
-        >
-          <ChevronsUpDown size={11} />
-          Collapse
-        </button>
       </div>
 
-      <nav className="flex-1 px-3 pb-3 space-y-1">
-        {nav.map(section => (
-          <NavNode key={section.slug.join('/')} item={section} pathname={pathname} depth={0} collapseKey={collapseKey} />
-        ))}
+      {/* Nav — accordion: one section open at a time */}
+      <nav className="flex-1 px-2 pb-3">
+        {nav.map(section => {
+          const slug0 = section.slug[0];
+          const icon = SECTION_ICONS[slug0] ?? '📄';
+          const isOpen = openSlug === slug0;
+          const isActive = isAncestorActive(section, pathname);
+
+          return (
+            <TopSection
+              key={slug0}
+              item={section}
+              icon={icon}
+              isOpen={isOpen}
+              isActive={isActive}
+              pathname={pathname}
+              onToggle={() => setOpenSlug(isOpen ? null : slug0)}
+            />
+          );
+        })}
       </nav>
 
+      {/* Footer */}
       <div
-        className="px-4 pt-3 pb-2 border-t space-y-2"
+        className="px-4 py-2 border-t shrink-0 flex items-center justify-between"
         style={{ borderColor: 'var(--sidebar-border)' }}
       >
-        {/* Row: shortcuts */}
-        <div className="flex items-center justify-end gap-2">
-          <kbd
-            className="kbd cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
-            title="Keyboard shortcuts"
-            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '?' }))}
-          >
-            ?
-          </kbd>
-        </div>
-
-        {/* Row: contribute + developed by */}
-        <div className="flex items-center justify-between gap-2">
-          <a
-            href="https://github.com/atypicalesper/job-prep"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-[10px] transition-colors hover:opacity-100 opacity-60"
-            style={{ color: 'var(--accent)' }}
-          >
-            ↗ contribute
-          </a>
-          <span className="text-[10px] opacity-40" style={{ color: 'var(--muted)' }}>
-            by <a
-              href="https://atypicalesper.github.io"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:opacity-100 transition-opacity"
-              style={{ color: 'var(--accent)' }}
-            >atypicalesper</a>
-          </span>
-        </div>
+        <a
+          href="https://github.com/atypicalesper/job-prep"
+          target="_blank" rel="noopener noreferrer"
+          className="text-[10px] opacity-50 hover:opacity-100 transition-opacity"
+          style={{ color: 'var(--accent)' }}
+        >
+          ↗ contribute
+        </a>
+        <kbd
+          className="kbd cursor-pointer opacity-40 hover:opacity-80 transition-opacity text-[10px]"
+          title="Keyboard shortcuts"
+          onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '?' }))}
+        >
+          ?
+        </kbd>
       </div>
     </aside>
   );
 }
 
-/** Checks whether any descendant file matches the current pathname */
-function isAncestorActive(item: NavItem, pathname: string): boolean {
-  if (!item.children) {
-    return pathname === '/' + item.slug.join('/');
-  }
-  return item.children.some(child => isAncestorActive(child, pathname));
-}
+// ─── Top-level accordion section ────────────────────────────────────────────
 
-/** Recursive nav node — renders as collapsible group OR a leaf link */
-function NavNode({ item, pathname, depth, collapseKey }: { item: NavItem; pathname: string; depth: number; collapseKey: number }) {
-  const active = isAncestorActive(item, pathname);
-  const [open, setOpen] = useState(() => active);
+function TopSection({
+  item, icon, isOpen, isActive, pathname, onToggle,
+}: {
+  item: NavItem;
+  icon: string;
+  isOpen: boolean;
+  isActive: boolean;
+  pathname: string;
+  onToggle: () => void;
+}) {
   const contentRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<HTMLSpanElement>(null);
+  const didMount = useRef(false);
 
-  // Keep open when navigating to a child
+  // Animate open/close (skip on first mount to avoid flash)
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      // Set initial state without animation
+      if (contentRef.current) {
+        gsap.set(contentRef.current, { height: isOpen ? 'auto' : 0, opacity: isOpen ? 1 : 0 });
+      }
+      if (arrowRef.current) {
+        gsap.set(arrowRef.current, { rotation: isOpen ? 90 : 0 });
+      }
+      return;
+    }
+    if (contentRef.current) {
+      gsap.to(contentRef.current, {
+        height: isOpen ? 'auto' : 0,
+        opacity: isOpen ? 1 : 0,
+        duration: 0.22,
+        ease: isOpen ? 'power2.out' : 'power2.in',
+      });
+    }
+    if (arrowRef.current) {
+      gsap.to(arrowRef.current, { rotation: isOpen ? 90 : 0, duration: 0.2 });
+    }
+  }, [isOpen]);
+
+  // Leaf section (no children) — render as link
+  if (!item.children) {
+    const href = '/' + item.slug.join('/');
+    const active = pathname === href;
+    return (
+      <Link
+        href={href}
+        className={`flex items-center gap-2 w-full rounded-md px-2 py-1 text-xs transition-colors ${active ? 'nav-active' : ''}`}
+        style={{ color: active ? 'var(--sidebar-active-text)' : 'var(--muted)' }}
+      >
+        <span className="text-sm shrink-0">{icon}</span>
+        <span className="truncate font-medium">{item.title}</span>
+      </Link>
+    );
+  }
+
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        className={`flex items-center gap-2 w-full rounded-md px-2 py-1 text-xs font-medium text-left transition-colors hover:bg-[var(--sidebar-hover)]`}
+        style={{ color: isActive ? 'var(--fg)' : 'var(--muted)' }}
+      >
+        <span className="text-sm shrink-0">{icon}</span>
+        <span className="flex-1 truncate">{item.title}</span>
+        <span ref={arrowRef} style={{ display: 'inline-block', flexShrink: 0 }}>
+          <ChevronRight size={11} style={{ color: 'var(--muted)' }} />
+        </span>
+      </button>
+
+      <div
+        ref={contentRef}
+        style={{ height: isOpen ? 'auto' : 0, opacity: isOpen ? 1 : 0, overflow: 'hidden' }}
+      >
+        <div
+          className="mt-0.5 mb-1 space-y-0.5 border-l pl-2"
+          style={{ borderColor: 'var(--sidebar-border)', marginLeft: '22px' }}
+        >
+          {item.children.map(child => (
+            <NavNode key={child.slug.join('/')} item={child} pathname={pathname} depth={1} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Recursive nested nav node ───────────────────────────────────────────────
+
+function NavNode({ item, pathname, depth }: { item: NavItem; pathname: string; depth: number }) {
+  const active = isAncestorActive(item, pathname);
+  const [open, setOpen] = useState(active);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const arrowRef = useRef<HTMLSpanElement>(null);
+  const didMount = useRef(false);
+
   useEffect(() => {
     if (active && !open) setOpen(true);
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Collapse all when collapseKey increments (except currently active)
   useEffect(() => {
-    if (collapseKey === 0) return;
-    if (!active) {
-      setOpen(false);
-      if (contentRef.current) gsap.set(contentRef.current, { height: 0, opacity: 0 });
-      if (arrowRef.current) gsap.set(arrowRef.current, { rotation: 0 });
+    if (!didMount.current) {
+      didMount.current = true;
+      if (contentRef.current) gsap.set(contentRef.current, { height: open ? 'auto' : 0, opacity: open ? 1 : 0 });
+      if (arrowRef.current) gsap.set(arrowRef.current, { rotation: open ? 90 : 0 });
+      return;
     }
-  }, [collapseKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  function toggle() {
-    const next = !open;
-    setOpen(next);
     if (contentRef.current) {
       gsap.to(contentRef.current, {
-        height: next ? 'auto' : 0,
-        opacity: next ? 1 : 0,
-        duration: 0.28,
-        ease: next ? 'power2.out' : 'power2.in',
+        height: open ? 'auto' : 0,
+        opacity: open ? 1 : 0,
+        duration: 0.18,
+        ease: 'power2.out',
       });
     }
     if (arrowRef.current) {
-      gsap.to(arrowRef.current, {
-        rotation: next ? 90 : 0,
-        duration: 0.22,
-        ease: 'power2.inOut',
-      });
+      gsap.to(arrowRef.current, { rotation: open ? 90 : 0, duration: 0.15 });
     }
-  }
+  }, [open]);
 
-  // Leaf — render as a link
+  // Leaf — link
   if (!item.children) {
     const href = '/' + item.slug.join('/');
     const isActive = pathname === href;
-    const indent = depth > 1 ? `${(depth - 1) * 10}px` : undefined;
     return (
       <Link
         href={href}
-        className={`sidebar-section nav-item block rounded-md py-1.5 text-sm transition-colors ${isActive ? 'nav-active' : ''}`}
+        className={`nav-item block rounded py-0.5 px-2 text-[11px] leading-5 transition-colors ${isActive ? 'nav-active' : ''}`}
         style={{
           color: isActive ? 'var(--sidebar-active-text)' : 'var(--muted)',
-          paddingLeft: indent ?? '0.75rem',
-          paddingRight: '0.75rem',
+          paddingLeft: `${(depth - 1) * 8 + 8}px`,
         }}
       >
         {item.title}
@@ -189,27 +286,17 @@ function NavNode({ item, pathname, depth, collapseKey }: { item: NavItem; pathna
     );
   }
 
-  // Group — render as collapsible
-  const isTopLevel = depth === 0;
-  const paddingLeft = isTopLevel ? '0.75rem' : `${depth * 10}px`;
-
+  // Group
   return (
-    <div className={isTopLevel ? 'sidebar-section' : ''}>
+    <div>
       <button
-        onClick={toggle}
-        className={`nav-item w-full flex items-center justify-between py-2 rounded-lg text-sm transition-colors text-left ${isTopLevel ? 'font-semibold' : 'font-medium'}`}
-        style={{
-          color: 'var(--fg)',
-          paddingLeft,
-          paddingRight: '0.75rem',
-        }}
+        onClick={() => setOpen(o => !o)}
+        className="nav-item w-full flex items-center justify-between py-0.5 px-2 rounded text-[11px] leading-5 font-medium text-left transition-colors hover:bg-[var(--sidebar-hover)]"
+        style={{ color: 'var(--fg)', paddingLeft: `${(depth - 1) * 8 + 8}px` }}
       >
         <span className="truncate">{item.title}</span>
-        <span
-          ref={arrowRef}
-          style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink: 0 }}
-        >
-          <ChevronRight size={13} style={{ color: 'var(--muted)' }} />
+        <span ref={arrowRef} style={{ display: 'inline-block', flexShrink: 0 }}>
+          <ChevronRight size={10} style={{ color: 'var(--muted)' }} />
         </span>
       </button>
 
@@ -218,14 +305,21 @@ function NavNode({ item, pathname, depth, collapseKey }: { item: NavItem; pathna
         style={{ height: open ? 'auto' : 0, opacity: open ? 1 : 0, overflow: 'hidden' }}
       >
         <div
-          className="space-y-0.5 border-l mt-0.5 mb-1"
-          style={{ borderColor: 'var(--sidebar-border)', marginLeft: `calc(${paddingLeft} + 6px)`, paddingLeft: '10px' }}
+          className="border-l space-y-0.5 mt-0.5"
+          style={{ borderColor: 'var(--sidebar-border)', marginLeft: `${(depth - 1) * 8 + 14}px`, paddingLeft: '8px' }}
         >
           {item.children.map(child => (
-            <NavNode key={child.slug.join('/')} item={child} pathname={pathname} depth={depth + 1} collapseKey={collapseKey} />
+            <NavNode key={child.slug.join('/')} item={child} pathname={pathname} depth={depth + 1} />
           ))}
         </div>
       </div>
     </div>
   );
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function isAncestorActive(item: NavItem, pathname: string): boolean {
+  if (!item.children) return pathname === '/' + item.slug.join('/');
+  return item.children.some(child => isAncestorActive(child, pathname));
 }
