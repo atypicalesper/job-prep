@@ -28,7 +28,7 @@ const SECTIONS: { icon: string; title: string; slug: string; desc: string; badge
   { icon: '📈', title: 'Frontend Perf', slug: '17-frontend-perf', desc: 'Core Web Vitals, LCP/INP/CLS, bundle splitting, tree shaking' },
   { icon: '▲', title: 'Next.js', slug: '18-nextjs', desc: 'App Router, layouts, streaming, caching, Server Actions, middleware' },
   { icon: '🟡', title: 'Runtimes', slug: '19-runtimes', desc: 'Bun, Deno, edge computing, Cloudflare Workers, V8 isolates' },
-  { icon: '🤖', title: 'AI/ML Engineering', slug: '20-ai-ml-engineering', desc: 'LangChain, LangGraph, RAG, vector databases, agents, n8n, Step Functions, prompt engineering', badge: 'NEW' },
+  { icon: '🤖', title: 'AI/ML Engineering', slug: '20-ai-ml-engineering', desc: 'LangChain, LangGraph, RAG, vector DBs, agents, MCP, fine-tuning, AI evaluation, multimodal AI, AI security, production AI, roadmap', badge: 'NEW' },
 ];
 
 interface Props {
@@ -236,9 +236,9 @@ export default function HomePageClient({ pageCounts }: Props) {
       {/* ── Stats bar ─────────────────────────────────────────── */}
       <div className="mt-10 flex gap-6 flex-wrap items-center text-sm border-t pt-6" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
         {[
-          ['175+', 'Topic Files'],
-          ['800+', 'Code Examples'],
-          ['500+', 'Interview Q&As'],
+          ['230+', 'Topic Files'],
+          ['900+', 'Code Examples'],
+          ['550+', 'Interview Q&As'],
           ['20',   'Major Sections'],
         ].map(([num, label]) => (
           <div key={label} className="flex items-baseline gap-1.5">
