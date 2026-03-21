@@ -8,7 +8,7 @@ import gsap from 'gsap';
 import { BookOpen, ArrowRight, Clock } from 'lucide-react';
 import { getVisitedCountBySection, getRecent, type RecentPage } from '@/lib/progress';
 
-const SECTIONS = [
+const SECTIONS: { icon: string; title: string; slug: string; desc: string; badge?: string }[] = [
   { icon: '🧠', title: 'JavaScript Fundamentals', slug: '01-javascript-fundamentals', desc: 'Event loop, closures, prototypes, async/await, generators, memory management' },
   { icon: '⚙️', title: 'Node.js Core', slug: '02-nodejs-core', desc: 'V8, libuv, streams, buffers, worker threads, cluster, child processes' },
   { icon: '🔷', title: 'TypeScript', slug: '03-typescript', desc: 'Type system, generics, utility types, decorators, advanced patterns' },
@@ -28,6 +28,7 @@ const SECTIONS = [
   { icon: '📈', title: 'Frontend Perf', slug: '17-frontend-perf', desc: 'Core Web Vitals, LCP/INP/CLS, bundle splitting, tree shaking' },
   { icon: '▲', title: 'Next.js', slug: '18-nextjs', desc: 'App Router, layouts, streaming, caching, Server Actions, middleware' },
   { icon: '🟡', title: 'Runtimes', slug: '19-runtimes', desc: 'Bun, Deno, edge computing, Cloudflare Workers, V8 isolates' },
+  { icon: '🤖', title: 'AI/ML Engineering', slug: '20-ai-ml-engineering', desc: 'LangChain, LangGraph, RAG, vector databases, agents, n8n, Step Functions, prompt engineering', badge: 'NEW' },
 ];
 
 export default function HomePage() {
@@ -93,7 +94,7 @@ export default function HomePage() {
         </div>
 
         <p className="text-lg mb-6 max-w-2xl" style={{ color: 'var(--muted)' }}>
-          Software engineer interview guide — JavaScript, React, Node.js, TypeScript, DSA, system design, databases, and more.
+          Software engineer interview guide — JavaScript, React, Node.js, TypeScript, DSA, system design, databases, AI/ML engineering, and more.
         </p>
 
         <div className="flex gap-3 flex-wrap">
@@ -180,11 +181,18 @@ export default function HomePage() {
                     >
                       {s.title}
                     </h2>
-                    {visited > 0 && (
-                      <span className="visited-badge shrink-0">
-                        {visited}✓
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {s.badge && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md text-white" style={{ backgroundColor: 'var(--accent)' }}>
+                          {s.badge}
+                        </span>
+                      )}
+                      {visited > 0 && (
+                        <span className="visited-badge">
+                          {visited}✓
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
                     {s.desc}
@@ -202,7 +210,7 @@ export default function HomePage() {
           ['160+', 'Topic Files'],
           ['600+', 'Code Examples'],
           ['400+', 'Interview Q&As'],
-          ['19',   'Major Sections'],
+          ['20',   'Major Sections'],
         ].map(([num, label]) => (
           <div key={label} className="flex items-baseline gap-1.5">
             <span className="text-2xl font-extrabold tabular-nums" style={{ color: 'var(--accent)', letterSpacing: '-0.02em' }}>{num}</span>
