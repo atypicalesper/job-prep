@@ -31,6 +31,7 @@ const SECTION_ICONS: Record<string, string> = {
   '18-nextjs': '▲',
   '19-runtimes': '🟡',
   '20-ai-ml-engineering': '🤖',
+  '21-python-for-ai': '🐍',
 };
 
 interface Props {

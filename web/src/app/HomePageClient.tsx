@@ -28,7 +28,8 @@ const SECTIONS: { icon: string; title: string; slug: string; desc: string; badge
   { icon: '📈', title: 'Frontend Perf', slug: '17-frontend-perf', desc: 'Core Web Vitals, LCP/INP/CLS, code splitting, tree shaking, lazy loading, image optimization, bundle analysis' },
   { icon: '▲', title: 'Next.js', slug: '18-nextjs', desc: 'App Router, rendering strategies, Server Actions, authentication, performance & SEO, Tailwind, architecture patterns' },
   { icon: '🟡', title: 'Runtimes', slug: '19-runtimes', desc: 'Bun, Deno, edge computing, Cloudflare Workers, V8 isolates — when and why to use each' },
-  { icon: '🤖', title: 'AI/ML Engineering', slug: '20-ai-ml-engineering', desc: 'RAG, vector DBs (ChromaDB/Pinecone/pgvector/FAISS), embedding models, LangChain, LangGraph, agents, MCP, fine-tuning, evaluation, n8n, Playwright', badge: 'NEW' },
+  { icon: '🤖', title: 'AI/ML Engineering', slug: '20-ai-ml-engineering', desc: 'RAG, vector DBs (ChromaDB/Pinecone/pgvector/FAISS), embedding models, LangChain, LangGraph, agents, MCP, fine-tuning, evaluation, n8n, Playwright' },
+  { icon: '🐍', title: 'Python for AI', slug: '21-python-for-ai', desc: 'GIL & asyncio, NumPy vectorization, Pandas, scikit-learn Pipelines, PyTorch deep learning, OpenAI/Anthropic/HuggingFace SDKs, FastAPI streaming, async patterns, interview questions', badge: 'NEW' },
 ];
 
 interface Props {
@@ -236,10 +237,10 @@ export default function HomePageClient({ pageCounts }: Props) {
       {/* ── Stats bar ─────────────────────────────────────────── */}
       <div className="mt-10 flex gap-6 flex-wrap items-center text-sm border-t pt-6" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
         {[
-          ['250+', 'Topic Files'],
-          ['950+', 'Code Examples'],
-          ['600+', 'Interview Q&As'],
-          ['20',   'Major Sections'],
+          ['270+', 'Topic Files'],
+          ['1100+', 'Code Examples'],
+          ['650+', 'Interview Q&As'],
+          ['21',   'Major Sections'],
         ].map(([num, label]) => (
           <div key={label} className="flex items-baseline gap-1.5">
             <span className="text-2xl font-extrabold tabular-nums" style={{ color: 'var(--accent)', letterSpacing: '-0.02em' }}>{num}</span>
