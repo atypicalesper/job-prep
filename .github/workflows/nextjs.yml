@@ -82,6 +82,7 @@ jobs:
           command: cd web && ${{ steps.detect-package-manager.outputs.runner }} next build
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+          NEXT_PUBLIC_CLARITY_ID: ${{ secrets.CLARITY_ID }}
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:

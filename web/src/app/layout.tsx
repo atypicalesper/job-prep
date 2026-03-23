@@ -4,7 +4,7 @@ import { buildNavTree, buildSearchIndex } from '@/lib/docs';
 import Shell from '@/components/Shell';
 import './globals.css';
 
-const CLARITY_ID = 'vuib7s6gsr';
+const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID || '';
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
