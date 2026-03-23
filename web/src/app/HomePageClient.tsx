@@ -34,6 +34,18 @@ const SECTIONS: { icon: string; title: string; slug: string; desc: string; badge
     desc: 'System design, HLD/LLD, SOLID, microservices, DevOps, Docker, Kubernetes, CI/CD, testing (Jest, E2E), security (OWASP), DSA, algorithms, interview practice, behavioral STAR stories',
   },
   {
+    icon: '🗄️',
+    title: 'Databases',
+    slug: 'databases',
+    desc: 'SQL deep dive, indexing (B-trees, covering indexes), transactions & ACID, isolation levels, PostgreSQL internals, Redis patterns, MongoDB, connection pooling, sharding, replication, schema design, CQRS, event sourcing',
+  },
+  {
+    icon: '☁️',
+    title: 'Cloud',
+    slug: 'cloud',
+    desc: 'AWS core services (IAM, EC2, S3, RDS, Lambda, SQS/SNS, ECS), Terraform, CDK, serverless patterns, Step Functions, EventBridge, DynamoDB, CloudFront, observability, cost optimization',
+  },
+  {
     icon: '🐍',
     title: 'Python',
     slug: 'python',
@@ -261,7 +273,7 @@ export default function HomePageClient({ pageCounts }: Props) {
           ['285+', 'Topic Files'],
           ['1200+', 'Code Examples'],
           ['700+', 'Interview Q&As'],
-          ['7',    'Categories'],
+          ['9',    'Categories'],
         ].map(([num, label]) => (
           <div key={label} className="flex items-baseline gap-1.5">
             <span className="text-2xl font-extrabold tabular-nums" style={{ color: 'var(--accent)', letterSpacing: '-0.02em' }}>{num}</span>

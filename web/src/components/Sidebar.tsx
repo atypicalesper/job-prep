@@ -14,6 +14,8 @@ const SECTION_ICONS: Record<string, string> = {
   'node': '⚙️',
   'react': '⚛️',
   'engineering': '🏗️',
+  'databases': '🗄️',
+  'cloud': '☁️',
   'python': '🐍',
   'ai': '🤖',
   'networks': '📡',
