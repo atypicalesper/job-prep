@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 // Absolute path to the markdown content directory
-const DOCS_ROOT = path.join(process.cwd(), '..', 'node-interview-prep');
+const DOCS_ROOT = path.join(process.cwd(), '..', 'docs');
 
 export interface Heading {
   depth: number;

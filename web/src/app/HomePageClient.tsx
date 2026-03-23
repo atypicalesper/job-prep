@@ -9,28 +9,30 @@ import { BookOpen, ArrowRight, Clock } from 'lucide-react';
 import { getVisitedCountBySection, getRecent, type RecentPage } from '@/lib/progress';
 
 const SECTIONS: { icon: string; title: string; slug: string; desc: string; badge?: string }[] = [
-  { icon: '🧠', title: 'JavaScript Fundamentals', slug: '01-javascript-fundamentals', desc: 'Event loop, closures, prototypes, this keyword, async/await, generators, OOP, functional programming, memory & GC, polyfills, hoisting, coercion' },
-  { icon: '⚙️', title: 'Node.js Core', slug: '02-nodejs-core', desc: 'V8, libuv, streams, buffers, modules, worker threads, cluster, child processes, HTTP internals, async context, anti-patterns' },
-  { icon: '🔷', title: 'TypeScript', slug: '03-typescript', desc: 'Type system, generics, utility types, decorators, advanced patterns, module augmentation, TS+React, modern features, OOP' },
-  { icon: '🔀', title: 'Async Patterns', slug: '04-async-patterns', desc: 'EventEmitter, concurrency control, async iterators, Kafka, RabbitMQ, p-limit, backpressure' },
-  { icon: '🚀', title: 'Performance', slug: '05-performance', desc: 'Profiling, memory leaks, CPU optimization, caching strategies, observability, error tracking, flame graphs' },
-  { icon: '🗄️', title: 'Databases', slug: '06-databases', desc: 'SQL, NoSQL, Redis, ORMs, connection pooling, sharding, zero-downtime migrations, CQRS, indexing' },
-  { icon: '🌐', title: 'API Design', slug: '07-api-design', desc: 'REST, GraphQL, gRPC, WebSockets, SSE, CORS, tRPC, OpenAPI, federation, auth patterns, networking' },
-  { icon: '🏗️', title: 'System Design', slug: '08-system-design', desc: 'HLD, LLD, SOLID, microservices, event sourcing, distributed systems, CAP, SDE3 senior topics' },
-  { icon: '🐳', title: 'DevOps', slug: '09-devops', desc: 'Docker, Kubernetes, CI/CD, process management, serverless, feature flags, monorepo tooling' },
-  { icon: '🧪', title: 'Testing', slug: '10-testing', desc: 'Unit tests, Jest, integration testing, E2E testing, mocking strategies, Testcontainers' },
-  { icon: '🔒', title: 'Security', slug: '11-security', desc: 'OWASP Top 10, Node.js security, supply chain attacks, SBOM, secrets management' },
-  { icon: '💬', title: 'Interview Practice', slug: '12-interview-practice', desc: 'Rapid-fire Q&As, behavioral STAR stories, system design walkthroughs, last-day cheat sheet' },
-  { icon: '⚛️', title: 'React', slug: '13-react', desc: 'Core concepts, hooks, concurrent features, advanced patterns, state management (Zustand/Redux/Jotai), React 19' },
-  { icon: '📊', title: 'DSA', slug: '14-dsa', desc: 'Big Tech roadmap, arrays, strings, trees, graphs, DP, sliding window, binary search, tries, union-find, heaps, backtracking, bit manipulation' },
-  { icon: '🖥️', title: 'Browser Internals', slug: '15-browser-internals', desc: 'Critical rendering path, V8 deep dive, Web Workers, Service Workers, web storage, cookies, IndexedDB, PWA' },
-  { icon: '⚡', title: 'Concurrency Models', slug: '16-concurrency-models', desc: 'JS event loop vs Go goroutines vs Python asyncio vs Java virtual threads — side-by-side comparison' },
-  { icon: '📈', title: 'Frontend Perf', slug: '17-frontend-perf', desc: 'Core Web Vitals, LCP/INP/CLS, code splitting, tree shaking, lazy loading, image optimization, bundle analysis' },
-  { icon: '▲', title: 'Next.js', slug: '18-nextjs', desc: 'App Router, rendering strategies, Server Actions, authentication, performance & SEO, Tailwind, architecture patterns' },
-  { icon: '🟡', title: 'Runtimes', slug: '19-runtimes', desc: 'Bun, Deno, edge computing, Cloudflare Workers, V8 isolates — when and why to use each' },
-  { icon: '🤖', title: 'AI/ML Engineering', slug: '20-ai-ml-engineering', desc: 'RAG, advanced retrieval (HyDE/RAG Fusion/hybrid), vector DBs, embedding models, LangChain, LangGraph, agents, memory systems, observability, cost optimization, RAGAS, reasoning models, local LLMs' },
-  { icon: '🐍', title: 'Python for AI', slug: '21-python-for-ai', desc: 'GIL & asyncio, NumPy, Pandas, matplotlib/seaborn, scikit-learn, PyTorch, OpenAI/Anthropic/HuggingFace SDKs, structured outputs, prompt caching, FastAPI streaming, async patterns' },
-  { icon: '📡', title: 'Networking', slug: '22-networking', desc: 'OSI & TCP/IP models, IP addressing, subnetting, CIDR, TCP/UDP, DNS, HTTP/2/3, TLS, routing, NAT, firewalls, cloud networking (VPC, SGs, NACLs, ALB), troubleshooting tools' },
+  {
+    icon: '💻',
+    title: 'Node & Web',
+    slug: 'node',
+    desc: 'JavaScript, TypeScript, Node.js, React, Next.js, async patterns, performance, databases, API design, system design, DevOps, testing, security, DSA, browser internals, concurrency models, frontend perf, runtimes',
+  },
+  {
+    icon: '🐍',
+    title: 'Python',
+    slug: 'python',
+    desc: 'Python essentials, NumPy, Pandas, matplotlib/seaborn, scikit-learn, PyTorch, FastAPI, async Python, LLM SDKs (OpenAI/Anthropic/HuggingFace), structured outputs, prompt caching',
+  },
+  {
+    icon: '🤖',
+    title: 'AI / ML',
+    slug: 'ai',
+    desc: 'LLM APIs, prompt engineering, RAG, vector DBs, LangChain, LangGraph, agentic AI, MCP, AI in production, fine-tuning, evaluation, reasoning models, local LLMs, observability, cost optimization',
+  },
+  {
+    icon: '📡',
+    title: 'Networks',
+    slug: 'networks',
+    desc: 'OSI & TCP/IP models, IP addressing, subnetting, CIDR, TCP/UDP, DNS, HTTP/2/3, TLS, routing, NAT, firewalls, cloud networking (VPC, SGs, NACLs, ALB/NLB), troubleshooting tools',
+  },
 ];
 
 interface Props {
@@ -107,14 +109,14 @@ export default function HomePageClient({ pageCounts }: Props) {
 
         <div className="flex gap-3 flex-wrap">
           <Link
-            href="/12-interview-practice/00-cheat-sheet/01-last-day-reference"
+            href="/node/12-interview-practice/00-cheat-sheet/01-last-day-reference"
             className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105 active:scale-95 hover:shadow-lg"
             style={{ backgroundColor: 'var(--accent)' }}
           >
             📋 Last-Day Cheat Sheet
           </Link>
           <Link
-            href="/01-javascript-fundamentals/01-event-loop/01-what-is-event-loop"
+            href="/node/01-javascript-fundamentals/01-event-loop/01-what-is-event-loop"
             className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105 active:scale-95 border"
             style={{ color: 'var(--fg)', borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
           >
@@ -241,7 +243,7 @@ export default function HomePageClient({ pageCounts }: Props) {
           ['285+', 'Topic Files'],
           ['1200+', 'Code Examples'],
           ['700+', 'Interview Q&As'],
-          ['24',   'Major Sections'],
+          ['4',    'Categories'],
         ].map(([num, label]) => (
           <div key={label} className="flex items-baseline gap-1.5">
             <span className="text-2xl font-extrabold tabular-nums" style={{ color: 'var(--accent)', letterSpacing: '-0.02em' }}>{num}</span>

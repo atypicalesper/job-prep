@@ -10,30 +10,10 @@ import type { NavItem } from '@/lib/docs';
 import ThemeToggle from './ThemeToggle';
 
 const SECTION_ICONS: Record<string, string> = {
-  '01-javascript-fundamentals': '🧠',
-  '02-nodejs-core': '⚙️',
-  '03-typescript': '🔷',
-  '04-async-patterns': '🔀',
-  '05-performance': '🚀',
-  '06-databases': '🗄️',
-  '07-api-design': '🌐',
-  '08-system-design': '🏗️',
-  '09-devops': '🐳',
-  '10-testing': '🧪',
-  '11-security': '🔒',
-  '12-interview-practice': '💬',
-  '13-react': '⚛️',
-  '14-dsa': '📊',
-  '15-browser-internals': '🖥️',
-  '16-concurrency-models': '⚡',
-  '17-frontend-perf': '📈',
-  '18-nextjs': '▲',
-  '19-runtimes': '🟡',
-  '20-ai-ml-engineering': '🤖',
-  '21-python-for-ai': '🐍',
-  '22-networking': '📡',
-  '13-reasoning-models': '💡',
-  '14-local-llms': '💻',
+  'node': '💻',
+  'python': '🐍',
+  'ai': '🤖',
+  'networks': '📡',
 };
 
 interface Props {
