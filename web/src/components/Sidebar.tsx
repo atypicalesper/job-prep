@@ -43,7 +43,7 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
   return (
     <aside
       ref={sidebarRef}
-      className="sidebar w-56 shrink-0 h-screen sticky top-0 flex flex-col overflow-y-auto"
+      className="sidebar w-64 shrink-0 h-screen sticky top-0 flex flex-col overflow-y-auto"
     >
       {/* Header */}
       <div

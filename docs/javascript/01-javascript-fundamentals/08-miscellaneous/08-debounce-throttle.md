@@ -246,6 +246,55 @@ const handleMouseMove = rafThrottle((e) => {
 document.addEventListener('mousemove', handleMouseMove);
 ```
 
+### `{ passive: true }` — Tell the Browser You Won't Block Scroll
+
+Always pair scroll/touch throttling with `{ passive: true }`. It signals to the browser that your handler won't call `preventDefault()`, allowing it to start scrolling immediately without waiting for your JS to run:
+
+```js
+// Without passive: browser waits for handler to finish before scrolling → jank
+window.addEventListener('scroll', throttle(handler, 100));
+
+// With passive: browser scrolls immediately, handler runs in parallel → smooth
+window.addEventListener('scroll', throttle(handler, 100), { passive: true });
+```
+
+If you genuinely need `preventDefault()` (e.g., custom scroll hijacking), omit `passive`. Otherwise, always include it.
+
+### `requestIdleCallback` — Defer Non-Urgent Work
+
+`requestAnimationFrame` syncs to the paint cycle (urgent visual work). `requestIdleCallback` is the opposite — it fires during browser idle periods, with a deadline for how long you have:
+
+```js
+function scheduleIdleWork(fn) {
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback((deadline) => {
+      // deadline.timeRemaining() tells you how many ms you have before the browser needs the thread back
+      while (deadline.timeRemaining() > 0) {
+        fn();
+      }
+    }, { timeout: 2000 }); // force run after 2s even if never idle
+  } else {
+    // Safari fallback: setTimeout(fn, 1) approximates idle scheduling
+    setTimeout(fn, 1);
+  }
+}
+
+// Pattern: passive listener → rAF for visual → requestIdleCallback for background
+window.addEventListener('scroll', throttle(() => {
+  updateVisuals();                              // rAF-throttled, time-sensitive
+  scheduleIdleWork(() => logAnalytics());       // idle, non-urgent
+}, 100), { passive: true });
+```
+
+**When to use each:**
+
+| | `setTimeout` | `rAF` | `requestIdleCallback` |
+|---|---|---|---|
+| **Timing** | Fixed delay | Every frame (~16ms) | Whenever browser is idle |
+| **Priority** | Low | High (before paint) | Lowest |
+| **Use for** | Debounce, general delay | Visual updates, animations | Analytics, prefetch, low-priority compute |
+| **Safari** | ✅ | ✅ | ❌ (needs polyfill/fallback) |
+
 ### Use Cases for Throttle
 
 | Use Case | Why Throttle |
@@ -415,7 +464,35 @@ window.addEventListener('scroll', debounce(checkIfNearBottom, 200)); // BAD for 
 window.addEventListener('scroll', throttle(checkIfNearBottom, 200)); // GOOD
 ```
 
-### Mistake 4 — Ignoring `this` context
+### Mistake 4 — Background Tab Timer Clamping
+
+Browsers aggressively throttle `setTimeout`/`setInterval` in background tabs. Chrome clamps the minimum interval to **1000ms** when a tab is hidden (`document.visibilityState === 'hidden'`). A 300ms debounce becomes a 1000ms debounce when the user switches tabs:
+
+```js
+// This debounce "works" but silently breaks in background tabs
+const saveProgress = debounce(() => sendToServer(), 300);
+
+// If the user switches tabs mid-typing, the 300ms timer becomes 1000ms+
+// This is usually fine — but matters for:
+// - real-time collaborative editors
+// - games that need precise timing in the background
+// - anything where the delay being 3x larger changes behaviour
+```
+
+Handle it explicitly if it matters:
+
+```js
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    // Tab going to background — flush any pending debounced saves
+    saveProgress.flush();
+  }
+});
+```
+
+**`setTimeout(fn, 0)` is also clamped to 4ms minimum** in foreground tabs (per the HTML spec). So `setTimeout(fn, 0)` ≠ "run synchronously next tick" — use `queueMicrotask(fn)` or `Promise.resolve().then(fn)` for that.
+
+### Mistake 5 — Ignoring `this` context
 
 ```js
 // Arrow function loses the dynamic `this` needed for event handlers
@@ -468,6 +545,47 @@ function debounceWithMaxWait(fn, delay, maxWait) {
 // Useful for: continuous typing but must send analytics at least every 2s
 const track = debounceWithMaxWait(sendAnalytics, 300, 2000);
 ```
+
+### `useDeferredValue` — React's Built-in Concurrent Debounce
+
+React 18's `useDeferredValue` defers a value to a lower-priority render. It's not a direct debounce replacement — it has no fixed delay and is interruptible:
+
+```js
+import { useState, useDeferredValue, useMemo } from 'react';
+
+function FilteredList({ items }) {
+  const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);  // lags behind query when rendering is slow
+
+  // This expensive filter only re-runs when deferredQuery changes
+  const filtered = useMemo(
+    () => items.filter(i => i.name.includes(deferredQuery)),
+    [items, deferredQuery]
+  );
+
+  return (
+    <>
+      <input value={query} onChange={e => setQuery(e.target.value)} />
+      {/* Show stale indicator while deferred value is catching up */}
+      <ul style={{ opacity: query !== deferredQuery ? 0.5 : 1 }}>
+        {filtered.map(item => <li key={item.id}>{item.name}</li>)}
+      </ul>
+    </>
+  );
+}
+```
+
+**`useDeferredValue` vs `useDebounce`:**
+
+| | `useDebounce` | `useDeferredValue` |
+|---|---|---|
+| **Delay type** | Fixed (e.g. 300ms always) | Adaptive — only delays if rendering is slow |
+| **Fast device** | Still waits 300ms | Renders immediately, no lag |
+| **Interruptible** | No | Yes — React can abandon and restart |
+| **Network requests** | ✅ Use this to debounce API calls | ❌ Only defers rendering, not side effects |
+| **Expensive renders** | Works but adds artificial lag | ✅ Ideal — zero lag on fast machines |
+
+**Rule:** Use `useDeferredValue` for expensive renders (big lists, charts). Use `useDebounce` for network requests and side effects.
 
 ---
 
