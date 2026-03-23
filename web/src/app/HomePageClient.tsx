@@ -30,6 +30,7 @@ const SECTIONS: { icon: string; title: string; slug: string; desc: string; badge
   { icon: '🟡', title: 'Runtimes', slug: '19-runtimes', desc: 'Bun, Deno, edge computing, Cloudflare Workers, V8 isolates — when and why to use each' },
   { icon: '🤖', title: 'AI/ML Engineering', slug: '20-ai-ml-engineering', desc: 'RAG, advanced retrieval (HyDE/RAG Fusion/hybrid), vector DBs, embedding models, LangChain, LangGraph, agents, memory systems, observability, cost optimization, RAGAS, reasoning models, local LLMs' },
   { icon: '🐍', title: 'Python for AI', slug: '21-python-for-ai', desc: 'GIL & asyncio, NumPy, Pandas, matplotlib/seaborn, scikit-learn, PyTorch, OpenAI/Anthropic/HuggingFace SDKs, structured outputs, prompt caching, FastAPI streaming, async patterns' },
+  { icon: '📡', title: 'Networking', slug: '22-networking', desc: 'OSI & TCP/IP models, IP addressing, subnetting, CIDR, TCP/UDP, DNS, HTTP/2/3, TLS, routing, NAT, firewalls, cloud networking (VPC, SGs, NACLs, ALB), troubleshooting tools' },
 ];
 
 interface Props {
@@ -240,7 +241,7 @@ export default function HomePageClient({ pageCounts }: Props) {
           ['285+', 'Topic Files'],
           ['1200+', 'Code Examples'],
           ['700+', 'Interview Q&As'],
-          ['23',   'Major Sections'],
+          ['24',   'Major Sections'],
         ].map(([num, label]) => (
           <div key={label} className="flex items-baseline gap-1.5">
             <span className="text-2xl font-extrabold tabular-nums" style={{ color: 'var(--accent)', letterSpacing: '-0.02em' }}>{num}</span>
