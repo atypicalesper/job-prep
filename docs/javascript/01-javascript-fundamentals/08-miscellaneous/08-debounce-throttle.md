@@ -692,6 +692,123 @@ function SearchBar() {
 
 ---
 
+## N-per-Interval Throttle (Token Bucket)
+
+Standard throttle = **1 call per interval**. API rate limiting often needs **N calls per interval** — a token bucket.
+
+The idea: a bucket holds N tokens. Each call costs 1 token. Tokens refill at a fixed rate. When the bucket is empty, calls are queued or dropped.
+
+### Simple Token Bucket
+
+```js
+function createTokenBucket({ capacity, refillRate, refillInterval = 1000 }) {
+  let tokens = capacity;
+
+  // Refill tokens on a fixed interval
+  const refillTimer = setInterval(() => {
+    tokens = Math.min(capacity, tokens + refillRate);
+  }, refillInterval);
+
+  return {
+    // Returns true if the call is allowed, false if rate-limited
+    consume(count = 1) {
+      if (tokens >= count) {
+        tokens -= count;
+        return true;
+      }
+      return false;
+    },
+    // Current token count (useful for status/debug)
+    get available() { return tokens; },
+    destroy() { clearInterval(refillTimer); }
+  };
+}
+
+// Allow 10 requests per second
+const bucket = createTokenBucket({ capacity: 10, refillRate: 10, refillInterval: 1000 });
+
+async function rateLimitedFetch(url) {
+  if (!bucket.consume()) {
+    throw new Error('Rate limit exceeded — try again shortly');
+  }
+  return fetch(url);
+}
+```
+
+### Queuing Token Bucket (no dropped calls)
+
+Drop nothing — queue calls and drain as tokens become available:
+
+```js
+function createQueuedTokenBucket({ capacity, refillRate, refillInterval = 1000 }) {
+  let tokens = capacity;
+  const queue = [];
+
+  function drain() {
+    while (queue.length && tokens > 0) {
+      tokens--;
+      const { fn, resolve, reject } = queue.shift();
+      Promise.resolve().then(fn).then(resolve).catch(reject);
+    }
+  }
+
+  setInterval(() => {
+    tokens = Math.min(capacity, tokens + refillRate);
+    drain();
+  }, refillInterval);
+
+  return function throttled(fn) {
+    if (tokens > 0) {
+      tokens--;
+      return Promise.resolve().then(fn);
+    }
+    // No tokens — queue it
+    return new Promise((resolve, reject) => {
+      queue.push({ fn, resolve, reject });
+    });
+  };
+}
+
+const enqueue = createQueuedTokenBucket({ capacity: 5, refillRate: 5 });
+
+// All 20 calls will execute — just spread across multiple refill windows
+for (let i = 0; i < 20; i++) {
+  enqueue(() => fetch(`/api/item/${i}`)).then(res => res.json()).then(console.log);
+}
+```
+
+### Token Bucket vs Standard Throttle
+
+| | Throttle | Token Bucket |
+|---|---|---|
+| **Calls per interval** | 1 | N (configurable) |
+| **Burst handling** | Drops bursts | Absorbs bursts up to capacity |
+| **Queuing** | No | Optional |
+| **Use for** | UI events (scroll, resize) | API rate limiting, batch processing |
+| **Mental model** | One lane | N parallel lanes with a shared counter |
+
+### Real-world: GitHub API (60 req/min)
+
+```js
+const githubBucket = createTokenBucket({
+  capacity: 60,
+  refillRate: 60,
+  refillInterval: 60_000   // refill 60 tokens every minute
+});
+
+async function githubFetch(path) {
+  if (!githubBucket.consume()) {
+    // Could also queue here instead of throwing
+    throw new Error('GitHub rate limit — wait before retrying');
+  }
+  return fetch(`https://api.github.com${path}`, {
+    headers: { Authorization: `Bearer ${TOKEN}` }
+  });
+}
+```
+
+---
+
 ## When Debounce/Throttle Are the Wrong Tool
 
 Both patterns **drop calls** — debounce drops all-but-last in a burst, throttle drops calls within each interval. That's their purpose. But sometimes dropping is wrong.
