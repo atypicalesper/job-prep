@@ -312,7 +312,7 @@ result = classifier("This movie is amazing!")
 
 # Named entity recognition
 ner = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english", aggregation_strategy="simple")
-result = ner("Tarun Singh works at Crownstack in Delhi")
+result = ner("Tarun Singh works at Google in San Francisco")
 # [{"entity_group": "PER", "word": "Tarun Singh"}, ...]
 
 # Zero-shot classification (no fine-tuning needed)

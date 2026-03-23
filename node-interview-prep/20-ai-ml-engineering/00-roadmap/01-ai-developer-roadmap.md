@@ -11,7 +11,7 @@ What's your goal?
   Build AI features into apps    → Path A: Applied AI Engineer
   Research/train models          → Path B: ML Engineer / Research
   Build AI infrastructure        → Path C: AI Platform Engineer
-  All of the above (Crownstack)  → Path A first, expand to B/C
+  All of the above               → Path A first, expand to B/C
 ```
 
 ---
@@ -163,24 +163,24 @@ Why it matters: in 2025, every serious AI app will use MCP
 
 ---
 
-## Crownstack COMET Q1 FY26-27 Priorities
+## Recommended Learning Priorities
 
 ```
-Priority 1 (Immediate): LangChain LCEL + LangGraph agents
+Priority 1 (Start Here): LangChain LCEL + LangGraph agents
   → Build production RAG chains
   → Build agentic workflows with human-in-the-loop
 
-Priority 2 (This Quarter): RAG & Vector DBs
+Priority 2: RAG & Vector DBs
   → ChromaDB, pgvector in production
   → Embedding model selection + evaluation
   → Advanced retrieval (reranking, hybrid)
 
-Priority 3 (This Quarter): Workflow Automation
+Priority 3: Workflow Automation
   → n8n for non-technical users
   → Step Functions for AWS-native workflows
   → Playwright for data collection
 
-Priority 4 (Next Quarter): MCP + Advanced Agents
+Priority 4: MCP + Advanced Agents
   → Build MCP servers for internal tools
   → Multi-agent systems for complex workflows
 ```

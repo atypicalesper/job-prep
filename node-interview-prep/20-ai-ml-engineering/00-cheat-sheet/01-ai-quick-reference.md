@@ -327,7 +327,7 @@ Cost optimization (biggest first):
 
 ---
 
-## Crownstack COMET Q1 FY26-27 Focus Areas
+## AI Stack Quick Reference
 
 ```
 Category                Tools/Technologies
