@@ -9,8 +9,8 @@ const CLARITY_ID = 'vuib7s6gsr';
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 export const metadata: Metadata = {
-  title: 'Software Engineer Interview Prep',
-  description: 'Software engineer interview preparation — JavaScript, TypeScript, React, Node.js, system design, DSA, databases, and more.',
+  title: 'DevAtlas',
+  description: 'DevAtlas — the complete developer knowledge base. JavaScript, TypeScript, React, Node.js, Python, AI/ML, system design, DSA, databases, and more.',
   icons: {
     icon: [
       { url: `${basePath}/logo.svg`, type: 'image/svg+xml' },

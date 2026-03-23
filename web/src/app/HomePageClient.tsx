@@ -28,8 +28,8 @@ const SECTIONS: { icon: string; title: string; slug: string; desc: string; badge
   { icon: '📈', title: 'Frontend Perf', slug: '17-frontend-perf', desc: 'Core Web Vitals, LCP/INP/CLS, code splitting, tree shaking, lazy loading, image optimization, bundle analysis' },
   { icon: '▲', title: 'Next.js', slug: '18-nextjs', desc: 'App Router, rendering strategies, Server Actions, authentication, performance & SEO, Tailwind, architecture patterns' },
   { icon: '🟡', title: 'Runtimes', slug: '19-runtimes', desc: 'Bun, Deno, edge computing, Cloudflare Workers, V8 isolates — when and why to use each' },
-  { icon: '🤖', title: 'AI/ML Engineering', slug: '20-ai-ml-engineering', desc: 'RAG, vector DBs (ChromaDB/Pinecone/pgvector/FAISS), embedding models, LangChain, LangGraph, agents, MCP, fine-tuning, evaluation, n8n, Playwright' },
-  { icon: '🐍', title: 'Python for AI', slug: '21-python-for-ai', desc: 'GIL & asyncio, NumPy vectorization, Pandas, scikit-learn Pipelines, PyTorch deep learning, OpenAI/Anthropic/HuggingFace SDKs, FastAPI streaming, async patterns, interview questions', badge: 'NEW' },
+  { icon: '🤖', title: 'AI/ML Engineering', slug: '20-ai-ml-engineering', desc: 'RAG, advanced retrieval (HyDE/RAG Fusion/hybrid), vector DBs, embedding models, LangChain, LangGraph, agents, memory systems, observability, cost optimization, RAGAS, reasoning models, local LLMs' },
+  { icon: '🐍', title: 'Python for AI', slug: '21-python-for-ai', desc: 'GIL & asyncio, NumPy, Pandas, matplotlib/seaborn, scikit-learn, PyTorch, OpenAI/Anthropic/HuggingFace SDKs, structured outputs, prompt caching, FastAPI streaming, async patterns' },
 ];
 
 interface Props {
@@ -95,13 +95,13 @@ export default function HomePageClient({ pageCounts }: Props) {
           <div className="relative flex items-center gap-4">
             <Image src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/logo.svg`} alt="logo" width={72} height={72} className="logo-img object-contain shrink-0 drop-shadow-lg" unoptimized />
             <h1 className="text-4xl font-bold hero-title">
-              SWE Interview Prep
+              Dev<span style={{ color: 'var(--accent)' }}>Atlas</span>
             </h1>
           </div>
         </div>
 
         <p className="text-lg mb-6 max-w-2xl" style={{ color: 'var(--muted)' }}>
-          Software engineer interview guide — JavaScript, React, Node.js, TypeScript, DSA, system design, databases, AI/ML engineering, and more.
+          The complete developer knowledge base — JavaScript, TypeScript, React, Node.js, Python, AI/ML, system design, DSA, databases, and more.
         </p>
 
         <div className="flex gap-3 flex-wrap">
@@ -237,10 +237,10 @@ export default function HomePageClient({ pageCounts }: Props) {
       {/* ── Stats bar ─────────────────────────────────────────── */}
       <div className="mt-10 flex gap-6 flex-wrap items-center text-sm border-t pt-6" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
         {[
-          ['270+', 'Topic Files'],
-          ['1100+', 'Code Examples'],
-          ['650+', 'Interview Q&As'],
-          ['21',   'Major Sections'],
+          ['285+', 'Topic Files'],
+          ['1200+', 'Code Examples'],
+          ['700+', 'Interview Q&As'],
+          ['23',   'Major Sections'],
         ].map(([num, label]) => (
           <div key={label} className="flex items-baseline gap-1.5">
             <span className="text-2xl font-extrabold tabular-nums" style={{ color: 'var(--accent)', letterSpacing: '-0.02em' }}>{num}</span>

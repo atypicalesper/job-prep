@@ -32,6 +32,8 @@ const SECTION_ICONS: Record<string, string> = {
   '19-runtimes': '🟡',
   '20-ai-ml-engineering': '🤖',
   '21-python-for-ai': '🐍',
+  '13-reasoning-models': '💡',
+  '14-local-llms': '💻',
 };
 
 interface Props {
@@ -75,8 +77,7 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
             className="logo-img object-contain shrink-0" unoptimized
           />
           <span className="font-semibold text-xs leading-tight" style={{ color: 'var(--fg)' }}>
-            SWE<br />
-            <span style={{ color: 'var(--muted)', fontWeight: 400 }}>Interview Prep</span>
+            Dev<span style={{ color: 'var(--accent)' }}>Atlas</span>
           </span>
         </Link>
         <ThemeToggle />
