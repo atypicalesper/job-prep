@@ -33,9 +33,9 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps) {
   const doc = getDocContent(params.slug);
-  if (doc) return { title: `${doc.title} — DevAtlas` };
+  if (doc) return { title: `${doc.title} — dev atlas` };
   const dir = getDirInfo(params.slug);
-  if (dir) return { title: `${dir.title} — DevAtlas` };
+  if (dir) return { title: `${dir.title} — dev atlas` };
   return { title: 'Not Found' };
 }
 
