@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { Menu, Search as SearchIcon } from 'lucide-react';
+import { Menu, Search as SearchIcon, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Search from './Search';
 import KeyboardShortcuts from './KeyboardShortcuts';
@@ -17,26 +17,36 @@ interface Props {
 }
 
 export default function Shell({ nav, searchIndex, children }: Props) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);       // mobile drawer
+  const [collapsed, setCollapsed] = useState(false);           // desktop collapse
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
 
-  // Close sidebar on navigation
+  // Close mobile drawer on navigation
   useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
-  // Cmd+K / Ctrl+K global shortcut
+  // Persist collapse state
+  useEffect(() => {
+    const saved = localStorage.getItem('sidebar-collapsed');
+    if (saved === 'true') setCollapsed(true);
+  }, []);
+  const toggleCollapsed = () => {
+    setCollapsed(v => {
+      localStorage.setItem('sidebar-collapsed', String(!v));
+      return !v;
+    });
+  };
+
+  // Cmd+K / Ctrl+K
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setSearchOpen(true); }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Lock body scroll while mobile sidebar is open
+  // Lock body scroll while mobile sidebar open
   useEffect(() => {
     document.body.style.overflow = sidebarOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
@@ -52,12 +62,13 @@ export default function Shell({ nav, searchIndex, children }: Props) {
         />
       )}
 
-      {/* Sidebar — fixed overlay on mobile, normal flow on desktop */}
+      {/* Sidebar */}
       <div
         className={[
           'fixed inset-y-0 left-0 z-30 transition-transform duration-300 ease-in-out',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
           'md:relative md:inset-auto md:z-auto md:translate-x-0 md:transition-none',
+          collapsed ? 'md:w-0 md:overflow-hidden' : '',
         ].join(' ')}
       >
         <Sidebar nav={nav} onSearchOpen={() => setSearchOpen(true)} />
@@ -90,6 +101,19 @@ export default function Shell({ nav, searchIndex, children }: Props) {
             <SearchIcon size={18} style={{ color: 'var(--muted)' }} />
           </button>
         </header>
+
+        {/* Desktop collapse toggle — floats at top-left of content area */}
+        <button
+          onClick={toggleCollapsed}
+          className="hidden md:flex items-center justify-center absolute top-3 left-3 z-10 w-7 h-7 rounded-md transition-colors hover:bg-[var(--sidebar-hover)]"
+          style={{ color: 'var(--muted)' }}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed
+            ? <PanelLeftOpen size={15} />
+            : <PanelLeftClose size={15} />
+          }
+        </button>
 
         <main className="flex-1">{children}</main>
       </div>
