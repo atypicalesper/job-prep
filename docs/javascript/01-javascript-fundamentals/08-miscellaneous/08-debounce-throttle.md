@@ -692,6 +692,126 @@ function SearchBar() {
 
 ---
 
+## When Debounce/Throttle Are the Wrong Tool
+
+Both patterns **drop calls** — debounce drops all-but-last in a burst, throttle drops calls within each interval. That's their purpose. But sometimes dropping is wrong.
+
+### Idempotency assumption
+
+Debounce and throttle assume calls are **idempotent or skippable** — running the function once or five times produces the same result. If every call carries unique data that must be processed, use neither:
+
+```js
+// BAD: keystrokes are dropped — audit log is incomplete
+const logKeystroke = debounce((char) => sendAuditLog(char), 300);
+input.addEventListener('keydown', e => logKeystroke(e.key)); // drops intermediate keys
+
+// GOOD: every keystroke queued and sent in order
+input.addEventListener('keydown', e => queue.push(e.key));
+```
+
+### Queue pattern — rate-limited but lossless
+
+When every call must eventually execute (just at a controlled rate), use a draining queue:
+
+```js
+function createQueue(fn, interval) {
+  const pending = [];
+  let drainTimer = null;
+
+  function drain() {
+    if (!pending.length) { drainTimer = null; return; }
+    const args = pending.shift();
+    fn(...args);
+    drainTimer = setTimeout(drain, interval);
+  }
+
+  return {
+    push(...args) {
+      pending.push(args);
+      if (!drainTimer) drain();         // start draining if idle
+    },
+    flush() {
+      clearTimeout(drainTimer);
+      while (pending.length) fn(...pending.shift());
+    },
+    clear() {
+      clearTimeout(drainTimer);
+      pending.length = 0;
+      drainTimer = null;
+    }
+  };
+}
+
+// API rate limiter: sends every request, at most one per 200ms
+const apiQueue = createQueue((payload) => fetch('/log', {
+  method: 'POST',
+  body: JSON.stringify(payload)
+}), 200);
+
+// Every event is preserved and sent in order:
+element.addEventListener('click', e => apiQueue.push({ x: e.clientX, y: e.clientY }));
+```
+
+**Pattern comparison:**
+
+| | Debounce | Throttle | Queue |
+|---|---|---|---|
+| **Drops calls?** | Yes — keeps only last | Yes — keeps periodic | No — processes all |
+| **Ordering** | N/A | N/A | FIFO, preserved |
+| **Backpressure** | Resets on each call | Discards mid-interval | Builds up in memory |
+| **Use when** | "Wait until quiet" | "Cap the rate" | "Process every call, just slowly" |
+
+---
+
+## Event Loop Placement
+
+`setTimeout` is a **macro-task**. Debounce timers sit in the macro-task queue — they run after the current call stack and all micro-tasks have cleared.
+
+```
+Call stack → Micro-tasks (Promises, queueMicrotask) → Render → Macro-tasks (setTimeout, setInterval)
+```
+
+Common mistake — thinking `Promise.resolve().then()` debounces:
+
+```js
+// WRONG: this doesn't debounce — it just defers to next microtask (~0ms delay)
+// All queued microtasks flush before the next render, defeating the purpose
+function badDebounce(fn) {
+  return function(...args) {
+    Promise.resolve().then(() => fn(...args)); // fires almost immediately, every time
+  };
+}
+
+// CORRECT: setTimeout puts it in the macro-task queue, after rendering
+function debounce(fn, delay) {
+  let timer;
+  return function(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay); // macro-task
+  };
+}
+```
+
+When you want "run after the current synchronous work, as soon as possible":
+
+```js
+// Next microtask (fastest, before render):
+queueMicrotask(() => fn());
+
+// Next macro-task, after render:
+setTimeout(fn, 0);   // clamped to 4ms minimum
+
+// Next animation frame (before paint):
+requestAnimationFrame(fn);
+
+// During idle time:
+requestIdleCallback(fn);
+```
+
+None of these are debounce — they're one-shot deferrals. Debounce requires resetting on repeated calls.
+
+---
+
 ## TypeScript
 
 Generic signatures that preserve argument and return types:
