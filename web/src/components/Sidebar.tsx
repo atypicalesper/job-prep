@@ -10,7 +10,10 @@ import type { NavItem } from '@/lib/docs';
 import ThemeToggle from './ThemeToggle';
 
 const SECTION_ICONS: Record<string, string> = {
-  'node': '💻',
+  'javascript': '🧠',
+  'node': '⚙️',
+  'react': '⚛️',
+  'engineering': '🏗️',
   'python': '🐍',
   'ai': '🤖',
   'networks': '📡',

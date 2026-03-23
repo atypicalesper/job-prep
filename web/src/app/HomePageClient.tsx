@@ -10,28 +10,46 @@ import { getVisitedCountBySection, getRecent, type RecentPage } from '@/lib/prog
 
 const SECTIONS: { icon: string; title: string; slug: string; desc: string; badge?: string }[] = [
   {
-    icon: '💻',
-    title: 'Node & Web',
+    icon: '🧠',
+    title: 'JavaScript',
+    slug: 'javascript',
+    desc: 'Event loop, closures, prototypes, async/await, generators, TypeScript type system, generics, decorators, async patterns, concurrency models, functional & OOP programming',
+  },
+  {
+    icon: '⚙️',
+    title: 'Node.js',
     slug: 'node',
-    desc: 'JavaScript, TypeScript, Node.js, React, Next.js, async patterns, performance, databases, API design, system design, DevOps, testing, security, DSA, browser internals, concurrency models, frontend perf, runtimes',
+    desc: 'V8, libuv, streams, buffers, worker threads, cluster, child processes, HTTP internals, performance profiling, memory leaks, databases, SQL, NoSQL, Redis, API design, REST, GraphQL, gRPC, WebSockets',
+  },
+  {
+    icon: '⚛️',
+    title: 'React & Frontend',
+    slug: 'react',
+    desc: 'React 19, hooks, concurrent features, state management, Next.js App Router, Server Actions, browser internals, critical rendering path, Core Web Vitals, bundle optimization, Bun, Deno, edge runtimes',
+  },
+  {
+    icon: '🏗️',
+    title: 'Engineering',
+    slug: 'engineering',
+    desc: 'System design, HLD/LLD, SOLID, microservices, DevOps, Docker, Kubernetes, CI/CD, testing (Jest, E2E), security (OWASP), DSA, algorithms, interview practice, behavioral STAR stories',
   },
   {
     icon: '🐍',
     title: 'Python',
     slug: 'python',
-    desc: 'Python essentials, NumPy, Pandas, matplotlib/seaborn, scikit-learn, PyTorch, FastAPI, async Python, LLM SDKs (OpenAI/Anthropic/HuggingFace), structured outputs, prompt caching',
+    desc: 'Python essentials, NumPy, Pandas, matplotlib/seaborn, scikit-learn, PyTorch, FastAPI, async Python, OpenAI/Anthropic/HuggingFace SDKs, structured outputs, prompt caching, tooling',
   },
   {
     icon: '🤖',
     title: 'AI / ML',
     slug: 'ai',
-    desc: 'LLM APIs, prompt engineering, RAG, vector DBs, LangChain, LangGraph, agentic AI, MCP, AI in production, fine-tuning, evaluation, reasoning models, local LLMs, observability, cost optimization',
+    desc: 'LLM APIs, prompt engineering, RAG, vector DBs, LangChain, LangGraph, agentic AI, MCP, AI in production, fine-tuning, RAGAS evaluation, reasoning models, local LLMs, observability, cost optimization',
   },
   {
     icon: '📡',
     title: 'Networks',
     slug: 'networks',
-    desc: 'OSI & TCP/IP models, IP addressing, subnetting, CIDR, TCP/UDP, DNS, HTTP/2/3, TLS, routing, NAT, firewalls, cloud networking (VPC, SGs, NACLs, ALB/NLB), troubleshooting tools',
+    desc: 'OSI & TCP/IP models, IP addressing, subnetting, CIDR, TCP/UDP, DNS, HTTP/2/3, TLS handshake, routing, NAT, firewalls, VPC, security groups, load balancers, CDN, troubleshooting',
   },
 ];
 
@@ -109,14 +127,14 @@ export default function HomePageClient({ pageCounts }: Props) {
 
         <div className="flex gap-3 flex-wrap">
           <Link
-            href="/node/12-interview-practice/00-cheat-sheet/01-last-day-reference"
+            href="/engineering/12-interview-practice/00-cheat-sheet/01-last-day-reference"
             className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105 active:scale-95 hover:shadow-lg"
             style={{ backgroundColor: 'var(--accent)' }}
           >
             📋 Last-Day Cheat Sheet
           </Link>
           <Link
-            href="/node/01-javascript-fundamentals/01-event-loop/01-what-is-event-loop"
+            href="/javascript/01-javascript-fundamentals/01-event-loop/01-what-is-event-loop"
             className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105 active:scale-95 border"
             style={{ color: 'var(--fg)', borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
           >
@@ -243,7 +261,7 @@ export default function HomePageClient({ pageCounts }: Props) {
           ['285+', 'Topic Files'],
           ['1200+', 'Code Examples'],
           ['700+', 'Interview Q&As'],
-          ['4',    'Categories'],
+          ['7',    'Categories'],
         ].map(([num, label]) => (
           <div key={label} className="flex items-baseline gap-1.5">
             <span className="text-2xl font-extrabold tabular-nums" style={{ color: 'var(--accent)', letterSpacing: '-0.02em' }}>{num}</span>
