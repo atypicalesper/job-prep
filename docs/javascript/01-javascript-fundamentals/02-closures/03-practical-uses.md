@@ -108,7 +108,7 @@ console.time('fast'); memoFib(40);  console.timeEnd('fast');   // <1ms
 
 ## 4. Debounce
 
-Delay execution until user stops doing something (e.g., typing):
+Delay execution until user stops doing something (e.g., typing). The closure holds `timerId` — every call resets it, so the function only fires after the caller has been quiet for `delay` ms:
 
 ```javascript
 function debounce(fn, delay) {
@@ -122,23 +122,34 @@ function debounce(fn, delay) {
   };
 }
 
-// Usage: Only fires 300ms after user stops typing
+// Only fires 300ms after user stops typing
 const handleSearch = debounce((query) => {
   fetchSearchResults(query);
 }, 300);
 
-searchInput.addEventListener('input', (e) => {
-  handleSearch(e.target.value);
-});
+searchInput.addEventListener('input', (e) => handleSearch(e.target.value));
 ```
 
-**How the closure works:** `timerId` is captured by `debounced`. Every call to `debounced` can read AND modify `timerId` — clearing the previous timer and setting a new one.
+**Leading-edge variant** — fire immediately on the first call, then lock out for `delay` ms:
+
+```javascript
+function debounceLeading(fn, delay) {
+  let timerId;
+  return function debounced(...args) {
+    if (!timerId) fn.apply(this, args); // fire on first call
+    clearTimeout(timerId);
+    timerId = setTimeout(() => { timerId = null; }, delay);
+  };
+}
+```
+
+**How the closure works:** `timerId` is captured by `debounced`. Every call can read AND modify the same `timerId` — cancelling the previous timer and scheduling a new one. See [`08-debounce-throttle.md`](../08-miscellaneous/08-debounce-throttle.md) for the full implementation with `cancel`, `flush`, and `maxWait`.
 
 ---
 
 ## 5. Throttle
 
-Limit how often a function can fire (e.g., scroll handler):
+Limit how often a function fires — guaranteed to run at most once per `interval` ms during a burst of calls. Unlike debounce, throttle always fires while the event stream is active:
 
 ```javascript
 function throttle(fn, interval) {
@@ -147,19 +158,23 @@ function throttle(fn, interval) {
   return function throttled(...args) {
     const now = Date.now();
     if (now - lastTime >= interval) {
-      lastTime = now;
+      lastTime = now;               // timestamp approach — no drift
       fn.apply(this, args);
     }
   };
 }
 
-// Usage: handleScroll runs at most once per 100ms
+// handleScroll runs at most once per 100ms
 const handleScroll = throttle(() => {
   updateScrollPosition();
 }, 100);
 
 window.addEventListener('scroll', handleScroll);
 ```
+
+**How the closure works:** `lastTime` persists between calls. The condition `now - lastTime >= interval` gates execution, and updating `lastTime` inside the function maintains the rate limit.
+
+**Debounce vs Throttle in one line:** Debounce fires _after_ activity stops. Throttle fires _at a capped rate_ while activity continues. See [`08-debounce-throttle.md`](../08-miscellaneous/08-debounce-throttle.md) for rAF throttle, React hooks, and common mistakes.
 
 ---
 

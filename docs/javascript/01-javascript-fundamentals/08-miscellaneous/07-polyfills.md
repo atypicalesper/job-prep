@@ -333,6 +333,7 @@ Promise.myRace = function(promises) {
 ### debounce / throttle
 
 ```js
+// Trailing-edge debounce — fires after `delay` ms of quiet
 function debounce(fn, delay) {
   let timer;
   return function(...args) {
@@ -341,17 +342,20 @@ function debounce(fn, delay) {
   };
 }
 
-function throttle(fn, limit) {
-  let inThrottle = false;
+// Timestamp throttle — fires at most once per `interval` ms (no drift)
+function throttle(fn, interval) {
+  let lastTime = 0;
   return function(...args) {
-    if (!inThrottle) {
+    const now = Date.now();
+    if (now - lastTime >= interval) {
+      lastTime = now;
       fn.apply(this, args);
-      inThrottle = true;
-      setTimeout(() => inThrottle = false, limit);
     }
   };
 }
 ```
+
+> For full implementations (leading edge, cancel/flush, maxWait, rAF throttle, React hooks) see [`08-debounce-throttle.md`](./08-debounce-throttle.md).
 
 ### deep clone (structuredClone polyfill)
 
