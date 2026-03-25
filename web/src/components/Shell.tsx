@@ -8,6 +8,7 @@ import Sidebar from './Sidebar';
 import Search from './Search';
 import KeyboardShortcuts from './KeyboardShortcuts';
 import ThemeToggle from './ThemeToggle';
+import NotebookToggle from './NotebookToggle';
 import type { NavItem, SearchItem } from '@/lib/docs';
 
 interface Props {
@@ -92,6 +93,7 @@ export default function Shell({ nav, searchIndex, children }: Props) {
             <Image src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/logo.svg`} alt="logo" width={24} height={24} className="logo-img object-contain shrink-0" unoptimized />
             <span className="text-sm font-semibold truncate" style={{ color: 'var(--fg)' }}>dev <span style={{ color: 'var(--accent)' }}>atlas</span></span>
           </span>
+          <NotebookToggle />
           <ThemeToggle />
           <button
             onClick={() => setSearchOpen(true)}

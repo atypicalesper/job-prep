@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { ChevronRight, Search, ArrowLeft } from 'lucide-react';
 import type { NavItem } from '@/lib/docs';
 import ThemeToggle from './ThemeToggle';
+import NotebookToggle from './NotebookToggle';
 
 const SECTION_ICONS: Record<string, string> = {
   'javascript': '🧠',
@@ -60,7 +61,10 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
             dev <span style={{ color: 'var(--accent)' }}>atlas</span>
           </span>
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-1">
+          <NotebookToggle />
+          <ThemeToggle />
+        </div>
       </div>
 
       {/* Search */}

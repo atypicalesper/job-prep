@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { ThemeProvider } from 'next-themes';
 import { buildNavTree, buildSearchIndex } from '@/lib/docs';
 import Shell from '@/components/Shell';
+import { NotebookProvider } from '@/lib/notebook';
 import './globals.css';
 
 const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID || '';
@@ -35,9 +36,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          <Shell nav={nav} searchIndex={searchIndex}>
-            {children}
-          </Shell>
+          <NotebookProvider>
+            <Shell nav={nav} searchIndex={searchIndex}>
+              {children}
+            </Shell>
+          </NotebookProvider>
         </ThemeProvider>
       </body>
     </html>

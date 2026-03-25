@@ -7,6 +7,8 @@ import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { BookOpen, ArrowRight, Clock } from 'lucide-react';
 import { getVisitedCountBySection, getRecent, type RecentPage } from '@/lib/progress';
+import { useNotebook } from '@/lib/notebook';
+import RoughBorder from '@/components/RoughBorder';
 
 const SECTIONS: { icon: string; title: string; slug: string; desc: string; badge?: string }[] = [
   {
@@ -104,6 +106,7 @@ export default function HomePageClient({ pageCounts }: Props) {
     });
   }, { scope: gridRef });
 
+  const { notebook } = useNotebook();
   const totalVisited = Object.values(visitedCounts).reduce((a, b) => a + b, 0);
 
   return (
@@ -173,7 +176,7 @@ export default function HomePageClient({ pageCounts }: Props) {
                   key={p.slug}
                   href={'/' + p.slug}
                   className="recent-card group flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-                  style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}
+                  style={{ position: 'relative', backgroundColor: 'var(--card-bg)', borderColor: notebook ? 'transparent' : 'var(--card-border)' }}
                 >
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -190,6 +193,7 @@ export default function HomePageClient({ pageCounts }: Props) {
                     </p>
                   </div>
                   <ArrowRight size={14} style={{ color: 'var(--muted)' }} className="shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
+                  {notebook && <RoughBorder />}
                 </Link>
               );
             })}
@@ -209,10 +213,12 @@ export default function HomePageClient({ pageCounts }: Props) {
               href={`/${s.slug}`}
               className="topic-card group block rounded-xl border p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
               style={{
+                position: 'relative',
                 backgroundColor: 'var(--card-bg)',
-                borderColor: 'var(--card-border)',
+                borderColor: notebook ? 'transparent' : 'var(--card-border)',
               }}
             >
+              {notebook && <RoughBorder />}
               {/* Accent bar on left edge */}
               <div className="card-accent-bar" />
 
