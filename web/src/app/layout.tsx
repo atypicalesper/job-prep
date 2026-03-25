@@ -24,8 +24,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const searchIndex = buildSearchIndex();
 
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
+    <html lang="en" translate="no" suppressHydrationWarning>
+      <head suppressHydrationWarning>
         {CLARITY_ID && (
           <script
             dangerouslySetInnerHTML={{

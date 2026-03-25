@@ -51,14 +51,14 @@ export default function NotebookToggle() {
       aria-label={notebook ? 'Disable notebook theme' : 'Enable notebook theme'}
       title={notebook ? 'Notebook mode on' : 'Notebook mode off'}
       className="theme-toggle-btn"
-      style={{ color: notebook ? 'var(--accent)' : undefined }}
+      style={notebook ? { background: 'var(--accent)', borderColor: 'var(--accent)' } : {}}
     >
       <span
         ref={rippleRef}
         className="theme-toggle-ripple"
-        style={{ backgroundColor: notebook ? '#312e81' : 'var(--accent)' }}
+        style={{ backgroundColor: notebook ? 'rgba(255,255,255,0.3)' : 'var(--accent)' }}
       />
-      <span ref={iconRef} className="theme-toggle-icon">
+      <span ref={iconRef} className="theme-toggle-icon" style={notebook ? { color: '#fff' } : {}}>
         <PenLine size={15} />
       </span>
     </button>

@@ -7,7 +7,9 @@ import MarkdownContent from '@/components/MarkdownContent';
 import TableOfContents from '@/components/TableOfContents';
 import ReadingProgress from '@/components/ReadingProgress';
 import DocPageClient from '@/components/DocPageClient';
-import { ChevronLeft, ChevronRight, Clock, FolderOpen } from 'lucide-react';
+import PrevNextNav from '@/components/PrevNextNav';
+import NotebookProseDecor from '@/components/NotebookProseDecor';
+import { Clock, FolderOpen, ChevronRight } from 'lucide-react';
 
 interface PageProps {
   params: { slug: string[] };
@@ -177,62 +179,10 @@ export default function DocPage({ params }: PageProps) {
 
           {/* Markdown content */}
           <MarkdownContent markdown={doc.content} />
-
-          {/* Keyboard nav hint */}
-          {(prev || next) && (
-            <div className="mt-6 flex justify-center">
-              <div
-                className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border"
-                style={{ color: 'var(--muted)', borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
-              >
-                <kbd className="kbd">[</kbd>
-                <span>prev</span>
-                <span className="opacity-30 mx-0.5">·</span>
-                <span>next</span>
-                <kbd className="kbd">]</kbd>
-              </div>
-            </div>
-          )}
+          <NotebookProseDecor />
 
           {/* Prev / Next navigation */}
-          {(prev || next) && (
-            <div
-              className="mt-4 pt-6 border-t grid grid-cols-1 sm:grid-cols-2 gap-4"
-              style={{ borderColor: 'var(--border)' }}
-            >
-              {prev ? (
-                <Link
-                  href={prevHref!}
-                  className="group flex items-center gap-3 rounded-xl border p-4 transition-all hover:-translate-x-1"
-                  style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}
-                >
-                  <ChevronLeft size={18} style={{ color: 'var(--muted)' }} className="shrink-0" />
-                  <div>
-                    <div className="text-xs mb-0.5" style={{ color: 'var(--muted)' }}>Previous</div>
-                    <div className="text-sm font-medium group-hover:text-indigo-400 transition-colors" style={{ color: 'var(--fg)' }}>
-                      {prev.title}
-                    </div>
-                  </div>
-                </Link>
-              ) : <div />}
-
-              {next ? (
-                <Link
-                  href={nextHref!}
-                  className="group flex items-center justify-end gap-3 rounded-xl border p-4 transition-all hover:translate-x-1"
-                  style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}
-                >
-                  <div className="text-right">
-                    <div className="text-xs mb-0.5" style={{ color: 'var(--muted)' }}>Next</div>
-                    <div className="text-sm font-medium group-hover:text-indigo-400 transition-colors" style={{ color: 'var(--fg)' }}>
-                      {next.title}
-                    </div>
-                  </div>
-                  <ChevronRight size={18} style={{ color: 'var(--muted)' }} className="shrink-0" />
-                </Link>
-              ) : <div />}
-            </div>
-          )}
+          <PrevNextNav prev={prev ?? undefined} next={next ?? undefined} prevHref={prevHref} nextHref={nextHref} />
         </div>
 
         {/* Table of contents — xl screens only */}
