@@ -16,8 +16,13 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
   const [notebook, setNotebook] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem('notebook-mode') === 'true') setNotebook(true);
+    const saved = localStorage.getItem('notebook-mode') === 'true';
+    if (saved) setNotebook(true);
   }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('notebook-mode', notebook);
+  }, [notebook]);
 
   const toggleNotebook = () =>
     setNotebook(v => {
