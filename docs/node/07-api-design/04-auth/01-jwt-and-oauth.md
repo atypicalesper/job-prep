@@ -4,6 +4,8 @@
 
 ## JWT (JSON Web Tokens)
 
+A JSON Web Token (JWT) is a compact, URL-safe format for representing claims between two parties. It solves the problem of stateless authentication: rather than storing session data on the server and handing the client an opaque ID, the server encodes the session data (user ID, role, expiry) directly into a signed token that the client stores and presents on each request. The server can verify the token's authenticity by checking the signature — no database lookup required. This makes JWTs particularly well-suited for distributed systems and microservices where you cannot guarantee every service has access to the same session store.
+
 ### Structure
 
 ```
@@ -47,6 +49,8 @@ HMACSHA256(base64(header) + "." + base64(payload), secret)
 ---
 
 ## JWT Implementation in Node.js
+
+The standard pattern for JWT auth in Node.js uses a short-lived access token (15 minutes) for regular API requests and a long-lived refresh token (7–30 days) for obtaining new access tokens. The short access token TTL limits the damage window if a token is stolen — the attacker only has access until it expires. The refresh token is stored server-side (Redis or DB) so it can be revoked immediately on logout, giving you a logout mechanism without making every request check a revocation list.
 
 ```typescript
 import jwt from 'jsonwebtoken';
@@ -135,6 +139,8 @@ app.post('/auth/refresh', async (req, res) => {
 
 ## Cookie vs Header Token Storage
 
+Where you store a JWT in the browser is a security decision that involves trade-offs between XSS (cross-site scripting) and CSRF (cross-site request forgery) attack vectors. No storage location is risk-free. The recommended pattern for web applications is a hybrid: store the short-lived access token in JavaScript memory (where XSS cannot persist it across reloads) and store the refresh token in an httpOnly, Secure, SameSite cookie (where JavaScript cannot read it). On every page load or when the access token expires, the client calls the refresh endpoint — the browser automatically sends the cookie, and the server issues a new access token.
+
 ```
 localStorage/sessionStorage:
 ✅ Simple to implement
@@ -157,6 +163,8 @@ Best practice: httpOnly, Secure, SameSite=Strict cookie for refresh token
 
 ## OAuth2 — Authorization Framework
 
+OAuth2 is an authorization delegation framework: it allows a user to grant a third-party application access to their resources on another service, without sharing their password. The classic example is "Login with Google" — the user grants your app permission to read their profile, and Google issues your app a token scoped to that permission. OAuth2 itself only handles authorization ("what can this app do?"). OpenID Connect (OIDC) is a thin identity layer built on top of OAuth2 that adds authentication ("who is this user?") by introducing the `id_token` — a JWT containing the user's identity claims.
+
 ```
 NOT an authentication protocol — it's an authorization protocol.
 OpenID Connect (OIDC) adds authentication on top of OAuth2.
@@ -177,6 +185,8 @@ Grant Types:
 ---
 
 ## OAuth2 Authorization Code Flow (with PKCE)
+
+The Authorization Code flow with PKCE (Proof Key for Code Exchange) is the recommended OAuth2 flow for all public clients — web apps, SPAs, and mobile apps. The core problem it solves: a public client cannot keep a `client_secret` secure (anyone can extract it from browser JavaScript or a mobile app bundle). PKCE replaces the secret with a per-request cryptographic proof: the client generates a random `code_verifier`, hashes it to `code_challenge`, and includes the challenge in the authorization request. When exchanging the authorization code for tokens, the client must provide the original `code_verifier`. The authorization server re-hashes it and compares — if they match, the request is genuine. An attacker who intercepts the code cannot exchange it without the verifier.
 
 ```
 1. App generates: code_verifier (random) + code_challenge = SHA256(code_verifier)
@@ -211,6 +221,8 @@ Grant Types:
 ---
 
 ## Client Credentials Flow (Service-to-Service)
+
+The Client Credentials flow is used for machine-to-machine authentication where there is no human user involved. The client (a service or daemon) presents its `client_id` and `client_secret` directly to the authorization server and receives an access token scoped to the operations it needs. The key best practice is to cache the token and reuse it until near expiry — obtaining a new token on every API call is wasteful and may trigger rate limits on the authorization server.
 
 ```typescript
 // Microservice A calling Microservice B:

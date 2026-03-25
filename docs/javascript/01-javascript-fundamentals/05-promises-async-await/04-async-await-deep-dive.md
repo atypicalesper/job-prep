@@ -28,6 +28,8 @@ async function fetchUser(id) {
 
 ## async Functions Always Return a Promise
 
+An `async` function is fundamentally a factory for Promises. No matter what it returns, the caller always receives a Promise. If the function returns a non-Promise value, it is wrapped in `Promise.resolve()`. If the function throws, the returned Promise is rejected. If it returns a Promise, that Promise is *adopted* (not double-wrapped) — so the caller gets the inner Promise's state directly. This guarantee means all async functions are composable: you can always use `.then()`, `await`, or `Promise.all` on their return values.
+
 ```javascript
 async function getValue() {
   return 42; // automatically wrapped in Promise.resolve(42)
@@ -48,6 +50,8 @@ await getPromise(); // 99 (not Promise<Promise<99>>)
 ---
 
 ## await — Pause and Resume
+
+`await` is the mechanism that makes async functions appear synchronous. When the engine encounters `await expr`, it evaluates the expression, wraps it in `Promise.resolve()`, and suspends the async function — returning control to the caller. The suspended function is scheduled to resume as a microtask once the awaited Promise settles. This suspension is non-blocking: the event loop is free to process other callbacks while the function waits.
 
 `await` pauses execution of the `async` function until the Promise resolves, then resumes with the resolved value:
 
@@ -89,6 +93,8 @@ function f() {
 
 ## await on Non-Promises
 
+Because `await` internally calls `Promise.resolve()` on any value, it can be applied to non-Promises without error. For primitives, this creates a microtask checkpoint — a brief suspension — but then immediately resumes with the original value. This property is useful for ensuring a consistent execution model and for testing async behavior without actual I/O, but it should not be used gratuitously as each `await` introduces a scheduling overhead.
+
 `await` calls `Promise.resolve()` on the value. So you can `await` anything:
 
 ```javascript
@@ -104,6 +110,8 @@ async function test() {
 ---
 
 ## Sequential vs Parallel Execution
+
+The most important performance consideration with `async/await` is understanding the difference between sequential and parallel execution. Each `await` on a separate async operation is a pause — if you await them one after another, each operation waits for the previous one to finish before it starts. To run independent operations concurrently, you must *start* all the Promises first (before awaiting any of them) or use `Promise.all`. This is one of the most common performance bugs in async JavaScript.
 
 This is the most critical pattern to understand:
 
@@ -183,6 +191,8 @@ if (err) {
 
 ## async in Loops
 
+Async operations in loops require careful pattern selection because the three common loop constructs — `forEach`, `for...of`, and `map` — behave very differently with `async`. Getting this wrong means either running everything in uncontrolled parallel (with `forEach`), running everything sequentially when parallelism would be faster (with sequential `for...of`), or missing the ability to await all results together. Matching the right pattern to your concurrency requirements is a critical async skill.
+
 ```javascript
 const ids = [1, 2, 3, 4, 5];
 
@@ -221,6 +231,8 @@ await processWithLimit(ids, 2); // max 2 at a time
 
 ## Top-Level await (ESM Only)
 
+Top-level `await` allows `await` expressions at the root of an ES module, outside of any `async` function. This is only available in ESM (`.mjs` files or `"type": "module"` in `package.json`). When a module uses top-level `await`, other modules that import it are paused until its top-level async work completes — the module graph handles this automatically. It is useful for async initialization (loading config, establishing connections) that must complete before a module's exports are used.
+
 ```javascript
 // In ESM (.mjs or "type": "module"):
 const config = await loadConfig(); // at module top level!
@@ -236,6 +248,8 @@ main().catch(console.error);
 ---
 
 ## async/await Under the Hood
+
+`async/await` is syntactic sugar that the engine (or a transpiler like Babel) desugars into generator functions coordinated with Promises. Each `await` corresponds to a `yield` in a generator — the generator function suspends itself and hands control to a runner that resolves the yielded Promise and then resumes the generator with the result. Understanding this desugaring explains why `await` in a regular function is a SyntaxError (generators have the same restriction) and why errors in async functions reject the returned Promise (generator `.throw()` is used for this).
 
 `async/await` is transpiled to generator functions + Promise chains:
 
@@ -272,6 +286,8 @@ function fetchData() {
 ---
 
 ## Common async/await Mistakes
+
+These mistakes are all variants of the same underlying misunderstanding: forgetting that `async` functions return Promises and that `await` is required to unwrap them. A missing `await` leaves you with a Promise where you expected a value; a misplaced `await` (in a non-async function) is a syntax error; and a try/catch around async code only catches errors from `await`ed operations, not from callbacks inside the async function.
 
 ```javascript
 // ❌ Missing await — function returns Promise, not value

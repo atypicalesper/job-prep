@@ -31,6 +31,8 @@ Connection: keep-alive
 
 ### Keep-Alive — Connection Reuse
 
+HTTP keep-alive (also called persistent connections) allows the TCP connection established for one request to be reused for subsequent requests to the same server, rather than closing and reopening it each time. For HTTPS, the savings are especially significant: a fresh HTTPS connection pays for a TCP 3-way handshake plus a TLS 1.3 handshake (~1–2 round trips), which can add 50–200ms of latency on each request. With keep-alive, that overhead is paid once and amortised across hundreds of requests on the same connection. HTTP/1.1 enables keep-alive by default; the `Connection: keep-alive` header is sent for backward compatibility with HTTP/1.0 intermediaries.
+
 ```
 Without keep-alive (HTTP/1.0 default):
   req1: TCP open → request → response → TCP close
@@ -129,6 +131,8 @@ Second request to same origin:
 
 ### HTTP/2 in Node.js
 
+Node.js exposes HTTP/2 through the `node:http2` module, which requires TLS in practice (browsers will not negotiate HTTP/2 over unencrypted connections). The server API is stream-based rather than request/response-based: the `'stream'` event fires for each HTTP/2 stream, and pseudo-headers (`:method`, `:path`, `:status`) replace the HTTP/1.1 start line. HTTP/2 server push lets the server send resources the client has not yet asked for — the browser can use the pushed response directly when it does request that resource, eliminating an extra round trip. For most production Node.js services, HTTP/2 is handled by a reverse proxy (nginx, Envoy) that terminates the HTTP/2 connection and forwards HTTP/1.1 to the Node.js process — direct Node.js HTTP/2 is mainly relevant for microservice-to-microservice calls or custom protocols built on HTTP/2 streams.
+
 ```javascript
 import http2 from 'http2';
 import { readFileSync } from 'fs';
@@ -210,6 +214,8 @@ HTTP/3 solves this by using QUIC (UDP-based).
 
 ## HTTP/3 — QUIC-Based Transport
 
+HTTP/3 replaces TCP+TLS with QUIC, a UDP-based transport protocol developed by Google and standardised by the IETF. The primary motivation is eliminating TCP-level head-of-line blocking: because HTTP/2 multiplexes all its streams over one TCP connection, a single lost packet stalls *all* streams while TCP's retransmission mechanism recovers it. QUIC implements its own reliable delivery per stream, so a lost packet for stream 3 only stalls stream 3. QUIC also integrates TLS 1.3 directly, enabling 0-RTT connection establishment for returning clients — the client can send application data in the very first packet. The practical implication for Node.js services is that HTTP/3 is typically handled at the edge (CDN, load balancer) rather than directly in Node.js, which reduces operational complexity while still delivering the user-facing latency benefits.
+
 ```
 HTTP/3 = HTTP/2 semantics + QUIC transport (replaces TCP + TLS)
 
@@ -228,6 +234,8 @@ Connection establishment:
 ---
 
 ## TLS/SSL Handshake
+
+TLS (Transport Layer Security) is the cryptographic protocol that wraps TCP to provide confidentiality, integrity, and server authentication. The handshake is the negotiation phase that happens before any application data is sent: the client and server agree on a cipher suite, the server presents its certificate (so the client can verify it is talking to the right server), and both sides derive a shared session key using Diffie-Hellman key exchange without ever transmitting the key over the wire. TLS 1.3 (the current standard) reduced this to one round trip by combining several handshake messages. Session resumption (0-RTT) allows returning clients to skip the full handshake by reusing a session ticket from a previous connection — the security tradeoff is that 0-RTT data is vulnerable to replay attacks for non-idempotent requests.
 
 ```
 TLS 1.2 (full handshake — 2 RTTs):
@@ -283,6 +291,8 @@ server.on('secureConnection', (socket) => {
 
 ## HTTP Methods — Idempotency and Safety
 
+HTTP methods carry semantic contracts beyond their literal names. *Safety* means the method has no observable side effects — safe methods can be cached, prefetched, and retried freely. *Idempotency* means calling the method multiple times produces the same server state as calling it once — idempotent methods can be retried on network failure without risk of duplicate side effects. These properties are how HTTP infrastructure (CDNs, load balancers, retry middleware) decides what it is safe to do automatically. Violating these semantics — for example, using `GET` to trigger a deletion or using `POST` for operations that should be idempotent — breaks HTTP's caching and reliability guarantees.
+
 ```
 Method      Safe    Idempotent   Body    Use
 ──────────────────────────────────────────────────────────────────
@@ -303,6 +313,8 @@ Idempotent = multiple identical requests = same server state
 ---
 
 ## HTTP Status Codes — The Full Picture
+
+HTTP status codes are the server's machine-readable summary of what happened with a request. The first digit indicates the class (2xx = success, 4xx = client error, 5xx = server error), and the specific code communicates exactly which condition occurred. Choosing the correct code matters: it determines how clients retry (5xx is often retried; 4xx usually is not), whether CDNs cache the response, and what error message clients display. The most commonly misused codes are 401 vs 403 (authentication vs authorization), 404 vs 410 (temporarily vs permanently gone), 400 vs 422 (malformed request vs semantically invalid data), and 201 vs 202 (synchronously created vs asynchronously accepted).
 
 ```
 2xx Success:
@@ -344,6 +356,8 @@ Idempotent = multiple identical requests = same server state
 ---
 
 ## Caching Headers
+
+HTTP caching headers let you push caching decisions from your application code into the HTTP infrastructure — browsers, CDNs, and reverse proxies. The fundamental distinction is between *freshness* (how long a cached response can be served without contacting the origin) and *validation* (checking with the origin whether a cached response is still current). `Cache-Control: max-age=N` controls freshness. `ETag` / `If-None-Match` and `Last-Modified` / `If-Modified-Since` enable validation: the client can ask "has this changed since I last fetched it?" and receive a `304 Not Modified` response (no body, tiny bandwidth cost) when it has not. Getting these headers right is one of the highest-leverage performance improvements available — a well-cached API response costs zero server CPU.
 
 ```javascript
 // ─── Cache-Control directives ─────────────────────────────────────────────
@@ -389,6 +403,8 @@ app.get('/api/data', (req, res) => {
 ---
 
 ## Content Negotiation
+
+Content negotiation is the HTTP mechanism by which a client advertises what formats, encodings, and languages it accepts, and the server selects and returns the most appropriate variant. `Accept: application/json, text/html` lets a single URL serve an API response to a programmatic client and an HTML page to a browser. `Accept-Encoding: gzip, br` enables response compression — the server compresses the body and sets `Content-Encoding: gzip`, the client decompresses transparently. Brotli (`br`) typically achieves 20–30% better compression than gzip for JSON and text, making it the preferred encoding when both client and server support it. In Express, the `compression` middleware handles this automatically for any response above the configured size threshold.
 
 ```javascript
 // Client sends Accept headers to specify preferred formats:

@@ -4,6 +4,8 @@
 
 ## Identifying Performance Issues
 
+Performance problems in Node.js fall into three distinct categories that require different diagnostic tools and fixes. CPU-bound issues are caused by synchronous computation (regex backtracking, large JSON parsing, crypto on the main thread) that holds the event loop and blocks all other requests. Memory issues arise from objects accumulating without bound, causing the heap to grow until the process runs out of memory or GC pauses become so frequent that throughput collapses. I/O-bound issues are the most common: slow database queries, missing indexes, N+1 query patterns, or chatty microservice calls that chain latency. Misidentifying the category wastes diagnostic effort — always measure before optimising.
+
 ```
 Three main types of bottlenecks:
 1. CPU-bound  — heavy computation blocks event loop
@@ -14,6 +16,8 @@ Three main types of bottlenecks:
 ---
 
 ## Profiling with --prof
+
+V8's built-in sampling profiler records which functions are on the call stack at regular intervals, producing a statistical picture of where CPU time goes. The `--prof` flag enables it and writes a binary log file. `--prof-process` converts that log into a human-readable text report grouped by function. The key section is "Bottom up (heavy) profile" — functions listed at the top are responsible for the most CPU time. This approach requires no code changes, has low overhead, and works in production (with caution), making it the right first tool when you have a CPU problem but no idea where to look.
 
 ```bash
 # Generate V8 profiling data:
@@ -35,6 +39,8 @@ cat profile.txt | head -100
 
 ## Clinic.js — Comprehensive Profiling
 
+Clinic.js is a suite of Node.js performance diagnostic tools that go beyond raw profiling data by providing visual, annotated reports. `clinic doctor` automatically detects the type of bottleneck (CPU saturation, I/O delays, memory growth, event loop blocking) and suggests causes. `clinic flame` generates an interactive flame graph for CPU profiling. `clinic bubbleprof` visualises async I/O delays and shows where time is spent waiting. Run your normal load test while clinic instruments the process, then open the generated HTML report. It is the fastest path from "something is slow" to "here is the specific function or async gap responsible".
+
 ```bash
 npm install -g clinic
 
@@ -54,6 +60,8 @@ clinic heapprofiler -- node server.js
 ---
 
 ## Blocking the Event Loop — Detection
+
+You cannot fix event loop blocking you cannot measure. The lag detection pattern works by scheduling a `setInterval` and measuring the gap between when it was scheduled and when it actually fires — any excess over the nominal interval is lag caused by synchronous work. `performance.eventLoopUtilization()` (Node.js 14+) provides a 0–1 ratio of how much of the event loop's time is spent actively executing JavaScript versus waiting for I/O: 0% means fully idle, 100% means permanently blocked. Expose these metrics to your APM system to catch regressions before they affect users.
 
 ```javascript
 // Event loop lag monitoring:
@@ -86,6 +94,8 @@ setTimeout(() => {
 
 ## Common CPU Bottlenecks
 
+Certain patterns reliably appear at the top of Node.js CPU profiles. Synchronous file reads block the event loop for the entire disk latency. `bcrypt` and `argon2` are intentionally slow (that is their purpose) and must be run in Worker Threads. `JSON.parse` on large payloads is synchronous and can block for hundreds of milliseconds on a 50MB payload. ReDoS (Regular expression Denial of Service) happens when a pattern with nested quantifiers is given crafted input that causes exponential backtracking — one request can freeze the server for minutes. Recognising these patterns in a flame graph is the core skill of Node.js performance debugging.
+
 ```javascript
 // 1. Synchronous file reads (blocks event loop):
 // ❌ Bad:
@@ -115,6 +125,8 @@ vulnerable.test('aaaaaaaaaaaab'); // BLOCKS for a long time!
 ---
 
 ## Memory Profiling
+
+`process.memoryUsage()` provides a breakdown of the process's memory consumption that should be monitored over time, not just sampled once. `heapUsed` is the most actionable number: a monotonically growing `heapUsed` under constant load is the signature of a memory leak. RSS (Resident Set Size) includes native memory, C++ addon memory, and shared libraries on top of the V8 heap. Heap snapshots (via `--inspect` or `v8.writeHeapSnapshot()`) capture the object graph at a point in time so you can compare two snapshots and identify which objects are accumulating. The SIGUSR2 signal handler pattern lets you trigger a snapshot in a running production process without restarting.
 
 ```javascript
 // Log memory usage periodically:
@@ -147,6 +159,8 @@ process.on('SIGUSR2', () => {
 ---
 
 ## Common Memory Leaks
+
+Most Node.js memory leaks fall into a small number of recognisable patterns. Understanding them lets you fix leaks quickly and write code that does not introduce them in the first place. The unifying principle is that the JavaScript garbage collector can only free objects with zero live references — any data structure that grows without bound and holds references to user data will eventually exhaust memory. The most common culprits are: unbounded Maps/arrays used as caches, event listeners added without corresponding removal, closures that accidentally capture large objects, and timers that reference expensive data and are never cleared.
 
 ```javascript
 // 1. Forgotten event listeners:
@@ -189,6 +203,8 @@ function start() {
 ---
 
 ## Caching Strategies in Practice
+
+In-process caching (keeping computed results or database records in a `Map` or LRU cache) eliminates network round trips entirely and is the fastest possible cache hit — sub-millisecond. The trade-off is that each process instance has its own cache, so in a clustered or multi-instance deployment the cache hit rate per instance is lower and stale data can persist until the TTL expires. Use a bounded LRU cache with a short TTL for hot data, and pair it with HTTP caching headers (`ETag`, `Cache-Control`) to push caching further up the stack to CDNs and browsers for public data.
 
 ```javascript
 // Node-cache for in-process caching:

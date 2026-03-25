@@ -71,6 +71,8 @@ export default counterSlice.reducer;
 
 ## configureStore
 
+`configureStore` is RTK's replacement for the legacy `createStore`. It combines multiple slice reducers into a single root reducer, automatically sets up Redux DevTools integration, and includes `redux-thunk` middleware by default. Think of it as the single source of truth that owns the entire application state tree. You define it once, export typed hooks from it, and then wrap your app with a `<Provider>` — every component below can then read or update state without prop drilling.
+
 ```ts
 // store/index.ts
 import { configureStore } from '@reduxjs/toolkit';
@@ -94,6 +96,8 @@ export type AppDispatch = typeof store.dispatch;
 
 ## Typed Hooks
 
+Out of the box, `useSelector` and `useDispatch` from `react-redux` are generic and untyped. Creating thin wrappers that bake in your `RootState` and `AppDispatch` types gives you full autocomplete and compile-time safety throughout the codebase. This pattern is the official RTK recommendation — define these once in `store/hooks.ts` and import them everywhere instead of the raw hooks.
+
 ```ts
 // store/hooks.ts
 import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';
@@ -106,6 +110,8 @@ export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 ---
 
 ## Provider + Usage
+
+React-Redux uses React Context under the hood to make the Redux store accessible to any component in the tree. The `<Provider store={store}>` wrapper at the root of your app injects the store into context. Components never import the store directly — they use `useAppSelector` to read state (subscribing to re-renders on change) and `useAppDispatch` to send actions. This keeps components decoupled from the store implementation.
 
 ```tsx
 // main.tsx
@@ -292,7 +298,7 @@ function UserList() {
 
 ## createEntityAdapter
 
-Manages normalized state for collections (like a mini in-memory DB).
+Manages normalized state for collections (like a mini in-memory DB). When storing an array of entities (posts, users, products), the naive approach puts them in a plain array — but looking up an item by ID requires a linear scan. Normalization restructures the data as `{ ids: string[], entities: Record<id, Entity> }`, giving O(1) lookups. `createEntityAdapter` generates this data structure plus pre-built CRUD operations (`addOne`, `updateOne`, `removeOne`, `upsertOne`, etc.) and memoized selectors (`selectAll`, `selectById`). Use it any time you manage a list where individual items need to be looked up, updated, or removed by ID.
 
 ```ts
 import { createEntityAdapter, createSlice } from '@reduxjs/toolkit';
@@ -329,6 +335,8 @@ export const {
 
 ## Middleware
 
+Redux middleware is a composable extension point that sits between dispatching an action and the reducer processing it. Each middleware receives the store's `getState` and `dispatch`, then passes the action to the next middleware in the chain via `next(action)`. This is how side effects (logging, analytics, crash reporting, API calls) are handled without polluting reducers — reducers must stay pure. RTK includes `redux-thunk` and its serialization check middleware by default; you extend the chain with `getDefaultMiddleware().concat(yourMiddleware)`.
+
 ```ts
 // Custom logger middleware
 const logger = (store: MiddlewareAPI) => (next: Dispatch) => (action: Action) => {
@@ -349,6 +357,8 @@ configureStore({
 ---
 
 ## Selectors with Reselect
+
+A selector is a function that reads and derives data from the Redux state. The problem with plain selector functions is that derived computations (filtering, sorting, totalling) run on every render even when their inputs haven't changed. Reselect's `createSelector` memoizes the output: it re-runs the projector function only when its input selectors return new values. RTK re-exports `createSelector` from Reselect, so no extra install is needed. Use memoized selectors for any transformation more expensive than a simple property lookup.
 
 ```ts
 import { createSelector } from '@reduxjs/toolkit'; // re-exported from reselect
@@ -385,6 +395,8 @@ export const selectCartTotal = createSelector(
 ---
 
 ## Redux DevTools
+
+Redux DevTools is a browser extension that gives you a live, inspectable log of every action dispatched and every resulting state change. Because Redux state is a pure function of dispatched actions, you can replay any sequence of events to reproduce bugs exactly. `configureStore` wires up DevTools automatically in development — no configuration required beyond installing the extension.
 
 Install the browser extension. With `configureStore`, DevTools work automatically:
 - Time-travel: step backward/forward through actions

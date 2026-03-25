@@ -19,6 +19,8 @@ Priority (highest → lowest):
 
 ## Code Tracing Examples
 
+Predicting execution order is a core Node.js interview skill. The mental model is: synchronous code empties the call stack first; then the two microtask queues (nextTick, then Promises) drain completely; then the event loop runs one phase at a time, draining its microtask queues after every callback. Working through these examples from the complete priority chain above will make most real-world ordering questions predictable.
+
 ### Example 1: Basic Order
 
 ```javascript
@@ -155,6 +157,8 @@ LOOP BEGIN:
 ---
 
 ## Key Interview Scenarios
+
+These three scenarios are the most commonly tested in Node.js interviews. Each one isolates a specific rule: the non-determinism of timers at the top level, the absolute priority of `nextTick` over Promises, and the deterministic behavior of `setImmediate` when scheduled from inside an I/O callback. Memorizing the rule is less useful than understanding why each one holds.
 
 ### Scenario 1: Which fires first — setTimeout(0) or setImmediate?
 

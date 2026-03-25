@@ -4,6 +4,8 @@
 
 ## Four Methods
 
+Child processes exist because Node.js is single-threaded — CPU-intensive work or shell commands block the event loop for all in-flight requests. Spawning a child process offloads that work to a separate OS process with its own memory space and CPU time. The four `child_process` methods differ in how they launch the process, how they handle I/O, and whether they add an IPC channel. Choosing the wrong one leads to either shell injection vulnerabilities (`exec` with user input), running out of memory (`exec` on large output), or unnecessary overhead (`fork` when `spawn` suffices). The general rule: prefer `execFile`/`spawn` for external binaries and `fork` for Node.js worker scripts.
+
 ```javascript
 const { exec, execFile, spawn, fork } = require('child_process');
 
@@ -16,6 +18,8 @@ const { exec, execFile, spawn, fork } = require('child_process');
 ---
 
 ## exec — Shell Commands
+
+`exec` launches a command string through the system shell (`/bin/sh` on Unix, `cmd.exe` on Windows), which means you get shell features like pipes, glob expansion, and `&&` chaining. The entire stdout and stderr are buffered in memory and delivered in one callback. Because it uses a shell, any user-controlled content interpolated into the command string becomes a shell injection vector — an attacker can append `; rm -rf /` or similar. Limit `exec` to trusted, hardcoded commands with small output. For anything involving user input, switch to `execFile` or `spawn` which pass arguments as an array, bypassing the shell entirely.
 
 ```javascript
 const { exec } = require('child_process');
@@ -52,6 +56,8 @@ execFile('find', [req.query.path, '-name', '*.txt'], callback);
 ---
 
 ## spawn — Streaming, Large Output
+
+`spawn` launches a binary directly (no shell) and exposes its stdin, stdout, and stderr as Node.js streams. Because it streams rather than buffers, it is safe for commands that produce large output — video encoding, log tailing, database dumps — where buffering everything in memory would cause an OOM crash. The absence of a shell also eliminates injection risk when you pass arguments as an array. Use `spawn` as the default choice for running external binaries; switch to `exec` only when you specifically need shell features and trust the input completely.
 
 ```javascript
 const { spawn } = require('child_process');
@@ -105,6 +111,8 @@ function spawnAsync(command: string, args: string[]) {
 ---
 
 ## fork — Node.js to Node.js with IPC
+
+`fork` is a specialised form of `spawn` that always runs a Node.js script and automatically creates an IPC (Inter-Process Communication) channel between parent and child. This channel enables structured message passing via `child.send()` / `process.on('message')` without serializing to shell arguments or pipes. The child runs in a completely separate V8 instance with its own heap, so a crash or memory leak in the child cannot corrupt the parent. IPC messages are serialized with `JSON.stringify`, so only JSON-safe values can be passed. Use `fork` when you need reliable two-way communication between Node.js processes; for one-shot computation with a result, a Worker Thread is lighter-weight.
 
 ```javascript
 // parent.js:
@@ -161,6 +169,8 @@ process.on('SIGTERM', () => {
 
 ## fork for CPU-Intensive Work
 
+The single-threaded event loop means that a long synchronous computation (prime factorisation, image manipulation, ML inference) stalls every other request for its entire duration. Forking a child process for that computation moves it off the main thread so the event loop remains responsive. The pattern is: receive an HTTP request, fork a worker, send the input via IPC, receive the result via IPC, respond to the client. Note that forking per request is expensive — for sustained CPU work, maintain a pool of pre-forked workers and queue tasks to them rather than spawning fresh processes on every request.
+
 ```javascript
 // Offload heavy computation without blocking event loop:
 
@@ -212,6 +222,8 @@ app.get('/factor/:n', (req, res) => {
 ---
 
 ## detached — Background Processes
+
+By default, a Node.js process stays alive as long as any of its child processes are still running. The `detached` option breaks this relationship: the child becomes the leader of a new process group and is no longer tracked by the parent. Combined with `stdio: 'ignore'` (so the child has no inherited file descriptors) and `child.unref()` (so the parent's event loop stops waiting), the child becomes a true background daemon that survives the parent exiting. This pattern is used to launch long-running background jobs, log tailers, or daemon processes from a short-lived script.
 
 ```javascript
 // Start a process that survives parent exit:

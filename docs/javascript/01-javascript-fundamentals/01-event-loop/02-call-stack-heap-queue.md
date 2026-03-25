@@ -22,6 +22,8 @@ The call stack is a **Last In, First Out (LIFO)** data structure that tracks fun
 
 ### How it works
 
+Each time a function is called, JavaScript pushes a new frame onto the stack containing that function's local variables, arguments, and return address. When the function returns, its frame is popped off. Because the stack is LIFO, the most recently called function is always the first to complete — deeply nested calls build the stack up from bottom to top, then unwind back in reverse order.
+
 ```javascript
 function greet(name) {
   return `Hello, ${name}`;       // 3. runs, returns
@@ -51,6 +53,8 @@ Each frame stores:
 - Return address (where to go when function returns)
 
 ### Stack Overflow
+
+Stack overflow occurs when recursive calls keep pushing frames without ever popping them — the stack grows until it exhausts its fixed memory budget. Every recursive function needs a base case that stops the recursion before the engine hits its limit (~15,000 frames in Node.js). When the limit is exceeded, V8 throws a `RangeError` rather than silently corrupting memory.
 
 ```javascript
 function countDown(n) {
@@ -94,6 +98,8 @@ console.log(obj1.count); // 99 — same object!
 
 ### Stack vs Heap
 
+The stack and the heap serve fundamentally different purposes. The stack holds short-lived, fixed-size data tied to function execution frames — it's managed automatically by push and pop. The heap holds dynamically allocated objects whose size and lifetime are unpredictable; V8's garbage collector reclaims heap memory when no references to an object remain. Variables in the stack that hold objects actually store a *reference* (pointer) into the heap, not the object itself — this is why passing an object between functions shares the same underlying data.
+
 | | Stack | Heap |
 |---|---|---|
 | Stores | Primitives, references, frames | Objects, arrays, functions |
@@ -123,6 +129,8 @@ There are TWO queues, with different priorities:
 
 ### Microtask Queue (High Priority)
 
+The microtask queue is a FIFO list of callbacks that must run before the event loop is allowed to move on to any macrotask. It was designed for Promise resolution — the spec requires that `.then()` handlers complete before yielding back to the event loop, so that a promise chain behaves atomically from the caller's perspective. Every time the call stack empties, the engine drains the entire microtask queue before even looking at the macrotask queue.
+
 Sources:
 - `Promise.then()` / `.catch()` / `.finally()`
 - `queueMicrotask()`
@@ -132,6 +140,8 @@ Sources:
 **Rule:** The entire microtask queue drains BEFORE the event loop picks the next macrotask.
 
 ### Macrotask Queue (Lower Priority)
+
+The macrotask queue (also called the task queue) holds callbacks from timer APIs, I/O completions, and UI events. Unlike the microtask queue, only one macrotask is dequeued per event loop iteration — after which the microtask queue is fully drained before the next macrotask runs. This one-at-a-time design ensures that no single timer or I/O callback can monopolize the loop.
 
 Sources:
 - `setTimeout()` callback

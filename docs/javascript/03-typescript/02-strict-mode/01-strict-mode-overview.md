@@ -60,6 +60,8 @@ function greetMaybe(name: string | null) {
 
 ## noImplicitAny — Require Explicit Types
 
+Without this flag, TypeScript silently infers `any` when it cannot determine a type — most commonly on unannotated function parameters. This defeats the purpose of TypeScript for those values. `noImplicitAny` requires you to be explicit: either annotate the parameter with a real type, or deliberately write `any` to opt out. The explicit `any` is a signal that you are consciously bypassing the type checker, rather than doing it accidentally.
+
 ```typescript
 // Without noImplicitAny:
 function process(data) { // 'data' implicitly has 'any' type
@@ -89,6 +91,8 @@ function process(data: unknown) {
 
 ## strictPropertyInitialization — Class Properties
 
+This flag enforces that every class property declared with a type must either be initialized in its declaration or definitely assigned in the constructor. The problem it solves is common: a property is declared but only assigned asynchronously (in `init()` or a lifecycle hook), causing runtime errors when code tries to use it before setup completes. If you genuinely need to defer initialization, the definite assignment assertion (`!`) lets you signal this intent explicitly rather than silently allowing the unsafe pattern.
+
 ```typescript
 class UserService {
   // ❌ Error: Property 'db' has no initializer and is not
@@ -112,6 +116,8 @@ class UserService {
 ---
 
 ## strictFunctionTypes — Contravariant Parameters
+
+Function type compatibility is counterintuitive: a function that accepts a wider (more general) input type is actually more capable — it can safely substitute anywhere a more specific function is expected. This is called contravariance. Without `strictFunctionTypes`, TypeScript was bivariant for method parameters (allowing both directions), which was unsound and could let you call a `DogHandler` with a `Cat` at runtime. With this flag, parameter types are checked contravariantly for function-type properties, catching real bugs in callback types and event handler assignments.
 
 ```typescript
 // Function parameters are contravariant in strict mode
@@ -144,6 +150,8 @@ const handleDog: DogHandler = handleAnimal; // ✅ safe!
 
 ## noImplicitThis — Typed `this`
 
+In JavaScript, `this` inside a regular function depends on how the function is called, not where it's defined. TypeScript normally cannot infer a meaningful type for `this` in standalone functions, so it defaults to `any` — disabling all type checks on `this` access. `noImplicitThis` flags these cases, requiring you to declare an explicit `this` parameter (a TypeScript-only annotation that disappears at compile time) so the type checker can verify that your `this` access is safe. Class methods are already fine because `this` is always the class instance.
+
 ```typescript
 // Without noImplicitThis:
 function greet() {
@@ -173,6 +181,8 @@ class User {
 
 ## useUnknownInCatchVariables
 
+Before TypeScript 4.4, caught errors in `catch` blocks were typed as `any` — meaning you could write `err.message` with no type checking and it would compile fine even if `err` was a string or number. This flag (enabled by default in strict mode) types catch variables as `unknown` instead, forcing you to narrow before use. This is safer because anything can be thrown in JavaScript — not just `Error` objects.
+
 ```typescript
 // Before TS 4.4 (without flag):
 try {
@@ -201,7 +211,7 @@ try {
 
 ## Enabling Flags Individually
 
-If you can't use full strict mode, enable flags progressively:
+If you can't use full strict mode — for instance, when migrating a large JavaScript codebase to TypeScript incrementally — you can enable flags one at a time. The recommended order is by impact: `noImplicitAny` catches the most issues first, followed by `strictNullChecks` which eliminates the most common runtime errors. Each flag can be turned on independently without requiring the others, letting you tighten safety gradually.
 
 ```json
 {
@@ -221,6 +231,8 @@ If you can't use full strict mode, enable flags progressively:
 
 ## Additional Strict-Adjacent Flags (Not in `strict`)
 
+These flags go beyond the `"strict"` bundle and provide even tighter guarantees. They are not enabled by `"strict": true` — you opt into them explicitly. They are particularly useful for safety-critical codebases and are worth enabling on new projects where backward compatibility is not a concern.
+
 ```json
 {
   "compilerOptions": {
@@ -235,6 +247,8 @@ If you can't use full strict mode, enable flags progressively:
 ```
 
 ### noUncheckedIndexedAccess — Very Useful
+
+By default, TypeScript trusts that array access and object index access always return a value of the declared element type. This is optimistic — an out-of-bounds array access returns `undefined` at runtime, not a string. With `noUncheckedIndexedAccess`, TypeScript widens the type of indexed access to `T | undefined`, forcing you to handle the possibility of a missing element. This is especially valuable when iterating over arrays in ways that could go out of bounds, or when reading from a `Record` with an uncontrolled key.
 
 ```typescript
 // Without flag:

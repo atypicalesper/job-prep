@@ -4,6 +4,8 @@
 
 ## How Node.js HTTP Works Under the Hood
 
+Every outbound HTTP request from Node.js starts as a TCP socket. For HTTPS, a TLS handshake is layered on top of the TCP connection before the HTTP request bytes are sent. Without connection reuse, every single request pays this setup cost — roughly 3ms for TCP plus 50–100ms for TLS on a typical network. Node.js's `http.Agent` is the connection pool that amortises this cost: it maintains a set of idle sockets to each host and reuses them for subsequent requests. The difference between the default agent (`keepAlive: false`) and a keep-alive agent is the difference between paying the full handshake cost per request versus paying it once per connection lifetime. For a service making 100 req/s to a downstream HTTPS API, this can mean the difference between 10 seconds of handshake overhead per second (absurd) versus near zero.
+
 ```
 Node.js HTTP client (http/https module) sits on top of net.Socket (TCP).
 
@@ -25,6 +27,8 @@ HTTP/2:
 ---
 
 ## http.Agent — Connection Pool
+
+`http.Agent` is Node.js's built-in HTTP connection pool. It maintains a set of reusable TCP (and TLS) sockets to a given host, eliminating the handshake cost on subsequent requests. Without an agent — or with the default agent that has `keepAlive: false` — every single HTTP request pays the full TCP + TLS setup latency (~100–200ms for HTTPS). The agent is a singleton resource: create one per external service at startup and reuse it across all requests. Creating a new agent per request is one of the most common and expensive Node.js performance mistakes.
 
 ```javascript
 const http = require('http');
@@ -71,6 +75,8 @@ const apiClient = axios.create({
 
 ## Understanding maxSockets
 
+`maxSockets` is a per-host limit on the number of simultaneous open TCP connections. The default is `Infinity` — meaning under load your service could open thousands of connections to the same downstream server, overwhelming it. Setting a reasonable cap (10–100 depending on the target) causes excess requests to queue in `agent.requests` rather than opening new sockets, creating natural backpressure. The right value depends on the target server's connection limit and your service's concurrency needs; monitor `agent.requests` queue depth in production to tune it.
+
 ```javascript
 // maxSockets: max concurrent connections TO A SINGLE HOST
 // NOT max connections total (it's per-host)
@@ -103,6 +109,8 @@ async function getUser(id) {
 ---
 
 ## Monitoring the Agent
+
+An agent exposes live state through three properties: `sockets` (connections actively handling a request), `freeSockets` (idle connections kept alive), and `requests` (queued requests waiting for a free socket). Periodically logging these metrics tells you whether your pool is sized correctly. A long `requests` queue means `maxSockets` is too low and latency is building up. A large `freeSockets` count means `maxFreeSockets` is higher than needed, wasting memory and file descriptors. Instrument this in production alongside your APM to correlate pool saturation with latency spikes.
 
 ```javascript
 // Inspect current pool state:
@@ -137,6 +145,8 @@ setInterval(() => {
 ---
 
 ## Undici — Modern HTTP Client (Node.js 18+)
+
+Undici is the HTTP/1.1 and HTTP/2 client that powers Node.js's built-in `fetch`. Compared to the legacy `http`/`https` modules, it offers better throughput, a cleaner API, native HTTP/2 multiplexing support, and connection pooling built in by default. The `Pool` class manages a fixed number of connections to a single origin and is the direct replacement for hand-managing an `https.Agent`. If you are building a new service or replacing a custom HTTP client wrapper, prefer Undici (or `fetch` which uses it under the hood) over the legacy `http` module directly.
 
 ```javascript
 // undici: the HTTP client used internally by Node.js fetch()
@@ -179,6 +189,8 @@ const res = await fetch('https://api.example.com/users');
 
 ## HTTPS and TLS Internals
 
+Every HTTPS connection begins with a TLS handshake that authenticates the server and negotiates a session key. With keep-alive, this cost is paid once per connection lifetime and amortised across hundreds or thousands of requests. Without keep-alive, it is paid on every single request. For internal services using self-signed or private CA certificates, you must provide the CA certificate to the agent so Node.js can verify the server's identity — setting `rejectUnauthorized: false` disables all verification and is equivalent to having no TLS security at all. Mutual TLS (mTLS) adds client certificate authentication on top of server authentication, which is the standard for zero-trust internal service meshes.
+
 ```javascript
 // TLS handshake adds ~100ms on first connection.
 // With keep-alive: paid only once per connection (not per request).
@@ -213,6 +225,8 @@ const agent = new https.Agent({
 ---
 
 ## Connection Timeouts vs Request Timeouts
+
+There are three distinct timeout concepts that are commonly confused. The *connect timeout* limits how long to wait for the TCP handshake to complete — relevant when the target host is down or unreachable. The *socket idle timeout* fires if no data arrives on an already-open connection for the specified duration — it resets with each data chunk, so it detects stalled mid-stream responses but not slow-starting ones. The *request timeout* (via `AbortController`) is a total wall-clock budget from initiation to fully received response — the right tool for enforcing SLAs ("this downstream call must complete within 2 seconds, no matter what").
 
 ```javascript
 // Three different timeouts to configure:
@@ -262,6 +276,8 @@ req.on('error', (err) => {
 
 ## HTTP Keep-Alive Headers
 
+Keep-alive connection reuse is negotiated by HTTP headers: both sides must agree. The client signals willingness with `Connection: keep-alive` (HTTP/1.1 default), and the server confirms with `Connection: keep-alive` and optionally a `Keep-Alive: timeout=N, max=M` header specifying how long to hold the socket open and how many requests to serve on it. Node.js's `https.Agent` handles this negotiation automatically when `keepAlive: true`. Understanding the headers lets you verify keep-alive is actually working (check the response headers in development) and diagnose cases where the server closes connections sooner than expected.
+
 ```javascript
 // Keep-alive is negotiated via headers:
 // Request:  Connection: keep-alive
@@ -286,6 +302,8 @@ console.log(res1.headers.get('connection')); // 'keep-alive'
 ---
 
 ## Common Mistakes and Best Practices
+
+The four most impactful mistakes with HTTP agents are: creating a new agent per request (defeats pooling), leaving `maxSockets` at `Infinity` (can overwhelm downstream servers), not calling `agent.destroy()` on shutdown (idle sockets keep the event loop alive and delay process exit), and creating one shared agent for all external services (obscures per-service tuning and monitoring). Treat each external service as a distinct dependency with its own agent, timeout configuration, and monitoring.
 
 ```javascript
 // ❌ New agent per request:

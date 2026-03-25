@@ -26,6 +26,8 @@ const results = await Promise.all(
 
 ## Implement p-limit from Scratch
 
+The `p-limit` implementation is a common interview question because it reveals whether you understand how to coordinate async work without threads. The core idea is a running counter and a queue of pending task thunks. When `limit(fn)` is called, if a slot is free (`running < concurrency`), the task starts immediately; otherwise the thunk is enqueued. Every time a task finishes, it decrements `running` and calls `next()`, which dequeues and starts the next pending task. The result is a sliding window of exactly `concurrency` tasks always in flight, with no gaps and no excess.
+
 ```typescript
 // This is the most common concurrency interview question in Node.js
 
@@ -188,6 +190,8 @@ await Promise.all([
 
 ## Batch Processing with Concurrency
 
+Batch processing divides a large array into fixed-size chunks and processes each chunk sequentially, waiting for the entire chunk to complete before starting the next. This is simpler to implement than `p-limit` but less efficient: if one item in a batch is slow, the remaining items in the next batch wait even though worker capacity is free. Use batch processing when the downstream API accepts bulk operations (bulk inserts, batch API calls) where the unit of work is the batch itself, not the individual item.
+
 ```typescript
 // Process an array in batches — useful for DB bulk inserts
 async function processBatch<T, R>(
@@ -218,6 +222,8 @@ await processBatch(allRows, 1000, async (batch) => {
 ---
 
 ## Rate Limiter (Token Bucket)
+
+A rate limiter controls the **rate** at which requests are issued over time, whereas `p-limit` controls the **count** of simultaneously in-flight requests. The token bucket algorithm models a bucket that fills at a constant refill rate up to a maximum capacity. Each request consumes one token; if no token is available the request waits until the next refill. This naturally smooths out bursts: up to `maxTokens` requests can be sent immediately (consuming the full bucket), but sustained throughput is capped at `refillRate` per second. Use a rate limiter when you must respect a third-party API's documented rate limit; use `p-limit` when you need to protect your own resources from overload.
 
 ```typescript
 // Respect external API rate limits (e.g., 100 req/s)
@@ -283,6 +289,8 @@ const results = await Promise.all(
 
 ## Promise Pool (streaming results as they complete)
 
+`Promise.all` is all-or-nothing: it waits for every promise to settle before yielding any results. A promise pool using an async generator instead yields each result as soon as it resolves, enabling the consumer to begin processing early results while slower ones are still in flight. This is valuable for UI progress updates, streaming pipelines where downstream processing can start before all input is ready, or any scenario where you want to minimize time-to-first-result rather than time-to-all-results.
+
 ```typescript
 // Unlike Promise.all, stream results as each completes —
 // useful for UI updates or when you want early results
@@ -314,6 +322,8 @@ for await (const result of promisePool(urls, 10, fetchUser)) {
 ---
 
 ## Retry with Concurrency Control
+
+Retrying individual failed tasks while keeping the overall concurrency controlled is a production necessity: transient network errors, rate-limit 429s, and database deadlocks are all temporary conditions that warrant a retry rather than a hard failure. Combining `withRetry` and `p-limit` ensures that retried tasks reuse the same concurrency slot — the retry counts against the limit just like the first attempt — preventing a wave of retries from doubling the concurrency beyond the intended ceiling. Exponential backoff with jitter spreads retries across time to avoid the thundering-herd effect when many tasks fail simultaneously.
 
 ```typescript
 // Combine retry + concurrency limit — production pattern

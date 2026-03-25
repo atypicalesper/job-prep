@@ -1,5 +1,7 @@
 # Node.js Event Loop — Tricky Interview Questions
 
+Each question in this file targets a specific edge case of Node.js's event loop execution model. Before reading the answer, attempt to trace the output yourself using the priority chain: synchronous code → nextTick queue → Promise microtasks → setImmediate (check phase) → setTimeout (timers phase) → I/O callbacks. Predict the answer, then compare. The goal is to build intuition, not memorize outputs.
+
 ---
 
 ## Q1: What is the output?
@@ -158,6 +160,8 @@ nextTick in immediate
 
 ## Q7: The poll phase waiting
 
+The poll phase is the "idle" state of the Node.js event loop. When there are no timers, no pending callbacks, and no check-phase work, the event loop blocks in the poll phase waiting for new I/O events. An active server socket is an "active handle" that keeps the event loop alive indefinitely in this state — it will only unblock when a new connection arrives or `server.close()` is called.
+
 ```javascript
 const server = require('net').createServer();
 
@@ -211,6 +215,8 @@ process.nextTick(() => {
 
 ## Q10: Timer Precision
 
+`setTimeout` is not a real-time guarantee — it is a minimum delay. The callback will not run before the specified delay, but it may run significantly after if the event loop is busy. Blocking the event loop with synchronous code (a tight `while` loop, a slow `JSON.parse`, a synchronous file read) delays all callbacks that were waiting, including expired timers. This is the main reason synchronous blocking is so harmful in Node.js servers.
+
 ```javascript
 const start = Date.now();
 setTimeout(() => {
@@ -261,6 +267,8 @@ fs.readFile('large-file.txt', (err, data) => {
 
 ## Q13: EventEmitter and the Event Loop
 
+`EventEmitter` is often confused with being async because it is used alongside async patterns. In reality, `emit()` is entirely synchronous — it calls all registered listeners immediately in the current call stack, in the order they were registered. This is fundamentally different from `setTimeout`, `setImmediate`, or Promise callbacks. If you need a listener to run asynchronously after the current turn, wrap the emission in `process.nextTick` or `setImmediate`.
+
 ```javascript
 const { EventEmitter } = require('events');
 const ee = new EventEmitter();
@@ -282,6 +290,8 @@ after emit
 ---
 
 ## Q14: process.exit vs natural exit
+
+Node.js provides two ways to observe process termination: `'exit'` fires synchronously just before the process terminates and cannot schedule new async work (any timers or Promises added there will never run), and `'beforeExit'` fires when the event loop drains and gives you a chance to add more work. If you add async work in `'beforeExit'`, the loop keeps running and `'beforeExit'` will fire again when it drains — this continues until no work is added, at which point `'exit'` fires and the process ends.
 
 ```javascript
 process.on('exit', (code) => {

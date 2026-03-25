@@ -52,7 +52,7 @@ Real DOM nodes are heavyweight objects with hundreds of properties. A VDOM node 
 
 ## The Diffing Algorithm
 
-React's diffing algorithm runs in **O(n)** time (not the theoretical O(n³) for tree diff) by making two key assumptions:
+React's diffing algorithm (also called reconciliation) is the process of comparing the new VDOM tree produced by a render against the previous one to compute the minimal set of real DOM changes. A naive tree diff of two trees takes O(n³) time — too slow for large UIs. React reduces this to O(n) by making two heuristic assumptions that hold true for almost all practical React applications: elements of different types produce completely different trees, and list items have stable identity keys. Violating these assumptions (e.g., using random keys) causes React to fall back to worst-case behavior and destroy/rebuild subtrees unnecessarily.
 
 ### Assumption 1: Different types produce different trees
 
@@ -159,6 +159,8 @@ React's diffing algorithm runs in **O(n)** time (not the theoretical O(n³) for 
 
 React 16 introduced the **Fiber** architecture, replacing the old synchronous "stack" reconciler. The key insight: rendering can be interrupted.
 
+Fiber is React's internal reimplementation of the reconciliation algorithm as a linked list of work units rather than a recursive call stack. The old stack reconciler had to complete an entire render synchronously in one pass — if the component tree was large, the JS thread was blocked for tens of milliseconds, causing dropped frames. Fiber makes rendering interruptible: React can pause after processing any individual fiber node, yield control to the browser for a frame, then resume. This is the foundation that makes concurrent features like `useTransition`, `Suspense`, and prioritized rendering possible.
+
 ### The Problem with Synchronous Rendering
 
 ```
@@ -215,6 +217,8 @@ Phase 1: RENDER (interruptible)               Phase 2: COMMIT (synchronous)
 
 ## Keys — Why They Matter
 
+Keys are how React identifies which elements in a list correspond to which elements across renders. Without keys, React compares list items by their position (index), which causes incorrect state reuse and unnecessary DOM mutations when items are added, removed, or reordered. A key must be stable (not change across renders), unique among siblings, and not based on the item's index if the list order can change. Using a database-assigned ID is almost always the right choice.
+
 ### Anti-pattern: Using Array Index as Key
 
 ```jsx
@@ -264,6 +268,8 @@ function TodoList({ todos }) {
 ---
 
 ## Re-render Behavior — Code Examples
+
+Understanding what triggers a re-render — and what it costs — is the foundation of React performance work. A re-render means calling the component function and diffing the returned VDOM; it does not necessarily mean updating the real DOM. Most re-renders are fast and harmless. The problem arises when expensive computations run on every render or when many components re-render due to a single state change far up the tree. The tools to address this — `React.memo`, `useMemo`, `useCallback`, and structural patterns like moving state down — are only worth reaching for after you have measured an actual problem with React DevTools Profiler.
 
 ### When Does a Component Re-render?
 

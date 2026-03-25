@@ -6,6 +6,8 @@ Senior engineers are expected to spot these in code reviews.
 
 ## 1. Blocking the Event Loop
 
+Node.js runs JavaScript on a single thread. Any synchronous operation that takes more than a few milliseconds — file reads with `readFileSync`, giant `JSON.parse`, a pathological regular expression — stalls *every* concurrent request for its entire duration. A server that blocks for 500ms on one request effectively drops all others for half a second. The event loop is Node.js's core concurrency primitive; protecting it is the first rule of production Node.js development. Move all long synchronous work to async I/O, Worker Threads, or child processes.
+
 ```javascript
 // ❌ Synchronous operations on the main thread:
 app.get('/users', (req, res) => {
@@ -41,6 +43,8 @@ app.post('/import', express.raw({ type: 'application/json', limit: '100mb' }), a
 ---
 
 ## 2. Unhandled Promise Rejections
+
+A "fire-and-forget" async call — one that is neither awaited nor given a `.catch()` handler — creates a floating Promise. If that Promise rejects, Node.js v15+ treats it as a fatal error and crashes the process. Even in earlier versions, unhandled rejections are silent bugs that swallow errors and leave the system in an unknown state. The fix is always to either `await` the call (letting the surrounding try/catch handle it), attach a `.catch()` for background tasks, or use a global `unhandledRejection` handler as a safety net — never as a substitute for proper handling.
 
 ```javascript
 // ❌ Fire-and-forget without error handling:
@@ -80,6 +84,8 @@ process.on('unhandledRejection', (reason, promise) => {
 
 ## 3. Memory Leaks from Event Listeners
 
+`EventEmitter.on()` attaches a listener that persists until explicitly removed. Adding a new listener inside a request handler or a loop — without a corresponding `removeListener` / `off` — means the listener count grows with each request. Node.js warns at 11 listeners (`MaxListenersExceededWarning`), but the real danger is that each listener holds a closure that may reference response objects, keeping them alive in memory long after the request ends. The fix is to always pair `on` with `off` in a cleanup callback, use `once` for handlers that should fire exactly once, or scope listeners to short-lived objects rather than shared emitters.
+
 ```javascript
 // ❌ Adding listeners inside request handlers — never removed:
 app.get('/stream', (req, res) => {
@@ -115,6 +121,8 @@ wss.on('connection', (ws) => {
 ---
 
 ## 4. Callback Hell / Promise Anti-patterns
+
+Deeply nested callbacks ("pyramid of doom") and serialised `await` chains on independent operations are both forms of the same anti-pattern: unnecessary sequential execution. Running `await getUser()` then `await getConfig()` when neither depends on the other doubles the latency compared to `Promise.all`. Meanwhile, wrapping an existing Promise in `new Promise(...)` introduces an unnecessary layer of indirection and often loses error handling. The mental model is: if operations are independent, they can and should run concurrently; if they share no data dependency, sequential `await` is wasted time.
 
 ```javascript
 // ❌ Nested callbacks:
@@ -155,6 +163,8 @@ const [user, config, settings] = await Promise.all([
 ---
 
 ## 5. Incorrect Error Handling in async/await
+
+Swallowing errors with an empty or silent catch block is one of the hardest bugs to diagnose: the function returns `null` or `undefined`, the caller cannot tell it failed, and the problem manifests somewhere completely unrelated. Equally problematic is using `await` inside `forEach` — `forEach` ignores the returned Promise, so errors from the async callback are lost entirely. The correct iteration pattern is `for...of` with `await` or `Promise.all(items.map(...))` for concurrency. When re-throwing from a catch, always attach the original error as `.cause` so the full error chain is available in logs.
 
 ```javascript
 // ❌ Swallowing errors with empty catch:
@@ -203,6 +213,8 @@ await Promise.all(items.map(item => processItem(item)));
 
 ## 6. N+1 Queries
 
+The N+1 problem occurs when code fetches a list of N records and then issues one additional database query per record to load related data — resulting in N+1 round trips where 2 would suffice. It is extremely common when iterating over ORM results and accessing a relationship property inside the loop. The performance impact grows linearly with the size of the list: fetching 1000 users with their posts becomes 1001 queries. The solution is always to load the related data in bulk using a JOIN or a `WHERE id IN (...)` query and then assemble the relationship in memory.
+
 ```javascript
 // ❌ Classic N+1:
 const users = await db.query('SELECT * FROM users LIMIT 10'); // 1 query
@@ -242,6 +254,8 @@ users.forEach(u => { u.posts = postsByUser[u.id] ?? []; });
 
 ## 7. Mutating Shared State Across Requests
 
+Module-level variables in Node.js are shared across all requests handled by the same process — they are not reset between requests the way they would be in a per-request PHP or CGI model. An in-memory `Map` used as a cache grows indefinitely unless bounded, eventually causing an OOM crash. An object used to store per-request data gets cross-contaminated between concurrent requests. The correct model: treat module-level state as global singleton resources (connection pools, configuration, LRU caches with fixed bounds) and use request-scoped state only via `AsyncLocalStorage` or request-local objects.
+
 ```javascript
 // ❌ Shared mutable state — race condition between requests:
 let requestCount = 0;  // shared state — fine for a counter, dangerous for user data
@@ -278,6 +292,8 @@ app.get('/user/:id', async (req, res) => {
 
 ## 8. require() Inside Functions (Module Loading Anti-patterns)
 
+`require()` is synchronous — on first call it reads the file from disk, parses it, and executes it. Calling `require()` inside a hot code path (route handler, event loop tick) means that synchronous I/O happens on every request until the module is cached after the first call. More subtly, placing `require()` calls inside functions hides the module's dependencies from static analysis tools and makes the load order unpredictable. The correct pattern is top-level imports, which are resolved at process startup. If a module is truly optional and heavy (e.g., only needed for a rare feature), lazy-load it with a module-level variable initialised on first use.
+
 ```javascript
 // ❌ require() inside hot paths — slow synchronous I/O on first call:
 app.get('/pdf', async (req, res) => {
@@ -305,6 +321,8 @@ function getPuppeteer() {
 
 ## 9. Not Respecting Backpressure
 
+Backpressure is the signal from a writable stream that says "I'm full, stop sending". When you read faster than you write — for example, reading a file from disk at gigabytes per second and writing to a slow network socket — the unread data accumulates in Node.js buffers, consuming memory until the process crashes. The `pipe()` and `pipeline()` APIs handle backpressure automatically: they pause the readable whenever the writable's internal buffer is full and resume when it drains. The manual `readable.on('data', write)` pattern completely ignores this signal. Always use `pipeline()` from `stream/promises` for production streaming code — it also handles error propagation and cleanup on failure.
+
 ```javascript
 // ❌ Piping without backpressure — can crash with large files:
 app.get('/download', (req, res) => {
@@ -330,6 +348,8 @@ app.get('/download', (req, res) => {
 ---
 
 ## 10. Ignoring Process Signals / No Graceful Shutdown
+
+Container orchestrators (Kubernetes, ECS), process managers (PM2), and deployment tooling terminate processes by sending `SIGTERM`, then waiting a grace period before sending `SIGKILL`. A process that ignores `SIGTERM` and exits abruptly cuts off in-flight HTTP requests mid-response, leaks database connections, and may corrupt write-ahead logs. Graceful shutdown means: stop accepting new connections (`server.close()`), wait for in-flight requests to complete, close database and cache connections, then exit cleanly. The `setTimeout` force-exit ensures the process always terminates within the orchestrator's grace period even if a request is stuck.
 
 ```javascript
 // ❌ Process exits abruptly — in-flight requests dropped, DB connections leaked:

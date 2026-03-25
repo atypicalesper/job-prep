@@ -4,6 +4,8 @@
 
 ## NULL Behavior
 
+SQL uses three-valued logic: `TRUE`, `FALSE`, and `UNKNOWN`. `NULL` means "unknown value" and propagates through almost every operation — any comparison, arithmetic, or concatenation involving `NULL` produces `NULL` (or `UNKNOWN` in a boolean context). This is fundamentally different from JavaScript's `null`, which is falsy and comparable. Understanding this is critical because `UNKNOWN` in a `WHERE` clause means the row is excluded, silently breaking queries that assume `NULL` behaves like a normal value.
+
 ### Q1: What does this return?
 
 ```sql
@@ -73,6 +75,8 @@ SELECT COALESCE(10 / NULLIF(divisor, 0), 0) FROM ...;
 
 ## GROUP BY Gotchas
 
+`GROUP BY` collapses multiple rows into a single summary row per group. The constraint is that any column mentioned in `SELECT` must either be an expression that collapses rows (an aggregate function) or a column that defines the group (listed in `GROUP BY`). These questions test edge cases: what happens when you include non-grouped columns, use `HAVING` without `GROUP BY`, or mix filter conditions between `WHERE` and `JOIN ON`.
+
 ### Q5: GROUP BY with SELECT expressions
 
 ```sql
@@ -131,6 +135,8 @@ Result 2: All users; those with no order > 100 show NULL for amount
 ---
 
 ## Subqueries and CTEs
+
+A subquery is a query nested inside another query. A non-correlated subquery is independent — it runs once and its result is used by the outer query. A correlated subquery references columns from the outer query and must be re-executed for every row of the outer query, making it potentially very slow. CTEs (Common Table Expressions, introduced with `WITH`) give subqueries a name so they can be referenced multiple times and improve readability. Recursive CTEs allow the query to reference itself, which is how SQL handles hierarchical or graph-shaped data.
 
 ### Q8: Correlated vs Non-correlated Subquery
 
@@ -212,6 +218,8 @@ SELECT * FROM org ORDER BY level, name;
 
 ## JOINs and Set Operations
 
+SQL set operations (`UNION`, `INTERSECT`, `EXCEPT`) combine the results of two queries into a single result set. They require both queries to return the same number of columns with compatible types. `UNION` deduplicates by performing a sort or hash over the combined results; `UNION ALL` skips deduplication and is therefore always faster. `INTERSECT` returns only rows present in both result sets; `EXCEPT` returns rows in the first set that are not in the second.
+
 ### Q11: UNION vs UNION ALL
 
 ```sql
@@ -276,6 +284,8 @@ DELETE FROM users WHERE id IN (SELECT id FROM dupes WHERE rn > 1);
 ---
 
 ## Classic Problems
+
+These are the canonical SQL problems that appear in technical interviews. Each one tests a specific pattern: self-joins for hierarchical comparisons, `LAG`/`LEAD` or correlated subqueries for sequences and gaps, conditional aggregation for pivot-style reports, and recursive CTEs for tree traversal. Knowing multiple solutions to each problem and understanding their performance trade-offs is what distinguishes a strong SQL practitioner.
 
 ### Q14: Find Employees Earning More Than Their Manager
 

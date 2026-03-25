@@ -33,6 +33,8 @@ function MyComponent() {
 
 ## React.memo — Skip Re-renders When Props Unchanged
 
+`React.memo` is a higher-order component that wraps a component and memoizes the last rendered output. Before re-rendering, React performs a shallow comparison of the previous and new props. If all props are shallowly equal (`Object.is` for primitives, reference equality for objects/functions/arrays), React reuses the last rendered output and skips calling the component function entirely. This is an optimization — use it on components that render frequently with the same props and are expensive to render. Do not apply it everywhere; the comparison itself has a small cost that can exceed the render cost for trivial components.
+
 ```jsx
 // Without memo: re-renders every time parent renders
 function ExpensiveList({ items }) {
@@ -100,6 +102,8 @@ function Parent() {
 ---
 
 ## useMemo and useCallback — Stabilizing References
+
+The fundamental problem that `useMemo` and `useCallback` solve together is reference instability. In JavaScript, `{ a: 1 } !== { a: 1 }` and `() => {} !== () => {}` — every render creates new references for objects and functions even when the values are logically identical. This instability breaks `React.memo` (which compares prop references) and causes `useEffect` to re-run unnecessarily (when a dependency is technically new but semantically unchanged). `useMemo` stabilizes object/array references; `useCallback` stabilizes function references. They are most powerful when used in concert with `React.memo`.
 
 ### useMemo: Memoize Computed Values
 
@@ -208,6 +212,8 @@ Don't memoize when:
 
 ## Avoiding Unnecessary Re-renders — Structural Patterns
 
+Before reaching for `useMemo`/`useCallback`, consider whether the component tree structure itself is the problem. Two structural patterns — moving state down and lifting content up — can eliminate unnecessary re-renders without any memoization overhead. These patterns work because React only re-renders a component when its own state changes or its parent re-renders. By restructuring the tree so that frequently-changing state lives in a small, isolated component, you prevent its changes from reaching expensive siblings.
+
 ### Pattern 1: Move State Down
 
 ```jsx
@@ -288,6 +294,8 @@ function ScrollTracker({ children }) {
 
 ## Virtualization — Large Lists
 
+Virtualization (also called windowing) is the technique of rendering only the DOM nodes that are currently visible in the viewport. For a list of 10,000 items, a naive implementation creates 10,000 DOM nodes — each with layout properties, event listeners, and style calculations. Virtualization reduces this to roughly the number of items that fit in the viewport (typically 15–30 nodes), dramatically reducing initial paint time, memory usage, and scroll jank. The container maintains its full scrollable height (so the scrollbar behaves correctly), but only the visible nodes exist in the DOM. The library repositions nodes as the user scrolls.
+
 Rendering thousands of DOM nodes kills performance. Virtualization only renders items visible in the viewport.
 
 ```
@@ -352,6 +360,8 @@ function VirtualList({ items }) {
 ---
 
 ## Code Splitting with React.lazy and Suspense
+
+Code splitting defers the download of JavaScript bundles until they are actually needed. Without it, the browser must download, parse, and compile the entire application's JavaScript before the user can interact with any page — even pages the user may never visit. `React.lazy` integrates code splitting with the component model: the component's bundle is fetched on first render, and `Suspense` provides the loading state while the download is in progress. Route-level splitting is the highest-impact form — each route becomes a separate chunk that is only loaded when the user navigates to it.
 
 ### Basic Lazy Loading
 
@@ -458,6 +468,8 @@ function App() {
 ---
 
 ## React Compiler (React Forget)
+
+React Compiler is a static analysis tool that transforms your component code at build time to automatically insert `useMemo`, `useCallback`, and `React.memo` where it determines they would be beneficial. Its goal is to eliminate the manual memoization burden entirely — you write plain, readable components without performance annotations and the compiler adds them correctly. This is possible because the compiler can statically analyze which values and functions are stable across renders and which are genuinely new. It respects the Rules of Hooks and only applies optimizations where the semantics are unchanged.
 
 React Compiler (previously called React Forget) is a build-time tool that automatically memoizes components and hooks. It aims to eliminate the need for manual `useMemo`, `useCallback`, and `React.memo`.
 

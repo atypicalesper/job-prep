@@ -49,6 +49,9 @@ Single-threaded, non-blocking I/O via event loop + OS async syscalls (libuv).
 - **Callback hell / inversion of control** (solved by async/await)
 
 ### CPU work solution: Worker Threads
+
+Worker Threads give Node.js true parallelism for CPU-bound work: each worker runs in a separate V8 isolate on a separate OS thread with its own heap, so heavy computation does not block the event loop. Communication between the main thread and workers happens via `postMessage` (structured clone, copies data) or `SharedArrayBuffer` (shared memory, no copy). Worker Threads are appropriate for image processing, cryptography, JSON parsing of large payloads, and ML inference — any task that would block the main thread for more than a few milliseconds.
+
 ```js
 import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
 
@@ -65,6 +68,9 @@ if (isMainThread) {
 ```
 
 ### I/O Concurrency — the N+1 trap
+
+The N+1 query problem is the most common Node.js performance mistake: issuing one database (or HTTP) request per item in a list sequentially, when all requests could be issued concurrently. Because Node.js I/O is non-blocking, `await`ing inside a `for` loop serializes requests that have no dependency on each other — each request must complete before the next starts. `Promise.all` fires all requests simultaneously; for large lists, `p-limit` bounds the concurrency to avoid overwhelming the database or hitting rate limits.
+
 ```js
 // BAD — sequential, O(n) round trips
 async function getUsers(ids) {
@@ -139,6 +145,9 @@ func getUsers(ids []int) []User {
 ```
 
 ### Select — multiplexing channels
+
+`select` is Go's primitive for waiting on multiple channel operations simultaneously — it unblocks as soon as any case is ready, choosing one at random if multiple are ready at the same time. This is the Go equivalent of `Promise.race`: it enables timeouts (via `time.After`), cancellation (via a `done` channel), and fan-in patterns (merging results from multiple goroutines into one channel) — all without threads or callbacks.
+
 ```go
 select {
 case msg := <-ch1:
@@ -180,6 +189,9 @@ Thread 2:               [Python bytecode]
 - CPU-bound: threads give NO parallelism — use `multiprocessing` instead
 
 ### asyncio — cooperative multitasking
+
+Python's `asyncio` provides an event loop similar to Node.js: a single thread processes coroutines cooperatively, with `await` as the yield point where the event loop can switch to another coroutine. Unlike Go's preemptive scheduler, asyncio requires coroutines to explicitly yield — a coroutine that never `await`s will block the event loop. `asyncio.gather()` is the Python equivalent of `Promise.all`, running multiple coroutines concurrently on the same event loop thread.
+
 ```python
 import asyncio
 
@@ -200,6 +212,9 @@ asyncio.run(get_users([1, 2, 3]))
 asyncio uses an **event loop** (similar to Node) — cooperative, not preemptive. `await` is the yield point.
 
 ### multiprocessing — true parallelism
+
+Python's `multiprocessing` module spawns separate OS processes, each with its own CPython interpreter and therefore its own GIL. This bypasses the GIL entirely, achieving true CPU parallelism. The cost is higher memory (each process has a full copy of the heap) and slower inter-process communication (data must be serialized to cross process boundaries). Use `multiprocessing.Pool` for embarrassingly parallel CPU work like numerical computation, image processing, or ML training.
+
 ```python
 from multiprocessing import Pool
 
@@ -211,6 +226,9 @@ with Pool(processes=4) as pool:  # 4 separate processes
 ```
 
 ### asyncio + ProcessPoolExecutor — best of both
+
+Combining `asyncio` with `ProcessPoolExecutor` allows an async server to offload CPU-bound work to a pool of subprocess workers without blocking the event loop. `loop.run_in_executor` submits a synchronous function to the executor and returns an awaitable that resolves when the subprocess returns the result. This is the canonical Python pattern for building async servers that need to handle both I/O-bound requests and CPU-bound tasks.
+
 ```python
 import asyncio
 from concurrent.futures import ProcessPoolExecutor
@@ -237,6 +255,9 @@ async def main():
 ## Java — Threads + CompletableFuture + Virtual Threads
 
 ### Traditional Threads
+
+Java's traditional concurrency model maps each application thread 1:1 to an OS thread. Platform threads have a large stack (~512 KB–1 MB) and are expensive to create and context-switch — a server handling 10,000 concurrent requests with one thread per request would need ~10 GB of stack memory. Thread pools (via `ExecutorService`) amortize the creation cost but still block an OS thread for the duration of any I/O wait, limiting scalability to the pool size.
+
 ```java
 // Platform thread — ~1MB stack, OS-level
 Thread t = new Thread(() -> {
@@ -251,6 +272,9 @@ String result = future.get(); // blocks calling thread
 ```
 
 ### CompletableFuture (Java 8+)
+
+`CompletableFuture` is Java's answer to Promise/async-await: it represents an async computation that may complete in the future, with methods for chaining transformations (`thenApply`), sequencing async steps (`thenCompose`), combining multiple futures (`allOf`, `anyOf`), and error recovery (`exceptionally`). Like JavaScript Promises, it does not create threads on its own — it relies on an `Executor` (or the common ForkJoin pool by default) for actual execution. It is the idiomatic way to write non-blocking async code in pre-virtual-thread Java.
+
 ```java
 CompletableFuture<User> userFuture = CompletableFuture
     .supplyAsync(() -> fetchUser(id))          // run async
@@ -287,6 +311,9 @@ try (ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor()) {
 Virtual threads mount onto carrier (platform) threads. During I/O (blocking syscall), they **unmount**, freeing the carrier thread for other work. This is structurally similar to Go goroutines.
 
 ### Synchronized vs Locks
+
+Java provides three layers of mutual exclusion for protecting shared mutable state. `synchronized` is the simplest — it acquires the intrinsic lock on an object for the duration of the block and releases it on exit (including exceptions). `ReentrantLock` is more flexible: it supports `tryLock` with a timeout (preventing indefinite blocking), interruptible lock acquisition, and fairness policies. `Atomic` classes (`AtomicInteger`, `AtomicReference`, etc.) use CPU-level compare-and-swap (CAS) instructions for lock-free, contention-free updates to single values — the right choice for high-throughput counters and flags where lock overhead would be a bottleneck.
+
 ```java
 // synchronized — built-in, coarse-grained
 synchronized (this) {

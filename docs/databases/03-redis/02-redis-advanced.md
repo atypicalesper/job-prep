@@ -25,6 +25,9 @@ await pub.publish('orders', JSON.stringify({ id: 'abc', amount: 99 }));
 ```
 
 ### Pattern subscriptions
+
+Pattern subscriptions use glob-style patterns to subscribe to multiple channels in a single call. This is useful when you have a family of related channels (e.g., `orders.created`, `orders.cancelled`) and want a single subscriber to handle all of them without knowing every channel name in advance.
+
 ```js
 // subscribe to all channels matching pattern
 await sub.pSubscribe('orders.*', (message, channel) => {
@@ -49,6 +52,8 @@ await sub.pSubscribe('orders.*', (message, channel) => {
 Streams are an append-only log, similar to Kafka topics but inside Redis. Messages persist and consumer groups track what's been processed.
 
 ### Basic stream operations
+
+Stream IDs are timestamps with a sequence suffix (`timestamp-sequence`), which gives you a natural time-ordered log. Reading with `'-'` and `'+'` as range bounds reads the entire stream from earliest to latest. The auto-generated ID (`'*'`) uses the current millisecond timestamp, guaranteeing monotonic ordering across all writes.
 
 ```js
 const client = createClient();
@@ -75,6 +80,8 @@ const recent = await client.xRevRange('events', '+', '-', { COUNT: 10 });
 ```
 
 ### Consumer groups — reliable processing
+
+A consumer group is a named cursor into the stream shared by multiple consumers. When a consumer reads a message with `XREADGROUP`, the message moves to the consumer's Pending Entry List (PEL) — it remains there until explicitly acknowledged with `XACK`. This gives at-least-once delivery: if a consumer crashes before acknowledging, the message can be reclaimed by another consumer. Multiple consumer groups can read the same stream independently, each maintaining their own position — this is the fan-out with separate processing pattern.
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -131,6 +138,8 @@ consume('consumer-2');
 
 ### Claim stale messages (dead consumer recovery)
 
+If a consumer crashes after reading a message but before acknowledging it, that message stays in the PEL indefinitely. `XAUTOCLAIM` is the recovery mechanism: it finds messages that have been pending longer than a threshold (the consumer is likely dead) and reassigns them to a specified consumer for reprocessing. This is what gives Redis Streams its at-least-once delivery guarantee even in the face of consumer failures.
+
 ```js
 // Find messages pending >30s (consumer may have crashed)
 const stale = await client.xAutoClaim(
@@ -144,6 +153,8 @@ const stale = await client.xAutoClaim(
 ```
 
 ### Stream trimming
+
+Streams grow indefinitely unless trimmed. The `~` (approximate) trimming flag tells Redis it is acceptable to keep slightly more than the threshold for efficiency — it avoids rewriting partially-filled internal data structures. Exact trimming (without `~`) is slower and generally not necessary unless you have strict memory constraints.
 
 ```js
 // Keep only latest 10,000 entries (approximate, ~= is faster)
@@ -161,6 +172,8 @@ await client.xTrim('events', 'MAXLEN', '~', 10_000);
 Multiple Node.js processes competing for a shared resource (e.g., sending a scheduled email exactly once).
 
 ### Simple lock: SET NX PX
+
+The single-instance distributed lock works by making the `SET` conditional and time-bounded in one atomic command. `NX` (Not eXists) ensures only one caller can acquire the lock — subsequent `SET NX` calls return `null` when the key exists. The TTL (`PX`) is the safety valve: if the process holding the lock crashes before releasing it, the key expires automatically after the TTL, preventing permanent deadlock. The TTL must be long enough to cover the critical section's expected duration with margin.
 
 ```js
 const LOCK_KEY = 'lock:cron:daily-report';
@@ -204,7 +217,7 @@ if (await acquireLock()) {
 
 ### Redlock algorithm (multi-node)
 
-For high availability (Redis cluster), the simple approach fails if the Redis node dies after acquiring but before releasing. Redlock acquires the lock on **N independent Redis nodes** (typically 5).
+The single-node lock has a failure mode: if the Redis node crashes after granting the lock but before the client releases it, the TTL ensures recovery, but in a failover scenario the secondary might not have the lock key yet (replication lag). Redlock addresses this by requiring the lock to be acquired on a majority of N independent Redis nodes — if any single node fails, the remaining majority still agree on who holds the lock. A lock is valid only if acquired on more than N/2 nodes within the TTL.
 
 ```js
 // npm install redlock
@@ -237,6 +250,8 @@ Redlock succeeds only if it acquires lock on ≥ (N/2 + 1) nodes. If a node fail
 ---
 
 ## 4. Redis Data Structures for Common Patterns
+
+These patterns show how to match the right Redis data structure to a specific problem. The rate limiter uses a sorted set's ability to store timestamped entries and query by score range to implement a sliding window counter without any locks. The session store uses a hash's field-level granularity to avoid loading an entire session when only one field is needed. The leaderboard uses a sorted set's native ordering and rank operations to serve real-time rankings in O(log n).
 
 ### Rate limiting with sorted sets
 

@@ -4,6 +4,8 @@
 
 ## gRPC vs REST vs GraphQL
 
+These three API styles represent fundamentally different tradeoffs between flexibility, performance, and tooling. REST is the most widely understood — it uses standard HTTP methods and JSON and works with any HTTP client, making it the right default for public-facing APIs. GraphQL gives clients control over the response shape, which eliminates over-fetching and under-fetching at the cost of a more complex server implementation. gRPC is designed for high-performance internal service-to-service communication: its binary Protocol Buffers encoding is 3–10x more compact than JSON, HTTP/2 multiplexing eliminates connection overhead, and the `.proto` schema generates type-safe client stubs in every major language from a single file. The choice is mostly about who the consumer is: public → REST; client-controlled queries → GraphQL; internal microservices → gRPC.
+
 ```
 REST:
   Transport:   HTTP/1.1 (text)
@@ -31,6 +33,8 @@ GraphQL:
 ---
 
 ## Protocol Buffers
+
+Protocol Buffers (protobuf) is a language-neutral binary serialisation format developed by Google. You define your data schema in a `.proto` file, then generate type-safe client and server code for any supported language from it. Fields are identified by integer numbers rather than string names — this makes the binary encoding more compact and allows fields to be renamed without breaking existing serialised data (as long as numbers are not reused). Field numbers 1–15 encode in one byte; 16–2047 require two bytes, which is why high-traffic fields should use low numbers. The `.proto` file is the single source of truth for the API contract and should be version-controlled alongside your code.
 
 ```protobuf
 // user.proto
@@ -104,6 +108,8 @@ npx grpc_tools_node_protoc \
 ---
 
 ## Node.js gRPC Server
+
+A gRPC server registers service implementations against the service definition compiled from the `.proto` file. Each RPC type (unary, server-streaming, client-streaming, bidirectional) has a different call object signature. For unary calls, you receive the full request and call `callback(null, response)` when done — or `callback({ code, message })` to return a gRPC error. For server-streaming calls, you call `call.write(item)` for each item and `call.end()` when finished. The `call.cancelled` flag lets you abort early if the client has cancelled. Wrap all async handler code in `try/catch` and map Node.js errors to the appropriate `grpc.status` code — unhandled throws cause the stream to hang.
 
 ```typescript
 import * as grpc from '@grpc/grpc-js';
@@ -209,6 +215,8 @@ server.bindAsync(
 
 ## Node.js gRPC Client
 
+The gRPC client stub is generated from the same `.proto` file and gives you a typed object with one method per RPC definition. Unary calls use a Node.js-style callback `(err, response)`. Every unary call should have a `deadline` set — without one, a call to an unavailable server will hang indefinitely. For server-streaming, the returned object is a readable stream you can iterate with `for await`. `grpc.Metadata` is the gRPC equivalent of HTTP headers — pass authentication tokens and trace context through it. Always handle `grpc.status.DEADLINE_EXCEEDED` and `grpc.status.UNAVAILABLE` explicitly, as these are the most common failure modes in production microservice meshes.
+
 ```typescript
 import * as grpc from '@grpc/grpc-js';
 
@@ -283,6 +291,8 @@ function getAuthenticatedUser(id: string, token: string): Promise<any> {
 
 ## gRPC Interceptors (Middleware)
 
+gRPC interceptors are the equivalent of Express middleware — they run on every call before (or after) the service handler and are the correct place for cross-cutting concerns like authentication, request logging, and distributed tracing. A client-side interceptor wraps each outbound call; a server-side interceptor wraps each inbound call. The interceptor receives the call's `metadata` (headers), the `listener` (for receiving responses), and a `next` function to pass control to the next interceptor or handler. Returning a gRPC error from `listener.onReceiveStatus` short-circuits the call before it reaches the handler, which is how auth interceptors reject unauthenticated requests.
+
 ```typescript
 // Server interceptor for logging and auth:
 function authInterceptor(
@@ -345,6 +355,8 @@ Server push:
 ---
 
 ## gRPC Error Codes
+
+gRPC defines its own set of 17 canonical status codes that are protocol-level, independent of HTTP. They are more semantically precise than HTTP status codes and are portable across all gRPC language bindings. The mapping to HTTP concepts is approximate — `NOT_FOUND` maps to 404, `UNAUTHENTICATED` to 401, `PERMISSION_DENIED` to 403 — but gRPC adds distinctions that HTTP does not have, such as `DEADLINE_EXCEEDED` (timed out) vs `CANCELLED` (client explicitly cancelled), and `RESOURCE_EXHAUSTED` (rate limited or quota exceeded). Always return the most specific status code: returning `UNKNOWN` (2) when `INVALID_ARGUMENT` (3) is correct makes debugging much harder.
 
 ```typescript
 // gRPC has standard error codes (vs HTTP status codes):

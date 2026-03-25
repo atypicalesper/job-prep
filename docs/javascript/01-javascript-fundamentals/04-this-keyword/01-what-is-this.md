@@ -16,6 +16,8 @@ Every function call falls into one of these 4 categories (in priority order):
 
 ### Rule 1: New Binding (Highest Priority)
 
+When a function is called with `new`, JavaScript allocates a fresh empty object, sets its `[[Prototype]]` to the function's `.prototype`, runs the function body with `this` pointing to that new object, and returns it. This is the highest-priority binding because `new` is an explicit signal that you are creating an instance — there is no ambiguity about what `this` should be.
+
 When a function is called with `new`:
 - A new object is created
 - `this` refers to that new object
@@ -32,6 +34,8 @@ alice.greet(); // "Hi, I'm Alice"
 ```
 
 ### Rule 2: Explicit Binding
+
+Explicit binding allows you to call any function with a specific `this` value, regardless of how or where that function is defined. `call` and `apply` invoke the function immediately; `bind` returns a new permanently-bound function that ignores any subsequent `call`, `apply`, or even another `bind` attempt to change `this`. Explicit binding overrides implicit binding because the programmer's explicit instruction takes precedence over an inferred context.
 
 When `call()`, `apply()`, or `bind()` is used:
 - `this` is explicitly set to the provided value
@@ -52,6 +56,8 @@ boundGreet();       // "Hello, I'm Bob" — always user
 
 ### Rule 3: Implicit Binding
 
+Implicit binding is the most common `this` pattern: when you call a function as a property of an object (`obj.fn()`), JavaScript implicitly sets `this` to that object. The binding is called "implicit" because you never write it explicitly — JavaScript infers it from the call-site syntax. The critical caveat is that the binding is only established at the call site; storing the function reference in a variable and calling it later loses the implicit binding.
+
 When a function is called as a method of an object:
 - `this` = the object before the dot
 
@@ -67,6 +73,8 @@ obj.greet(); // "Hello from Object" — this = obj
 ```
 
 ### Rule 4: Default Binding (Lowest Priority)
+
+Default binding applies when a function is called as a plain function — no `new`, no explicit binding, and no object before the dot. In non-strict mode, it falls back to the global object (a legacy behavior from the earliest days of JavaScript). In strict mode, it is `undefined` instead, which is much safer because accessing properties on `undefined` throws immediately rather than silently modifying global state. Class bodies and ES modules are always strict, so default binding in those contexts always yields `undefined`.
 
 When none of the above apply (plain function call):
 - In **strict mode**: `this = undefined`
@@ -88,6 +96,8 @@ showThis(); // undefined
 ---
 
 ## Priority Order — Which Rule Wins?
+
+When a call site satisfies multiple rules simultaneously (e.g., calling a bound method on an object with `call`), the higher-priority rule wins. `new` > explicit (`bind`/`call`/`apply`) > implicit (method call) > default (plain call). In practice, `new` and explicit binding are never combined accidentally, but the interaction between explicit and implicit binding is a common interview topic.
 
 ```javascript
 function test() { return this.x; }
@@ -112,6 +122,8 @@ new test(); // this = new object, this.x = undefined
 ---
 
 ## Strict Mode Effect on `this`
+
+Strict mode was introduced partly to make `this` safer. In non-strict mode, default binding hands a plain function call access to the global object — a dangerous footgun where typos or extracted methods silently read/write global state. Strict mode converts this to `undefined`, causing an immediate, visible `TypeError` instead. Since ES6 modules and class bodies are implicitly strict, most modern code already benefits from this protection.
 
 ```javascript
 // Without strict mode
@@ -223,6 +235,8 @@ obj.arrowMethod(); // wrong this!
 
 ## `this` in Different Contexts
 
+`this` has different values depending on where and how code is executed. Each context has its own rules, and conflating them is a common source of confusion. The table below covers every common context — understand each row independently rather than trying to memorize a single rule.
+
 ```javascript
 // 1. Global context
 console.log(this); // {} in Node.js modules, window in browser
@@ -263,6 +277,8 @@ btn.addEventListener('click', () => {
 ---
 
 ## `this` in Node.js
+
+Node.js's module system introduces an extra subtlety: every module file is wrapped in a function before execution, making `this` at the top level of a file refer to `module.exports` (an empty object `{}`), not to the Node.js `global` object. This surprises developers coming from browser JavaScript where top-level `this === window`. Inside regular functions, the behavior follows the standard 4-rule system, with non-strict defaulting to `global` and strict mode giving `undefined`.
 
 ```javascript
 // At module top level in Node.js:

@@ -4,6 +4,8 @@
 
 ## Schema Design Patterns
 
+MongoDB is schema-flexible, but that does not mean schema-free in practice. Applications impose a schema through their queries and code. The patterns below address specific performance or scalability problems that arise when the naive schema choice does not scale. Each pattern involves a deliberate trade-off: trading storage efficiency for write simplicity, or read speed for data duplication. Understanding when to apply each pattern is what separates experienced MongoDB practitioners from beginners.
+
 ### Bucket Pattern
 ```javascript
 // Problem: Storing time-series data (IoT sensor readings)
@@ -111,6 +113,8 @@ await Product.updateOne(
 
 ## Performance & Explain Plans
 
+MongoDB's `.explain('executionStats')` is the equivalent of PostgreSQL's `EXPLAIN ANALYZE`. It reveals whether the query used an index (`IXSCAN`) or scanned the entire collection (`COLLSCAN`), how many documents were examined vs returned (selectivity), and whether the query is "covered" (all data served from the index without loading documents). A `totalDocsExamined` that is much larger than `nReturned` means the index is poorly selective and the query examines many documents only to discard most of them.
+
 ```javascript
 // Always check your queries with .explain('executionStats')
 const result = await db.collection('orders').find(
@@ -145,6 +149,8 @@ db.orders.createIndex({ userId: 1, createdAt: -1, status: 1 });
 ---
 
 ## Change Streams
+
+Change streams let your application subscribe to a real-time feed of changes to a collection, database, or entire deployment. Internally, they tail MongoDB's oplog (operations log) and deliver change events as documents. Unlike polling, change streams push events to your application the moment they occur. A critical feature is the resume token: every event has a unique token that lets you restart the stream from exactly that point after a crash or restart, ensuring no events are missed.
 
 ```javascript
 // Change streams: real-time notifications of collection changes
@@ -183,6 +189,8 @@ const newStream = collection.watch(pipeline, { resumeAfter: resumeToken });
 ---
 
 ## Read Preferences & Replica Sets
+
+A MongoDB replica set is a group of nodes that all hold the same data: one primary that accepts all writes, and one or more secondaries that replicate from the primary asynchronously. Read preference controls which node your reads go to. Reading from a secondary can reduce load on the primary but risks reading stale data (replication lag is typically milliseconds but can be higher under load). Write concern controls how many nodes must acknowledge a write before the operation returns, trading throughput for durability.
 
 ```javascript
 // Replica set: 1 primary + N secondaries (typically 3 nodes total)
@@ -225,6 +233,8 @@ await Order.create(
 
 ## Sharding Concepts
 
+Sharding is MongoDB's horizontal scaling strategy: data is distributed across multiple independent servers (shards) based on a shard key. Each shard holds a subset of the data. The shard key is the most consequential architectural decision in a sharded deployment — once chosen, it is difficult to change. A poor shard key creates "hotspots" where one shard receives a disproportionate share of writes (monotonically increasing keys) or where the number of shards is fundamentally limited (low cardinality keys). A good shard key distributes writes evenly and allows most queries to be routed to a single shard.
+
 ```javascript
 // Sharding: horizontal partitioning across multiple machines
 // Needed when: single server can't handle data volume or write throughput
@@ -260,6 +270,8 @@ sh.addTagRange('mydb.users', { region: 'EU', _id: MinKey }, { region: 'EU', _id:
 ---
 
 ## Atlas Search & Vector Search
+
+Atlas Search is a full-text search engine built into MongoDB Atlas, powered by Apache Lucene. It provides relevance-scored search, fuzzy matching, autocomplete, highlighting, and faceted navigation — capabilities that MongoDB's built-in `$text` operator cannot match. Atlas Vector Search extends this to semantic (meaning-based) similarity search using embeddings: you store pre-computed vector embeddings alongside documents and query with a vector to find the semantically nearest documents. This is the foundation of retrieval-augmented generation (RAG) systems.
 
 ```javascript
 // Atlas Search: full-text search powered by Lucene (not $text)
@@ -317,6 +329,8 @@ const similar = await Article.aggregate([
 ---
 
 ## Tricky Interview Q&A
+
+These questions target the gaps between MongoDB and SQL intuitions, and between expected and actual behavior of specific operators. They are the questions developers get wrong in interviews because MongoDB's document replacement semantics, atomic operators, and concurrency model differ fundamentally from SQL's row-based update model.
 
 **Q: What happens when you do `updateOne` without `$set`?**
 ```javascript

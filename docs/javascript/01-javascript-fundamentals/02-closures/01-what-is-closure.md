@@ -80,6 +80,8 @@ getX(); // 10 — x is gone from stack but closure keeps it
 
 ### 1. Counter / State Encapsulation
 
+Closures are the primary tool for creating private, stateful objects without a class. The outer function defines the private variable, and the returned object's methods close over it. Each call to the factory produces a completely independent instance with its own isolated state — there is no way for external code to read or modify the variable directly.
+
 ```javascript
 function createCounter(start = 0) {
   let count = start;  // private state
@@ -103,6 +105,8 @@ console.log(counter.count); // undefined
 ```
 
 ### 2. Memoization
+
+Memoization is a caching technique that trades memory for speed: the first time a function is called with a given set of arguments, the result is computed and stored; on subsequent calls with the same arguments, the stored result is returned immediately. Closures make this clean because the `cache` data structure lives in the outer function's scope, invisible to callers, and is shared across all invocations of the memoized function.
 
 ```javascript
 function memoize(fn) {
@@ -132,6 +136,8 @@ expensiveSquare(6); // computed: 36
 
 ### 3. Partial Application / Currying
 
+Partial application creates a new, more specific function by pre-filling some arguments of a more general one. The pre-filled arguments are captured in the outer scope and closed over by the returned function. This avoids repetition when you repeatedly call the same function with the same leading arguments, and produces self-documenting named functions like `double` or `triple` that communicate intent.
+
 ```javascript
 function multiply(a) {
   return function(b) { // closes over a
@@ -148,6 +154,8 @@ double(10); // 20
 ```
 
 ### 4. Event Handlers with Private State
+
+When you need each UI element to maintain its own independent state without sharing a global variable, closures are the natural solution. The factory is called once per element, creating a separate closure environment for each — so two buttons created from the same factory have completely independent click counters, even though they use identical code.
 
 ```javascript
 function createButton(label) {
@@ -174,6 +182,8 @@ btn2.click(); // Cancel clicked 1 times — separate closure
 ## Closure and Memory
 
 Closures keep their captured variables alive as long as the closure itself is reachable. This is by design — but can cause memory issues if not managed carefully.
+
+A closed-over variable is held by a reference from the function object. As long as the function object is reachable (e.g., stored in a variable, referenced by an event listener, or held in a data structure), the garbage collector cannot free anything that variable references — even if the data is enormous and you only ever use a tiny slice of it. This is the primary way closures contribute to memory leaks in long-running Node.js services and single-page applications.
 
 ```javascript
 function createHeavyThing() {
@@ -208,7 +218,7 @@ function createHeavyThing() {
 
 ## Closures are References, Not Copies
 
-Closures capture **references** to variables, not their values at the time of capture.
+This is one of the most important properties of closures to internalize. Closures capture **references** to variables, not their values at the time of capture. This means multiple functions that close over the same variable all see the same current value of that variable — mutations made by one function are immediately visible to all others. It is this shared-reference behavior that enables the classic loop gotcha (covered in `04-closures-and-loops-gotcha.md`) and also what makes stateful objects built from closures work correctly.
 
 ```javascript
 function makeAdder() {
@@ -231,6 +241,8 @@ This is powerful but also the source of the classic loop bug (covered in closure
 ---
 
 ## Module Pattern Using Closures
+
+The module pattern was the dominant way to structure JavaScript before ES modules existed. It uses an IIFE (Immediately Invoked Function Expression) to create a one-time closure scope, then returns only the public-facing API while keeping internal state and helper functions completely private. Understanding this pattern is important for reading legacy codebases and for understanding what ES modules themselves were designed to replace.
 
 Before ES modules, closures were the main way to create modules with private state:
 

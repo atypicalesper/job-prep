@@ -2,6 +2,8 @@
 
 ## Implicit Binding
 
+Implicit binding is JavaScript's most common `this` mechanism. It infers context from the call-site syntax: whenever you call a function as a property access (`obj.method()`), JavaScript uses the object immediately to the left of the dot as `this`. No explicit declaration is needed — hence "implicit." The binding is created fresh at each call, meaning the same function can have different `this` values depending on which object it is called on.
+
 When a function is called as a method of an object, `this` is implicitly set to that object — the object "before the dot."
 
 ```javascript
@@ -19,6 +21,8 @@ bob.greet();   // "Hello, I'm Bob"   — this = bob
 ```
 
 ### Nested Object Method Calls
+
+When you chain property accesses (`a.b.method()`), only the object immediately to the left of the final dot matters for `this` binding — the rest of the chain is just used to look up the function reference. This means `outer.inner.greet()` sets `this` to `outer.inner`, not `outer`. A common mistake is expecting `this` to refer to the outermost object in a deep method call.
 
 Only the object **immediately before the dot** matters:
 
@@ -88,6 +92,8 @@ setTimeout(function() { obj.greet(); }, 1000); // ✅ explicit call on obj
 
 ## Explicit Binding
 
+Explicit binding lets you call any function with a `this` value of your choosing, regardless of where the function is defined or how it would normally be called. This is the solution for method borrowing (using one object's method on another) and for fixing `this` in callbacks. All three methods (`call`, `apply`, `bind`) set `this` explicitly; they differ in how they handle arguments and whether they invoke the function immediately.
+
 Explicit binding overrides implicit binding. Uses `call()`, `apply()`, or `bind()`.
 
 ```javascript
@@ -112,6 +118,8 @@ aliceIntro('Go', 'learning');     // "Alice codes in Go (learning)"
 ---
 
 ## Hard Binding
+
+Hard binding is the term for the permanent `this` lock that `bind()` creates. Internally, `bind` returns a new function that always invokes the original with the bound `this`, regardless of how the bound function is subsequently called. No other `call`, `apply`, or `bind` call can override it — the binding is irrevocable. This immutability is precisely the property that makes `bind` reliable for callbacks passed to external APIs: you know the `this` will always be correct, no matter what the caller does with the function.
 
 `bind()` creates "hard binding" — `this` cannot be changed even with another `call`/`apply`:
 
@@ -149,6 +157,8 @@ obj1.greet.call(obj2);  // 'obj2' — explicit wins!
 
 ### Method Borrowing
 
+Method borrowing is a technique where you call a method that belongs to one object, but supply a different object as `this`. It avoids duplicating method definitions across objects that share similar structure. `call` and `apply` are the classic tools for this — they let you execute any function with any `this`, acting as a lightweight form of structural subtyping.
+
 ```javascript
 // Borrow a method from one object to use on another
 const logger = {
@@ -169,6 +179,8 @@ logger.log.call(errorLogger, 'Something failed');
 ```
 
 ### Super Pattern (pre-ES6)
+
+Before ES6 `class` and `super`, the standard way to call a parent constructor from a child constructor was `ParentConstructor.call(this, args)`. This explicitly sets `this` inside the parent constructor to be the same `this` that the child constructor is building up, so the parent can initialize its own properties on the instance being created.
 
 ```javascript
 function Animal(name) {

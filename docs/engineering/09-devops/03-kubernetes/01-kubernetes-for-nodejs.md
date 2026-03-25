@@ -4,6 +4,8 @@
 
 ## Core Concepts
 
+Kubernetes is a container orchestration platform that automates the deployment, scaling, and lifecycle management of containerized applications. Rather than managing individual containers, Kubernetes operates on declarative specifications: you describe the desired state (three replicas of this image, routable at this hostname, with these secrets injected) and Kubernetes continuously works to reconcile actual state with the desired state. Understanding the core resource types is essential before reading any manifest — each type addresses a specific problem in the lifecycle of a production service.
+
 ```
 Pod:          Smallest deployable unit. One or more containers sharing network + storage.
               Each pod gets its own IP. Pods are ephemeral — don't store state in them.
@@ -27,6 +29,8 @@ HPA:          Horizontal Pod Autoscaler — scales pod count based on CPU/memory
 ---
 
 ## Deployment Manifest
+
+A Deployment manifest is the primary way to run stateless workloads in Kubernetes. It declares the desired number of pod replicas, the container image, how to roll out updates, and the health check behavior. The manifest below represents a production-ready configuration with several important properties: resource requests and limits prevent one pod from starving others, readiness and liveness probes enable zero-downtime rolling updates, pod anti-affinity distributes replicas across nodes to survive node failures, and the preStop hook gives the load balancer time to drain connections before shutdown. Every field here is intentional — running without resource limits in a shared cluster is one of the most common causes of production incidents.
 
 ```yaml
 # deployment.yaml
@@ -140,6 +144,8 @@ spec:
 
 ## Health Check Endpoints in Node.js
 
+Kubernetes uses health check endpoints to make two distinct decisions: whether to restart a pod and whether to route traffic to it. These are fundamentally different decisions that require different information, which is why liveness and readiness must be separate endpoints with different semantics. A liveness probe answers "is this process still functioning?" — it should be as cheap as possible, just returning 200, because a slow or failing liveness probe causes unnecessary pod restarts. A readiness probe answers "is this pod ready to serve traffic?" — it should check all dependencies (database, cache) because if those are unavailable, the pod should be removed from the load balancer rotation rather than served 500 errors to real users. The graceful shutdown logic ensures in-flight requests complete cleanly when Kubernetes terminates a pod.
+
 ```javascript
 // Separate readiness and liveness probes:
 app.get('/health/live', (req, res) => {
@@ -197,6 +203,8 @@ app.use((req, res, next) => {
 
 ## Service and Ingress
 
+Pods are ephemeral — they are created, destroyed, and rescheduled constantly. A Kubernetes Service provides a stable network identity (DNS name and virtual IP) that persists across pod lifecycles, abstracting away the underlying pod IPs. The Service uses label selectors to dynamically discover which pods belong to it and maintains an endpoint list of their IPs. An Ingress then sits in front of Services and provides HTTP/HTTPS routing rules: mapping hostnames and URL paths to backend Services, handling TLS termination, and applying annotations for rate limiting and body size limits. An Ingress requires an Ingress Controller (nginx-ingress, Traefik) to be installed in the cluster — the Ingress resource itself is just a configuration declaration.
+
 ```yaml
 # service.yaml
 apiVersion: v1
@@ -245,6 +253,8 @@ spec:
 ---
 
 ## Horizontal Pod Autoscaler
+
+The HPA automatically adjusts the number of pod replicas in response to observed metrics, allowing a service to scale out under load and scale back in when demand drops — without manual intervention. It queries metrics from the Kubernetes metrics-server (for CPU/memory) or from Prometheus via an adapter (for custom metrics like requests per second). The `behavior` section is critical for production use: the `stabilizationWindowSeconds` prevents thrashing by requiring the metric to consistently exceed the threshold before scaling, and the `policies` limit how aggressively scaling events add or remove pods. Scale-down stabilization should be more conservative than scale-up because removing pods too quickly during a traffic burst will immediately trigger another scale-up event.
 
 ```yaml
 # hpa.yaml
@@ -305,6 +315,8 @@ spec:
 
 ## ConfigMap and Secrets
 
+Kubernetes ConfigMaps and Secrets both inject configuration into pods, but they serve different purposes and have different security properties. ConfigMaps hold non-sensitive key-value data (log levels, feature flags, server ports) that is safe to store in version control. Secrets hold sensitive data (passwords, API keys, TLS certificates) and are base64-encoded — critically, base64 is encoding, not encryption. By default, Kubernetes Secrets are stored unencrypted in etcd, meaning anyone with cluster access can read them. For genuine security, enable etcd encryption at rest, use Sealed Secrets (encrypted in git, decrypted by a cluster controller), or integrate HashiCorp Vault to inject secrets at pod startup. The bash commands below cover the essential operations for managing these resources.
+
 ```yaml
 # configmap.yaml
 apiVersion: v1
@@ -359,6 +371,8 @@ kubectl port-forward svc/api-server 3000:80 -n production
 ---
 
 ## CronJob — Scheduled Tasks
+
+A CronJob creates a Job on a repeating schedule, where a Job in turn creates one or more Pods to run a task to completion. This is Kubernetes's solution to scheduled background work: database cleanup, report generation, cache warming, and similar periodic operations. Unlike a Deployment (which keeps pods running indefinitely), a Job pod runs once and exits; Kubernetes tracks whether it succeeded or failed. The `concurrencyPolicy: Forbid` setting prevents overlap: if a previous run is still in progress when the next schedule fires, the new run is skipped rather than allowed to run in parallel, which would cause duplicate processing. History limits prevent the cluster from accumulating stale Job and Pod objects indefinitely.
 
 ```yaml
 apiVersion: batch/v1

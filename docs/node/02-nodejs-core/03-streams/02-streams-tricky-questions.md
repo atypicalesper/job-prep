@@ -1,5 +1,7 @@
 # Node.js Streams — Tricky Questions and Edge Cases
 
+These questions probe the non-obvious behaviors of Node.js streams: error propagation, event semantics, mode transitions, and the difference between graceful and abrupt termination. Many real-world bugs come from misunderstanding these edge cases — especially around `pipe()` not forwarding errors, the `end` vs `finish` distinction, and what happens to buffered data when `destroy()` is called.
+
 ---
 
 ## Q1: What does `pipe()` return?
@@ -281,6 +283,8 @@ class JSONParser extends Transform {
 
 ## Q9: What is `objectMode` and when do you need it?
 
+By default Node.js streams work with Buffers and strings because they were designed for binary and text I/O. `objectMode` lifts this restriction and allows any JavaScript value (plain objects, numbers, `null`-free arrays) to be pushed through the stream. This is particularly useful for building in-memory processing pipelines where you want the composable, backpressure-aware behavior of streams without dealing with serialization. The `highWaterMark` in object mode counts objects (not bytes), defaulting to 16 objects. You cannot mix object mode and binary mode directly in a pipeline — an intermediate Transform is needed to serialize or deserialize at the boundary.
+
 ```javascript
 // Normal mode: streams work with Buffers and strings
 // objectMode: streams work with any JavaScript value (objects, numbers, etc.)
@@ -316,6 +320,8 @@ const t = new Transform({ objectMode: true, highWaterMark: 16 }); // 16 objects 
 ---
 
 ## Q10: Why does `process.stdout` never emit 'finish'?
+
+`process.stdout` and `process.stderr` are special "non-closeable" streams. Unlike regular file or socket streams, calling `end()` on them is a no-op — they are designed to remain open for the entire lifetime of the process. This means any pipeline that terminates into `process.stdout` will not trigger normal stream lifecycle events like `'finish'`. Additionally, because `process.stdout` stays open as an active handle, the Node.js process itself will not exit naturally if you only close the source stream — you need to either call `process.exit()` explicitly or ensure all other active handles are closed.
 
 ```javascript
 // process.stdout, process.stderr are special writable streams that

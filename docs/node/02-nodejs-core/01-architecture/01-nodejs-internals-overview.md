@@ -73,6 +73,8 @@ What happens when you run `node app.js`:
 5. **Process events** — handle I/O, timers, callbacks
 6. **Exit** — if event loop has nothing pending, process exits
 
+The module wrapper is a function Node.js silently wraps around every file before executing it. This is why module-scoped variables like `__dirname`, `require`, and `module` are available everywhere — they are injected as parameters by Node.js, not true globals. Understanding this explains why `arguments` has 5 entries inside any module.
+
 ```javascript
 // Node.js wraps every module in this:
 (function(exports, require, module, __filename, __dirname) {
@@ -88,6 +90,8 @@ console.log(module.exports);   // works — same
 ---
 
 ## Why Node.js is Great for I/O (and bad for CPU)
+
+Node.js's single-threaded model is a deliberate design choice that makes it excellent at one class of problem and poor at another. I/O-bound work — database queries, file reads, HTTP calls — spends most of its time waiting for an external resource to respond; during that wait Node.js can serve other requests. CPU-bound work — hashing, sorting, image processing — occupies the JS thread the entire time it runs, preventing everything else from proceeding. Understanding this distinction is the single most important mental model for Node.js architecture decisions.
 
 ```javascript
 // I/O bound — Node.js shines:
@@ -139,6 +143,8 @@ OS async handles:
 ---
 
 ## Process vs Thread in Node.js
+
+A common misconception is that Node.js is entirely single-threaded. The JavaScript execution is single-threaded, but the Node.js process as a whole uses several threads: the main event loop thread, libuv's thread pool (4 by default) for blocking operations, and V8 background threads for garbage collection and JIT compilation. The `process` object exposes metadata about the running process — its PID, environment, memory usage, command-line arguments, and platform — and is available globally without requiring any import.
 
 ```javascript
 // Node.js has ONE main JS thread

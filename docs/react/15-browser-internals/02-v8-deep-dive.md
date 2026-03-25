@@ -36,6 +36,8 @@ JavaScript Source
 
 ### Scanner → Tokens → AST
 
+Parsing is the process of turning raw JavaScript source text into a structured representation the engine can work with. The scanner (lexer) breaks the character stream into tokens; the parser then applies grammar rules to assemble those tokens into an Abstract Syntax Tree — a tree of nodes where each node represents a syntactic construct (declaration, expression, statement). The AST is the foundation for every subsequent step: Ignition walks it to generate bytecode, and tools like Babel and ESLint also operate on ASTs.
+
 ```js
 const x = 1 + 2;
 ```
@@ -88,6 +90,9 @@ Register-based VM (unlike stack-based in Java/.NET).
 TurboFan kicks in for "hot" code (run many times). It makes **speculative optimizations** based on observed types.
 
 ### Sea of Nodes IR
+
+TurboFan does not work directly on bytecode or a conventional linear IR. Instead, it builds a graph where every operation is a free-floating node connected by typed edges. This representation is called a "sea of nodes" and it exists because it makes many compiler optimizations easier to express — nodes can be freely reordered as long as their data and effect dependencies are satisfied. Most imperative compilers use linear basic-block representations; the sea-of-nodes approach is less common but enables TurboFan's aggressive loop optimizations.
+
 TurboFan builds a "sea of nodes" — a graph where operations are nodes connected by:
 - **Value edges** (data flow)
 - **Effect edges** (side effects ordering)
@@ -96,6 +101,9 @@ TurboFan builds a "sea of nodes" — a graph where operations are nodes connecte
 This representation enables aggressive reordering and elimination.
 
 ### Optimization Phases
+
+Once TurboFan has built the sea-of-nodes graph, it applies a sequence of optimization passes, each transforming the graph to produce more efficient machine code. These phases run in order and build on each other — inlining, for example, exposes more opportunities for type specialization, which in turn enables escape analysis. Understanding these phases explains why "hot" code (run thousands of times) can end up dramatically faster than cold code even for identical logic.
+
 1. **Inlining** — replace function call with body
 2. **Type specialization** — emit int32 add instead of generic add
 3. **Escape analysis** — allocate on stack instead of heap
@@ -121,6 +129,9 @@ const p2 = new Point(3, 4);  // Shape2 — SAME hidden class ✓
 ```
 
 ### Shape Transition Chain
+
+Every time you add a property to an object for the first time, V8 creates a new hidden class and records the transition from the previous one. This forms a linked transition chain. All objects that share the same construction path (same property names in the same order) end up at the same terminal shape. V8 can then compile property accesses to a direct memory offset load — no hash table lookup needed.
+
 ```
 Shape0 {}
   → add .x → Shape1 {x: offset0}
@@ -128,6 +139,8 @@ Shape0 {}
 ```
 
 ### What Breaks Hidden Classes
+
+Any operation that makes two objects follow different property addition paths gives them different shapes, even if they end up with the same set of properties. Once shapes diverge, V8 cannot use the fast offset-based access path — it falls back to a generic lookup. These are the four most common culprits in real codebases.
 
 ```js
 // 1. Different property order
@@ -151,6 +164,8 @@ obj[key] = value;  // can't predict at compile time
 
 ### Fix: Initialize all properties in constructor
 
+The simplest fix for all shape-related issues is to initialize every property in the constructor, even if the value is `null` or `0`. This guarantees that all instances follow the same shape transition chain from construction, share the same terminal hidden class, and benefit from fast property access and inline cache hits.
+
 ```js
 // GOOD
 class Car {
@@ -169,6 +184,8 @@ class Car {
 At each **call site** (location in bytecode), V8 caches the type of object seen.
 
 ### IC States
+
+Each IC call site progresses through a state machine as V8 observes what types flow through it. A monomorphic site has seen exactly one shape and has a fast-path compiled directly to an offset lookup. As more distinct shapes appear, V8 must maintain a small lookup table (polymorphic, 2–4 entries) and eventually gives up caching entirely (megamorphic). State transitions are one-way — once megamorphic, the call site stays slow for the lifetime of the compiled function.
 
 ```
 UNINITIALIZED → first execution
@@ -195,6 +212,8 @@ getX({ a: 1, x: 2 });    // → MEGAMORPHIC — V8 stops caching
 
 ## Memory Management
 
+V8's memory is divided into a heap organized by object age and object type. The design is based on the "generational hypothesis": most objects die young, so it pays to use a fast, cheap collector for new objects and a more thorough but infrequent collector for objects that survive. Understanding this structure helps explain both how GC pauses happen and how to write code that minimizes GC pressure.
+
 ### Heap Zones
 
 ```
@@ -212,6 +231,8 @@ V8 Heap
 
 ### Scavenge GC (Minor — Young Gen)
 
+Most objects are short-lived — they're created for a single function call, array map, or render cycle and then become garbage immediately. Scavenge exploits this by using two equal-sized semi-spaces and copying only the live (surviving) objects from one to the other. Dead objects are simply abandoned in the old space — no time is spent sweeping them. The copy also compacts survivors, eliminating fragmentation. Because young generation is small (a few MB), the entire collection takes roughly 1ms.
+
 Cheney's algorithm — semi-space copying:
 1. Allocate into "from-space"
 2. When full: scan from roots, copy live objects to "to-space"
@@ -221,6 +242,8 @@ Cheney's algorithm — semi-space copying:
 **Characteristics:** O(live objects), not O(heap size). Very fast (~1ms). Runs frequently.
 
 ### Mark-Sweep-Compact (Major — Old Gen)
+
+Objects that survive two Scavenge cycles are promoted to Old Space, which can grow to hundreds of MB. Old Space needs a different collector because Cheney's copying algorithm would require an equally large "to-space" — impractical at that scale. Mark-Sweep-Compact uses a three-phase approach that operates in place: mark live objects, sweep dead ones, then compact the survivors. It is more thorough but also heavier — in modern V8 it runs incrementally and concurrently to avoid long pauses.
 
 **Mark phase:** Start from roots (stack, globals, handles). DFS/BFS, mark each reachable object. V8 uses **tri-color marking**:
 - White = not visited
@@ -232,6 +255,8 @@ Cheney's algorithm — semi-space copying:
 **Compact phase:** Move live objects together to reduce fragmentation. Updates all pointers.
 
 ### Incremental + Concurrent GC
+
+The original Mark-Sweep-Compact GC was "stop-the-world" — JavaScript execution paused entirely for the duration of marking and sweeping, causing visible jank spikes. V8's "Orinoco" GC project solved this by breaking the collection into smaller increments interleaved with JS execution and moving as much work as possible to background threads. The result is that most GC work is invisible to the main thread, with only brief synchronization points.
 
 V8 uses "Orinoco" GC improvements:
 - **Incremental marking:** Break marking into small steps, interleave with JS execution
@@ -249,6 +274,8 @@ GC       ██   ███  ██
 ---
 
 ## Numbers in V8
+
+JavaScript has a single `number` type (IEEE 754 double), but V8 internally uses multiple representations to avoid heap allocation for the common case of small integers. Understanding this distinction matters for performance-critical numeric code: mixing integer and float arithmetic, or exceeding the SMI range, forces heap allocations that increase GC pressure.
 
 V8 represents numbers as:
 
@@ -271,6 +298,8 @@ let c = NaN;     // heap allocated
 ---
 
 ## Arrays in V8
+
+V8 tracks the "elements kind" of every array — a label describing what types of values it contains and whether it has holes (sparse indices). Arrays with uniform, dense elements use a flat typed backing store (like a C array), which enables fast iteration and bounds-checked access. Adding a value of a different type or creating a hole downgrades the elements kind to a more general (slower) representation. Crucially, transitions are one-way: once downgraded, an array never goes back to a more efficient representation even if you remove the offending element.
 
 V8 has multiple internal array representations:
 
@@ -314,6 +343,8 @@ const b = new Array(100);  // HOLEY immediately
 
 ## Deoptimization
 
+TurboFan compiles code speculatively — it assumes observed types will hold in the future and emits machine code tailored to those types. When a value arrives that violates the assumption (a string where only numbers were seen), TurboFan cannot use its compiled code anymore. It **deoptimizes**: discards the compiled machine code, reconstructs the interpreter state, and falls back to Ignition bytecode. Repeated deoptimization on the same function (a "deopt loop") is a significant performance problem because V8 may stop recompiling it.
+
 When TurboFan's assumption is violated, it **deoptimizes** — throws away compiled code and falls back to Ignition bytecode.
 
 ```js
@@ -337,6 +368,8 @@ node --trace-opt app.js
 ---
 
 ## Practical Performance Tips
+
+The patterns below directly target the V8 internals described above. Each maps to a specific optimization mechanism: consistent shapes keep IC states monomorphic, rest params avoid the legacy unoptimized `arguments` object, typed arrays bypass the elements-kind downgrade path entirely, and stable function references keep hidden classes clean. These are micro-optimizations — apply them in hot code paths (render loops, data transforms, animation callbacks) where profiling confirms they matter.
 
 ```js
 // 1. Keep object shapes consistent

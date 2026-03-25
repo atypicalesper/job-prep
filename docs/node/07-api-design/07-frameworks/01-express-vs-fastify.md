@@ -6,6 +6,8 @@
 
 ### How Express Middleware Works
 
+Express is built around a single central concept: the middleware stack. When a request arrives, Express walks an ordered array of middleware functions one at a time. Each function receives `req`, `res`, and `next` — calling `next()` passes control to the next function, calling `next(err)` skips ahead to the nearest 4-argument error handler, and writing to `res` (without calling `next`) ends the chain. This flat, sequential model is simple to understand and debug, but has no lifecycle concept: all middleware is equivalent, and the order of `app.use()` calls determines execution order. Understanding the stack as a linked list explains why error handling middleware must have exactly four parameters (Express counts them via `fn.length` to distinguish it) and why middleware registered after a route handler never runs for that route's matched requests.
+
 ```javascript
 // Express is essentially a linked list of middleware functions.
 // Each middleware receives (req, res, next) and calls next() to pass control.
@@ -111,6 +113,8 @@ app.get('/users', asyncHandler(async (req, res) => {
 
 ### Express Router
 
+`express.Router()` creates an isolated mini-application with its own middleware stack that can be mounted under a path prefix. Routers let you organise related routes and their middleware together — all user-related routes and the `authMiddleware` that protects them live in one file, mounted at `/api/v1`. The `router.param()` hook is a convenience for loading a route parameter resource (e.g., `findUser(id)`) once before any route handler that uses that parameter, avoiding the repetition of loading the same resource in every individual handler. Chaining `.get().put().delete()` on `router.route(path)` documents all supported methods on a path in one readable block.
+
 ```javascript
 // Router is a mini-app — has its own middleware stack
 const router = express.Router();
@@ -142,6 +146,8 @@ router.route('/users/:id')
 
 ### Why Fastify Is Faster Than Express
 
+Fastify achieves 4–5x higher throughput than Express on the same hardware through several compounding optimisations, not a single silver bullet. The most impactful is response serialisation: instead of calling `JSON.stringify` at runtime (which must inspect every object property via reflection), Fastify generates a specialised serialisation function from the route's response JSON Schema at startup time. This compiled function is 2–10x faster for large payloads. The second major gain is the radix-tree router (`find-my-way`) which matches routes in O(log n) rather than Express's O(n) linear stack walk. Schema-based request validation via Ajv (compiled to native functions, not interpreted) replaces runtime reflection for body validation. Together these optimisations reduce per-request overhead dramatically on CPU-bound, high-throughput workloads.
+
 ```
 Benchmarks (typical, request/sec on 1 core):
   Express:   ~15,000 req/sec
@@ -170,6 +176,8 @@ Reasons:
 ```
 
 ### Fastify Plugin Architecture
+
+The Fastify plugin system is the architectural concept that makes Fastify composable at scale. Every `app.register(fn)` call creates an encapsulated context: decorators, hooks, and routes registered inside the plugin function are invisible to sibling plugins and the parent scope. This prevents plugin conflicts (two plugins both trying to add a `req.user` decorator won't clobber each other) and enables clean auth scoping (register an auth hook inside an `api` plugin so it only guards API routes, not public routes outside). When you need a plugin's additions to be visible to the whole app — a database connector, a shared utility — use `fastify-plugin` to opt out of encapsulation.
 
 ```javascript
 import Fastify from 'fastify';
@@ -221,6 +229,8 @@ app.register(async function userPlugin(fastify) {
 
 ### Fastify Lifecycle Hooks
 
+Fastify replaces Express's flat middleware model with a structured lifecycle of named hooks, each corresponding to a specific stage in request processing. Rather than a single undifferentiated stack, each hook fires at a precise moment: `onRequest` before the body is read, `preValidation` before schema validation, `preHandler` before your route handler, and `preSerialization` before the response is JSON-encoded. This structure lets you apply logic at exactly the right stage — for example, rate-limiting in `onRequest` (before expensive body parsing), auth in `preHandler` (after validation confirms the request is well-formed), and response transformation in `preSerialization`. Hooks registered inside `app.register(...)` are scoped to that plugin's routes, giving clean isolation without shared global middleware.
+
 ```
 Request lifecycle in Fastify (in order):
   onRequest       → raw request, before parsing
@@ -266,6 +276,8 @@ app.get('/public', async (req) => {
 ```
 
 ### Fastify Error Handling
+
+Fastify centralises error handling through `setErrorHandler`, a single function that receives every error thrown from any route handler or hook. This is more explicit than Express's 4-argument error middleware (where the arity distinction is a hidden convention) and runs automatically for both synchronous throws and rejected async Promises — no `try/catch` + `next(err)` wrapper is required in handlers. Fastify pre-populates `error.validation` for schema validation failures, so you can distinguish malformed-request errors (return 400) from application errors (return domain-appropriate status) from unknown errors (log and return 500) all in one function.
 
 ```javascript
 // Set a custom error handler:
@@ -313,6 +325,8 @@ app.get('/users/:id', async (request) => {
 ---
 
 ## Head-to-Head Comparison
+
+The fundamental difference between Express and Fastify is philosophy: Express is a minimal, flexible middleware framework that makes no assumptions about validation, serialisation, or logging — you add those yourself. Fastify is an opinionated performance framework with all of those built in via its schema and plugin system. Express's simplicity is a strength for teams that want full control or are adding one-off endpoints; Fastify's batteries-included approach pays off when you want consistent request validation, fast serialisation, and structured logging without gluing them together yourself.
 
 ```
 Feature              | Express                  | Fastify

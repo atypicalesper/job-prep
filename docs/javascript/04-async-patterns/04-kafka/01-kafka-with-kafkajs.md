@@ -20,6 +20,8 @@ Replication:    Each partition has 1 leader + N-1 replicas. Leader handles reads
 
 ## Producer
 
+A Kafka producer is responsible for writing records to topics. The key configuration decisions are durability (the `acks` setting controls how many replicas must confirm receipt before the send is considered successful) and idempotency (enabling the idempotent producer prevents a retry from creating a duplicate message if the broker received the original but the ack was lost). Producers are long-lived objects — connecting and disconnecting on every request is expensive; create one per service and reuse it for the lifetime of the process.
+
 ```typescript
 import { Kafka, CompressionTypes, Partitioners } from 'kafkajs';
 
@@ -90,6 +92,8 @@ await producer.disconnect();
 
 ## Consumer and Consumer Groups
 
+A consumer subscribes to one or more topics and processes messages. Consumers within the same `groupId` form a consumer group: Kafka distributes partitions among them so each partition is processed by exactly one consumer at a time, providing horizontal scaling bounded by partition count. Offset management is the core correctness concern: KafkaJS auto-commits the offset after `eachMessage` resolves, meaning a crash before the callback completes will re-deliver the message — this is the source of at-least-once semantics and why your processing logic should be idempotent.
+
 ```typescript
 const consumer = kafka.consumer({
   groupId: 'payment-service',  // all instances with same groupId share partitions
@@ -139,6 +143,8 @@ await consumer.run({
 ---
 
 ## Exactly-Once Processing Pattern
+
+Kafka's at-least-once default means a message can be delivered multiple times if the consumer crashes after processing but before committing its offset. Two strategies achieve effectively-once semantics. The practical approach is idempotent consumers: store a deduplication key (topic + partition + offset) in the same database transaction as the business operation — if the message arrives again, the duplicate check prevents double-processing. The pure Kafka approach uses transactions to atomically commit both the output message and the input offset within a single Kafka transaction, but this only works when the output is also Kafka and cannot protect external systems.
 
 ```typescript
 // Kafka guarantees at-least-once by default.
@@ -202,6 +208,8 @@ consumer.run({
 
 ## Consumer Group Rebalancing
 
+A rebalance is triggered whenever the membership of a consumer group changes — a consumer starts, stops, crashes, or fails to send a heartbeat within the session timeout. During a classic (eager) rebalance, all consumers in the group stop consuming, give up their partitions, and wait for the group coordinator to redistribute assignments. This creates a pause in processing that scales with group size. Minimizing rebalance frequency is a key operational concern: keep session timeouts appropriate, call `heartbeat()` during long message processing to prevent false-positive session timeouts, and consider cooperative rebalancing (incremental, only moves the partitions that need to move).
+
 ```typescript
 // Rebalancing: when a consumer joins/leaves the group,
 // partitions are redistributed. During rebalance: all consumers pause.
@@ -232,6 +240,8 @@ const consumer = kafka.consumer({
 
 ## Manual Offset Management (Pause/Resume)
 
+By default KafkaJS advances the offset automatically when `eachMessage` resolves. Manual offset management is needed when you want finer-grained control: pausing a partition when a downstream service is slow (backpressure), seeking to replay messages from a specific offset for recovery or reprocessing, or committing offsets only after a batch of messages has been durably written to an external store. Pausing a partition stops fetching from it while leaving other partitions running — essential for handling slow consumers without causing a session timeout across the entire group.
+
 ```typescript
 // Pause a partition when downstream is slow (backpressure):
 consumer.run({
@@ -261,6 +271,8 @@ await consumer.seek({
 ---
 
 ## Dead Letter Queue Pattern
+
+A Dead Letter Queue (DLQ) is a separate Kafka topic where messages are sent after exhausting all retry attempts. Without a DLQ, a persistently failing message either blocks the partition indefinitely (if you keep retrying) or is silently dropped (if you skip it) — both outcomes are unacceptable in production. The DLQ preserves the original message with attached metadata (original topic, partition, offset, error, timestamp), enabling manual inspection, root-cause analysis, and selective reprocessing once the bug is fixed. The retry-count in the message header drives the retry loop; once the limit is reached the message is diverted rather than retried again.
 
 ```typescript
 // Messages that fail processing go to a DLQ for investigation:

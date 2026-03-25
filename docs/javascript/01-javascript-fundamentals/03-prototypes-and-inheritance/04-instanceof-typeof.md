@@ -2,7 +2,7 @@
 
 ## typeof — Type Checking Primitive
 
-`typeof` returns a string describing the type of a value. It works well for primitives but has some notorious quirks.
+`typeof` is a unary operator (not a function) that returns a string from a fixed set of possible values: `'undefined'`, `'boolean'`, `'number'`, `'string'`, `'symbol'`, `'bigint'`, `'function'`, and `'object'`. It is the primary tool for checking whether a variable holds a primitive value and for safely testing whether a variable has been declared at all (without risking a `ReferenceError`). It works well for primitives but has some notorious quirks.
 
 ```javascript
 typeof 42           // 'number'
@@ -42,6 +42,8 @@ isObject('str'); // false
 
 ### typeof for Safe Existence Check
 
+`typeof` is the only operator in JavaScript that can be safely applied to an undeclared variable. Accessing an undeclared variable in any other context throws a `ReferenceError`, but `typeof undeclaredVar` returns `'undefined'` instead. This makes `typeof` the correct tool for checking whether an optional global (like `window`, `process`, or a feature flag) exists in the current environment before using it.
+
 ```javascript
 // ❌ Throws ReferenceError if variable not declared
 if (undeclaredVar) { ... }
@@ -55,6 +57,8 @@ if (typeof window !== 'undefined') { /* browser */ }
 ---
 
 ## instanceof — Prototype Chain Check
+
+`instanceof` is a binary operator that tests inheritance by walking the left operand's prototype chain looking for the right operand's `.prototype` property. It answers the question "was this object created from this constructor, or from something that inherits from it?" It is the standard way to check class membership and naturally handles subclass relationships. Its main weakness is that it is realm-specific: each JavaScript execution context (iframe, vm module, Worker) has its own set of built-in constructors, so an object from one realm will fail `instanceof` checks against constructors from another realm.
 
 `instanceof` checks if a constructor's `.prototype` exists anywhere in the object's prototype chain.
 
@@ -72,6 +76,8 @@ fido instanceof Object; // true — Object.prototype always in chain
 ```
 
 ### How instanceof Works
+
+Understanding `instanceof` as a prototype chain walk clarifies why it works for subclasses automatically (both `Dog.prototype` and `Animal.prototype` are in the chain of a Dog instance) and why modifying `Constructor.prototype` after instances have been created breaks `instanceof` for existing instances (their `__proto__` still points to the old prototype object).
 
 ```javascript
 // instanceof A checks: does obj.__proto__ chain contain A.prototype?
@@ -121,6 +127,8 @@ class EvenNumber {
 
 ## Array.isArray — The Right Way to Check Arrays
 
+`Array.isArray` is a static method that was introduced specifically to solve the cross-realm `instanceof Array` problem. It checks the internal `[[Class]]` of the value rather than walking the prototype chain, making it reliable across iframes, vm contexts, and Workers. It is the canonical way to check whether a value is an array in production JavaScript.
+
 ```javascript
 // ❌ typeof is wrong for arrays
 typeof [] === 'object'; // true — but doesn't tell us it's an array
@@ -138,6 +146,8 @@ Array.isArray(null);    // false
 ---
 
 ## Object.prototype.toString — The Universal Type Checker
+
+`Object.prototype.toString` is the most reliable type checking mechanism in JavaScript. When called via `.call(value)`, it returns the internal `[[toStringTag]]` of any value as a string in the form `'[object TypeName]'`. It correctly distinguishes `null`, `undefined`, `Array`, `Date`, `Map`, `Set`, `RegExp`, `Promise`, and many more — cases where `typeof` returns unhelpfully generic results. Libraries like Lodash and Angular use this technique internally for robust type detection.
 
 The most reliable way to check types for all values:
 
@@ -172,6 +182,8 @@ Why `.call(val)`? Because if you call `val.toString()` directly, the method migh
 
 ## Reliable Type Checking Patterns
 
+A comprehensive type-checking utility consolidates all the special cases in one place: `null` must be handled separately from objects, `NaN` must be handled separately from numbers, and arrays must be checked before objects. This is the kind of utility you write once and import everywhere, rather than re-implementing per-callsite.
+
 ```javascript
 // Type checking utility
 const is = {
@@ -202,6 +214,8 @@ is.number(NaN);       // false ← proper NaN handling
 ---
 
 ## NaN Gotcha
+
+`NaN` (Not a Number) is a value of the `number` type that represents the result of an invalid numeric operation. It has two properties that make it uniquely difficult to test: `typeof NaN === 'number'` (counterintuitively typed as a number), and `NaN !== NaN` (the only JavaScript value not equal to itself). The correct check is `Number.isNaN()`, not the global `isNaN()` which coerces its argument and returns misleading results for non-numeric inputs.
 
 ```javascript
 typeof NaN; // 'number' — NaN is a "number" type!

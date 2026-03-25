@@ -2,7 +2,9 @@
 
 ## setTimeout — It's NOT Exactly Timed
 
-`setTimeout(fn, delay)` does NOT guarantee fn runs exactly after `delay` ms. It guarantees fn runs **no sooner** than `delay` ms. The actual delay can be much longer.
+`setTimeout(fn, delay)` is a host-provided API (not part of the JS engine itself) that registers a callback to be placed in the macrotask queue after at least `delay` milliseconds. It does NOT guarantee fn runs exactly after `delay` ms. It guarantees fn runs **no sooner** than `delay` ms. The actual delay can be much longer.
+
+The minimum-delay guarantee exists because `setTimeout` only enqueues the callback — it cannot run until the call stack is empty and all pending microtasks have drained. If the event loop is busy with a long synchronous operation or a large microtask batch when the timer expires, the callback waits in the macrotask queue until the loop is free.
 
 ```javascript
 const start = Date.now();
@@ -15,6 +17,8 @@ setTimeout(() => {
 ```
 
 ### Why the Delay is Not Exact
+
+The delay is a minimum, not a target. The timer mechanism and the event loop are two separate systems: libuv (or the browser) tracks the expiry time and enqueues the callback when it passes, but the event loop must finish whatever it is currently doing before picking up that callback.
 
 1. The timer fires, putting callback in macrotask queue
 2. The event loop must finish current task first
@@ -39,6 +43,8 @@ while (Date.now() < end) {} // busy wait — blocks event loop
 
 ## Minimum Delay
 
+Platform specifications impose a floor on how small the effective delay can be, regardless of what you pass. This exists partly for historical reasons (throttling nested timers to avoid runaway scripts) and partly because the OS timer resolution imposes a practical minimum. Passing `0` does not mean "immediately" — it means "as soon as the event loop is next free, after at least the platform minimum."
+
 The HTML spec (browsers) specifies a minimum delay of **4ms** for nested timers (timers inside timers after 5 levels deep). Node.js has a minimum of **1ms**.
 
 ```javascript
@@ -53,6 +59,8 @@ setTimeout(() => console.log('setTimeout 1'), 1);
 ---
 
 ## How Timers Work Internally
+
+Understanding the data structure Node.js uses for timers explains why timer ordering can be non-deterministic and why multiple timers with the same expiry can fire in the same event loop tick. libuv maintains a min-heap — a binary tree sorted by expiry time so the soonest-to-expire timer is always at the root. During the "timers" phase of the Node.js event loop, libuv walks the heap from the top, running any timer whose expiry has passed, and stops when it finds one that hasn't expired yet.
 
 Node.js (via libuv) uses a **min-heap** (priority queue) for timers, sorted by expiry time:
 
@@ -72,6 +80,8 @@ This is why multiple timers with the same delay may run in the same tick, but or
 ---
 
 ## setInterval — The Drift Problem
+
+`setInterval` schedules recurring execution, but it has a fundamental design flaw: the interval is measured from when the *previous callback was scheduled*, not from when it finished executing. If the callback itself takes significant time, or if the event loop is busy, the actual gap between the end of one invocation and the start of the next shrinks — or disappears entirely. Over many iterations this compounds into noticeable drift.
 
 `setInterval(fn, interval)` is supposed to run fn every `interval` ms. But in practice, it **drifts** because:
 - The callback itself takes time
@@ -93,6 +103,8 @@ setInterval(() => {
 
 ### Self-Correcting Timer Pattern
 
+The self-correcting approach replaces `setInterval` with a recursive `setTimeout` that subtracts the time already elapsed from the next scheduled delay. This way, if a callback runs slightly late, the next invocation compensates by scheduling itself sooner, keeping the long-term average close to the intended interval. Use this pattern whenever timing accuracy matters — polling, animation tick counters, or synchronization with external clocks.
+
 ```javascript
 // Better approach: use recursive setTimeout
 function scheduleNext(fn, interval) {
@@ -110,6 +122,8 @@ scheduleNext(() => {
 ---
 
 ## clearTimeout and clearInterval
+
+Both `setTimeout` and `setInterval` return an opaque timer ID that you can pass to the corresponding `clear*` function to cancel the pending callback. Failing to cancel intervals when they are no longer needed is a common source of memory leaks — the timer holds a reference to its callback, which may in turn hold references to large objects through a closure.
 
 ```javascript
 const timerId = setTimeout(() => console.log('never runs'), 5000);
@@ -144,6 +158,8 @@ class Poller {
 
 ## setInterval vs Recursive setTimeout
 
+The choice between these two patterns comes down to whether you want a fixed schedule from the start time (setInterval) or a fixed gap between the end of one call and the start of the next (recursive setTimeout). For lightweight callbacks that complete in microseconds, the difference is negligible. For callbacks that do real work, recursive setTimeout prevents callbacks from stacking up and is generally the safer choice.
+
 ```javascript
 // setInterval — fixed schedule from start time
 setInterval(() => work(), 1000);
@@ -169,6 +185,8 @@ repeat();
 
 ### Yielding to the Event Loop
 
+`setTimeout(fn, 0)` is the standard idiom for deliberately breaking a long synchronous operation into chunks that don't starve the event loop. Each `setTimeout(chunk, 0)` call allows the event loop to process any pending I/O callbacks, microtasks, and (in browsers) render frames between chunks. This keeps servers responsive and UIs interactive during CPU-intensive work without spawning Worker Threads.
+
 ```javascript
 // ❌ Blocks UI/other requests while processing huge array
 function processAll(items) {
@@ -193,6 +211,8 @@ function processInChunks(items, chunkSize = 100) {
 
 ### Deferring to After Current Render (Browser)
 
+In browsers, `setTimeout(fn, 0)` also places the callback after the next render opportunity. This is useful when you need to trigger a CSS transition on an element that was just inserted into the DOM — the browser needs a chance to paint the initial state before the transition can animate from it to the new state.
+
 ```javascript
 // Run after DOM has been updated
 element.style.display = 'block';
@@ -205,6 +225,8 @@ setTimeout(() => {
 ---
 
 ## Timer Ordering Pitfalls
+
+Timer ordering is a frequent source of flaky tests and subtle bugs. Even timers with the same specified delay can fire in different orders across runs because the operating system's timer resolution and the event loop's current phase introduce non-determinism at the sub-millisecond level. Relying on the relative ordering of two `setTimeout(fn, 0)` calls is technically valid within a single Node.js run (FIFO for same-delay timers in the same phase) but should never be used as a correctness constraint in production code.
 
 ```javascript
 // Which fires first?
@@ -227,6 +249,8 @@ setImmediate(() => console.log('immediate'));
 ---
 
 ## requestAnimationFrame (Browser Comparison)
+
+`requestAnimationFrame` is the browser's purpose-built API for animation callbacks. Unlike `setTimeout`, it aligns with the display's actual refresh cycle, guarantees consistent 60fps scheduling when the tab is visible, and automatically pauses when the tab is hidden — saving battery and CPU. Use it for any visual animation work instead of `setTimeout(fn, 16)`, which is less accurate and wastes resources in background tabs.
 
 In browsers, `requestAnimationFrame(fn)` is similar to `setTimeout(fn, 16)` but:
 - Tied to display refresh rate (60fps = 16.67ms)

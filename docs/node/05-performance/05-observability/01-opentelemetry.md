@@ -23,6 +23,8 @@ OpenTelemetry is a vendor-neutral CNCF standard for collecting telemetry. It rep
 
 ### Key concepts
 
+Before reading the code, it is important to understand the vocabulary. A *trace* is the complete record of a single request's journey from entry point to final response, potentially spanning dozens of services. A *span* is one unit of work within that trace — "HTTP POST /orders" is one span, "SELECT * FROM orders" is a child span within it. The `trace_id` is a 16-byte random identifier that links all spans from the same original request together across service boundaries. Spans are linked into a tree via `parent_span_id`. An *exporter* ships the finished span data to a backend (Jaeger, Zipkin, Datadog, or an OTel Collector) asynchronously in the background so it never adds latency to the request path.
+
 ```
 Trace   — A complete request journey across all services
   └─ Span   — One unit of work (e.g., "HTTP POST /orders", "DB query")
@@ -52,6 +54,8 @@ Frontend (span 1)
 
 ## Setup in Node.js
 
+Setting up OpenTelemetry in Node.js requires installing the SDK, auto-instrumentation packages, and exporters, then loading the instrumentation script before any application code runs (via `node --require`). The auto-instrumentation packages use Node.js's module loading hooks to patch `http`, `express`, `pg`, `redis`, and other popular modules at import time, automatically creating spans for every inbound request and outbound call without any changes to application code. The exporter sends spans to an OTel Collector (or directly to Jaeger/Zipkin in development). Add manual spans on top of auto-instrumentation for business-logic operations that have no built-in instrumentation.
+
 ```bash
 npm install @opentelemetry/sdk-node \
   @opentelemetry/auto-instrumentations-node \
@@ -60,6 +64,8 @@ npm install @opentelemetry/sdk-node \
 ```
 
 ### Instrumentation setup (must run BEFORE requiring app code)
+
+The OTel SDK patches modules at import time using Node.js require hooks. If `tracing.js` is loaded *after* `express` or `pg` have already been required, those modules will not be patched and no spans will be generated for them. The `node --require ./tracing.js` flag guarantees that instrumentation runs before any other module is loaded. In ESM projects, use `--import` instead of `--require`.
 
 ```js
 // tracing.js — loaded first via node --require ./tracing.js
@@ -106,6 +112,8 @@ process.on('SIGTERM', () => sdk.shutdown().finally(() => process.exit(0)));
 
 ### Manual spans for business logic
 
+Auto-instrumentation creates spans for framework-level operations (HTTP request received, SQL query executed) but knows nothing about your business logic. A `process-order` span that wraps the entire payment processing flow is far more informative in a trace than a collection of database and HTTP spans with no business context. The `startActiveSpan` pattern makes the new span "active" in the current async context, so any auto-instrumented operations called inside it automatically become child spans. Always call `span.end()` in a `finally` block — a span that is never ended leaks memory and will not be exported.
+
 ```js
 const { trace, SpanStatusCode } = require('@opentelemetry/api');
 const tracer = trace.getTracer('orders-service', '1.0.0');
@@ -135,6 +143,8 @@ async function processOrder(orderId) {
 ```
 
 ### Custom metrics
+
+OTel metrics go beyond what auto-instrumentation captures. Counters track cumulative totals (orders created, errors thrown). Histograms capture distributions of values (processing duration, payload size) — they are the right instrument for latency because they let you compute percentiles (p50, p95, p99). Observable gauges capture current state that is sampled periodically (queue depth, active connections, cache size). The key rule: never use high-cardinality values (user IDs, request IDs) as metric attributes — each unique attribute combination creates a separate time series, and millions of time series will crash Prometheus.
 
 ```js
 const { metrics } = require('@opentelemetry/api');
@@ -178,6 +188,8 @@ async function createOrder(data) {
 
 When a request crosses a service boundary, the trace context must be passed in headers.
 
+Without context propagation, each service would start a new unrelated trace when it receives a request, making it impossible to reconstruct the end-to-end journey of a single user request across multiple services. The W3C `traceparent` header is the standard carrier: it encodes the `trace_id` (16 bytes, same across the entire distributed trace), the `span_id` of the calling span (16 bytes), and trace flags. Auto-instrumented HTTP clients inject this header automatically on outbound calls, and auto-instrumented HTTP servers extract it and use it as the parent span. Manual propagation is only needed when using non-HTTP transports (message queues, gRPC metadata).
+
 ```js
 // Outgoing HTTP call — propagate context (auto-instrumented does this)
 const { context, propagation } = require('@opentelemetry/api');
@@ -212,6 +224,8 @@ traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
 
 Link logs to traces so you can jump from a log line to the full trace.
 
+Structured logging and distributed tracing are complementary: traces show the timeline and causal structure of a request, while logs provide rich free-text context at specific moments. By injecting the current `trace_id` and `span_id` into every log line, you create a bidirectional link — from a log line you can navigate directly to the full trace in Jaeger, and from a slow span in Jaeger you can pull all correlated log lines from Elasticsearch. This correlation eliminates the need to search logs by timestamp (imprecise) or request-specific fields (requires forethought).
+
 ```js
 const pino = require('pino');
 const { trace } = require('@opentelemetry/api');
@@ -243,6 +257,8 @@ log.info('Processing order', { orderId: '99' });
 
 Recording every request is expensive. Sampling decides what to keep.
 
+At high throughput (thousands of requests per second), recording 100% of traces would overwhelm both the OTel Collector and the backend storage. Sampling reduces this to a manageable fraction while preserving the traces that matter most. Head sampling (decided at trace start) is simple and low overhead but discards some errors and slow requests randomly. Tail sampling (decided after the trace completes at the Collector) is more sophisticated: it can always keep errors and slow traces (the ones you most need to debug) and sample the uneventful traces at a low rate. Tail sampling requires the OTel Collector to buffer traces until they are complete.
+
 ```js
 const { ParentBasedSampler, TraceIdRatioBasedSampler } = require('@opentelemetry/sdk-trace-base');
 
@@ -256,6 +272,8 @@ const sampler = new ParentBasedSampler({
 ```
 
 ### Tail sampling via OTel Collector (recommended)
+
+The OTel Collector's `tail_sampling` processor evaluates completed traces against a set of policies and keeps or drops them based on criteria. The recommended configuration always retains error traces and slow traces (the ones you need most for debugging), then samples the remaining "healthy" traces at a low percentage. `decision_wait` is the buffer time the Collector holds spans before deciding — it must exceed the maximum trace duration in your system.
 
 ```yaml
 # otel-collector-config.yaml

@@ -27,6 +27,8 @@ obj.arrow();   // undefined (this = module.exports in Node.js)
 
 ## Where Arrow Functions Excel: Callbacks Inside Methods
 
+The canonical use case for arrow functions is as callbacks *inside* regular methods or class methods. When a method calls `setInterval`, `setTimeout`, `Array.prototype.forEach`, or any other higher-order function with a callback, you typically want the callback to operate on the same `this` as the enclosing method. An arrow function automatically inherits that `this` because it was defined inside the method's scope. Before arrow functions, this required either the `const self = this` pattern or `.bind(this)`.
+
 ```javascript
 class Timer {
   constructor() {
@@ -57,6 +59,8 @@ timer.start(); // Works correctly
 ---
 
 ## Arrow Functions Inherit `this` Through the Chain
+
+Because `this` in an arrow function comes from the lexical scope at the time the arrow is *defined* (not called), chained arrow functions all share the same `this`. Even if you define an arrow inside another arrow, both arrows trace back to the same outer `this` — the most recently enclosing regular function's or method's `this`. There is no way to override an arrow function's `this` with `call`, `apply`, or `bind` (though `bind` still works for partial application of arguments).
 
 ```javascript
 const team = {
@@ -101,7 +105,11 @@ obj.method(); // 'outer'
 
 ## When NOT to Use Arrow Functions
 
+Arrow functions are not a drop-in replacement for regular functions. Their lexical `this` is a feature when you *want* to inherit the outer context, but it is a bug when you define a method on an object and expect `this` to be that object. Several cases require a regular function specifically because you need a dynamic `this` binding.
+
 ### ❌ Object Methods
+
+When you define a method using an arrow function directly on an object literal, the arrow captures `this` from the enclosing scope at the time the object is created — which is typically the module scope or global scope, not the object itself. The object literal does not create a new `this` context; only function calls do.
 
 ```javascript
 const counter = {
@@ -139,6 +147,8 @@ button.addEventListener('click', function() {
 
 ### ❌ Constructor Functions / Generators
 
+Arrow functions have no `prototype` property and no own `this` binding — both of which are required for the `new` operator to work correctly. The engine will throw a `TypeError` immediately when you try to use `new` on an arrow function, rather than silently producing a broken instance.
+
 ```javascript
 // ❌ Cannot use arrow as constructor
 const Foo = () => {};
@@ -149,6 +159,8 @@ const gen = *() => {}; // SyntaxError
 ```
 
 ### ❌ Methods that use arguments object
+
+Arrow functions do not have their own `arguments` object — they inherit it from the nearest enclosing regular function, which is usually not what you want. In almost all cases, rest parameters (`...args`) are the modern replacement for `arguments` and work correctly in both regular and arrow functions.
 
 ```javascript
 // ❌ Arrow doesn't have its own 'arguments'
@@ -185,6 +197,8 @@ const sumArrow = (...args) => args.reduce((a, b) => a + b, 0);
 
 ## Implicit Return with Arrow Functions
 
+Arrow functions with a single expression body (no curly braces) implicitly return the value of that expression without a `return` keyword. This concise form is heavily used with array methods like `map`, `filter`, and `reduce`. The one important gotcha is returning an object literal: `{}` is parsed as a block statement, not an object, so you must wrap the object in parentheses `({})` to force the parser to treat it as an expression.
+
 ```javascript
 // Single expression — no braces, no return keyword
 const double  = x => x * 2;
@@ -206,6 +220,8 @@ const complex = (x) => {
 ---
 
 ## Fixing Arrow Functions in Classes
+
+Class methods defined on the prototype can lose their `this` binding when extracted and passed as callbacks. Arrow class fields solve this by creating the method as an own property on each instance, bound to that instance via lexical `this` at construction time. The trade-off is memory: every instance gets its own copy of the function rather than sharing one via the prototype. Use arrow class fields when the method will frequently be passed as a callback; use regular prototype methods when memory efficiency across many instances matters.
 
 ```javascript
 class Component {

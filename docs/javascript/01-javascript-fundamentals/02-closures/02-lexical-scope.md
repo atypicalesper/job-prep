@@ -57,6 +57,8 @@ wrapper(); // logs: 'global'
 
 ## The Scope Chain
 
+The scope chain is the ordered sequence of environments the JS engine traverses when resolving a variable name. It is built at parse time based on the static nesting of functions in the source code — not at runtime based on the call stack. Each environment record in the chain has a reference to its parent, forming a linked list from the innermost scope to the global scope. Variable lookup walks this chain from inner to outer and stops at the first match; if no match is found at any level, the result is a `ReferenceError`.
+
 When JS looks up a variable, it walks up the **scope chain** — the nested structure of environments from inner to outer:
 
 ```javascript
@@ -94,6 +96,8 @@ level3 scope → level2 scope → level1 scope → global scope → (not found �
 
 ## Block Scope vs Function Scope
 
+Scope granularity determines how tightly variables are contained. JavaScript has two kinds of scopes for variable declarations: function scope (for `var`) and block scope (for `let` and `const`). The distinction matters because block-scoped variables cannot leak out of control-flow constructs like `if`, `for`, and `while` blocks, while `var` declarations can — leading to the classic loop bug and other surprising behaviors. Understanding this difference is prerequisite knowledge for writing predictable JavaScript.
+
 ### var — Function Scoped
 
 `var` declarations are scoped to the **nearest function** (or global), NOT to blocks like `{}`, `if`, `for`.
@@ -114,6 +118,8 @@ function example() {
 
 ### var Leaks Out of Blocks
 
+Because `var` is function-scoped, a loop variable declared with `var` is accessible — and retains its final value — after the loop completes. This is the root cause of the notorious closure-in-loop bug where all callbacks share the same post-loop value of `i`. It is also why `var` leaks into the enclosing function scope even when you intend it to be local to a block.
+
 ```javascript
 for (var i = 0; i < 3; i++) {
   // i is function-scoped, shared across iterations
@@ -128,6 +134,8 @@ console.log(j); // ReferenceError — not in scope
 
 ### let and const — Block Scoped
 
+`let` and `const` confine variables to the nearest enclosing block `{}`, whether that is a function body, a loop, an `if` statement, or a bare block. This makes it much easier to reason about where a variable is valid and prevents accidental reuse of loop variables in outer scopes. Prefer `let`/`const` over `var` in all modern JavaScript.
+
 ```javascript
 {
   let blockVar = 'only here';
@@ -139,6 +147,8 @@ console.log(j); // ReferenceError — not in scope
 ---
 
 ## Hoisting and Temporal Dead Zone
+
+Hoisting is the engine behavior where variable and function declarations are processed before any code executes. It is not physical code movement — it is a property of how the JS engine sets up scope environments during the parsing phase. Understanding hoisting explains why `var` references before their declaration line are `undefined` (not a `ReferenceError`) and why function declarations are fully available anywhere in their scope.
 
 `var` declarations are **hoisted** to the top of their function scope and initialized to `undefined`:
 
@@ -185,6 +195,8 @@ quadruple(5); // 20
 
 ## Shadowing
 
+Shadowing occurs when an inner scope declares a variable with the same name as a variable in an outer scope. The inner declaration wins for all code within that inner scope, and the outer variable is temporarily inaccessible — not gone, just hidden. Shadowing is valid JavaScript and is sometimes intentional (e.g., a `forEach` callback parameter named `index` that shadows an outer `index`), but it can also be a source of bugs when accidental.
+
 A variable in an inner scope can **shadow** (hide) a variable with the same name in an outer scope:
 
 ```javascript
@@ -204,6 +216,8 @@ Shadowing is valid but can be confusing. `let`/`const` with the same name as out
 ---
 
 ## Global Scope vs Module Scope
+
+The global scope is the outermost scope — the final stop in any scope chain lookup. In browsers it is `window`; in Node.js it is `global`. However, Node.js wraps every file in a module wrapper function before execution, meaning top-level variable declarations in a `.js` file are actually function-scoped to that wrapper, not truly global. This prevents accidental global pollution between modules and is why `this` at the top level of a Node.js file is `{}` (module.exports) rather than the `global` object.
 
 In Node.js, each file is a **module** with its own module scope. Variables declared at the top level of a file are NOT global — they're module-scoped.
 

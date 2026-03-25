@@ -21,6 +21,8 @@ With index on email: 3-4 B-Tree lookups → ~0.1ms
 
 ## Types of Indexes
 
+Different data access patterns call for different index structures. The default B-Tree index handles equality and range queries efficiently. A composite (multi-column) index covers multiple columns in a single structure but is only usable from the leftmost column — the column order matters. Partial indexes index only a subset of rows matching a condition, making them smaller and faster for queries that always include that filter. Expression indexes index the result of a function, enabling index use when the query filters on a transformation of the column (like `LOWER(email)`). GIN indexes are designed for set-membership operations on arrays, JSONB, and full-text search vectors.
+
 ```sql
 -- B-Tree Index (default) — good for equality, ranges, sorting
 CREATE INDEX idx_users_email ON users(email);
@@ -50,6 +52,8 @@ CREATE INDEX idx_posts_content ON posts USING GIN(to_tsvector('english', content
 
 ## The Left-Prefix Rule (Composite Index)
 
+A composite index can only be used if the query filters on a prefix of the indexed columns starting from the leftmost one. This is because the index is sorted first by the first column, then by the second within each first-column value, and so on. If you skip the first column, the remaining columns are not sorted in any predictable order. Additionally, a range condition on a middle column breaks the chain — columns after the range cannot be used from the index even if they are present in the query.
+
 ```sql
 -- Index on (last_name, first_name, age)
 CREATE INDEX idx_name_age ON employees(last_name, first_name, age);
@@ -71,6 +75,8 @@ WHERE last_name = 'Smith' AND first_name > 'J' AND age = 30 -- age NOT indexed
 ---
 
 ## EXPLAIN and Query Plans
+
+`EXPLAIN` shows the query plan the database's query optimizer has chosen, without executing the query. `EXPLAIN ANALYZE` actually runs the query and shows both the estimated plan and real execution statistics, which reveals when the optimizer's estimates diverge from reality (a sign of stale statistics). Reading a plan is essential for diagnosing slow queries: look for `Seq Scan` on large tables (indicates a missing index), high `rows=` estimates vs actual rows (stale statistics), and expensive sort or hash operations.
 
 ```sql
 -- PostgreSQL:
@@ -100,6 +106,8 @@ EXPLAIN ANALYZE SELECT * FROM users WHERE email = 'alice@example.com';
 ---
 
 ## Index Pitfalls
+
+Indexes can be silently bypassed by seemingly innocuous query patterns. The most common pitfall is applying a function to an indexed column in a `WHERE` clause — the database cannot match a function's output against the raw index values, so it falls back to a full scan. Similarly, implicit type casting (comparing an integer column to a string literal) and leading wildcards in `LIKE` patterns both prevent index use. Knowing these pitfalls lets you rewrite queries or create the right kind of index to maintain performance.
 
 ```sql
 -- 1. Functions on indexed columns defeat the index:
@@ -138,6 +146,8 @@ WHERE status != 'active' -- full scan
 ---
 
 ## Index Cost/Benefit
+
+Every index improves read performance but incurs a write penalty. When a row is inserted, updated, or deleted, every index on that table must also be updated. For write-heavy tables, an excess of indexes can make writes significantly slower. The index must also be maintained in memory and on disk. The practical rule is to index what you query frequently and avoid indexing low-cardinality columns (like a boolean) unless using a partial index that targets a specific value.
 
 ```
 Benefits:

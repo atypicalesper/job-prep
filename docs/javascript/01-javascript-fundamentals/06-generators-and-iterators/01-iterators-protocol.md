@@ -89,6 +89,8 @@ for (const [i, v] of ['a', 'b', 'c'].entries()) console.log(i, v);
 
 ## for...of vs for...in
 
+`for...of` and `for...in` look similar but operate on fundamentally different things. `for...of` consumes the **iterator protocol** and yields values, while `for...in` enumerates **enumerable string keys** on an object, including inherited ones from the prototype chain. Using `for...in` on an array is almost always a bug — it exposes non-index properties and doesn't guarantee order in all engines. Reserve `for...in` for plain objects where you explicitly want key enumeration.
+
 ```javascript
 const arr = ['a', 'b', 'c'];
 arr.custom = 'added'; // non-index property
@@ -105,6 +107,8 @@ for (const k in arr) console.log(k); // '0', '1', '2', 'custom'
 ---
 
 ## Making Objects Iterable — Practical Example
+
+Any custom data structure can participate in the full JavaScript iteration ecosystem — `for...of`, spread, destructuring, `Array.from` — simply by implementing `[Symbol.iterator]()`. This lets you define the traversal logic once and have every language construct work with it automatically. The key mental model is that the `[Symbol.iterator]()` method is a factory: each call returns a fresh iterator with its own independent position, so you can iterate the same object multiple times concurrently without state conflicts.
 
 ```javascript
 class LinkedList {
@@ -152,6 +156,8 @@ for (const n of list) console.log(n); // 1, 2, 3
 
 ## Return and Throw in Iterators
 
+Beyond `next()`, the iterator protocol defines two optional methods for early termination and error injection. `return()` is called by the runtime when a `for...of` loop exits early via `break`, `return`, or an uncaught `throw` — it gives the iterator a chance to release resources (close file handles, database connections, etc.). `throw()` injects an error into the iterator at its current suspension point. These hooks are what make generators safe for resource management: a `try/finally` block inside a generator will always run its cleanup even if the consumer breaks early.
+
 ```javascript
 // Full iterator protocol includes optional return() and throw():
 function createIterator() {
@@ -179,6 +185,8 @@ for (const v of obj) {
 ---
 
 ## Spread, Destructuring, and Iterables
+
+The iterator protocol is the single unified contract underlying many seemingly unrelated JavaScript features. Spread `[...]`, destructuring assignment, `Array.from()`, `Promise.all()`, `new Map()`, and `new Set()` all call `[Symbol.iterator]()` under the hood. This means any object you make iterable automatically works with all of these constructs — no per-feature adaptation required. It also means you can pass a custom infinite or lazy sequence to `new Set()` or `Promise.all()` as long as the iterable terminates.
 
 ```javascript
 // All of these use the iterator protocol:

@@ -4,6 +4,8 @@
 
 ## S — Single Responsibility Principle
 
+SRP is the principle that a class or module should encapsulate one cohesive piece of behavior — one "actor" in the system should be the only one that would ever need to change it. The problem it solves is the ripple-effect bug: when one class handles user persistence, email delivery, and PDF generation simultaneously, a change to the email provider forces you to open and retest the database code. By separating concerns, you limit blast radius so that changing the email provider only touches `EmailService`. The mental model is to ask "who would ask me to change this?" — if the answer is more than one team or business requirement, the class has too many responsibilities.
+
 Each class/module should have one reason to change.
 
 ```typescript
@@ -47,6 +49,8 @@ class UserPresenter {
 ---
 
 ## O — Open/Closed Principle
+
+OCP addresses the fragility of adding features by continuously modifying existing classes. Every time you open a working class to edit it you risk introducing regressions, and the class accumulates conditional branches for every new variant it needs to handle. The solution is to design an abstraction point — an interface or abstract class — so that new behavior is expressed as a new implementation rather than a modification to the core. This is most naturally realized through the Strategy or Template Method patterns. Use OCP proactively in areas of high churn (discount rules, notification channels, payment methods) and less strictly in one-off code that rarely changes.
 
 Open for extension, closed for modification. Add new behavior by adding code, not changing existing code.
 
@@ -92,6 +96,8 @@ const calc = new DiscountCalculator(new PercentageDiscount(10));
 ---
 
 ## L — Liskov Substitution Principle
+
+LSP formalizes what correct inheritance actually means: a subtype must honor every behavioral contract of its supertype, not just its interface signature. The problem it prevents is silent behavioral breakage — a function written against `Rectangle` trusts that setting width and height are independent operations; if you pass a `Square` and that assumption no longer holds, the function produces wrong answers with no compile-time warning. The key test is substitutability: you should be able to replace every use of the base class with the subclass without observing a difference in program behavior. When you find yourself throwing `NotImplemented` in a subclass, or needing to check `instanceof` before calling a method, LSP is likely violated — prefer composition or a flatter type hierarchy.
 
 Subclasses should be usable wherever the base class is expected, without breaking behavior.
 
@@ -141,6 +147,8 @@ class Square implements Shape {
 
 ## I — Interface Segregation Principle
 
+ISP exists because interfaces are couplings: every method in an interface is a dependency between the implementor and the caller. A "fat" interface forces all implementors to be aware of — and stub out — operations that are irrelevant to them, which creates noise, forces throws for unsupported operations, and breaks LSP in practice. The remedy is to keep interfaces focused on a single role so that implementors only take on the contracts they actually fulfill. This is especially important in TypeScript where interfaces are structural — you can compose narrow interfaces cheaply via `implements A, B, C`. Prefer many small interfaces over one large one whenever different clients need different subsets of behavior.
+
 Clients shouldn't depend on interfaces they don't use. Many specific interfaces > one general interface.
 
 ```typescript
@@ -176,6 +184,8 @@ class Robot implements Workable {
 ---
 
 ## D — Dependency Inversion Principle
+
+DIP solves the problem of tight coupling between business logic and infrastructure details. When a service instantiates its own `PostgresDatabase` or `SendGridMailer` internally, it is permanently married to those implementations — swapping one out means modifying the service itself, and testing requires a real database or mail server. By depending on abstractions (interfaces) instead of concrete classes, the service expresses only what it *needs* from its collaborators, not how those needs are fulfilled. The "inversion" is conceptual: instead of high-level code depending downward on low-level code, both layers depend on an interface that sits between them. This enables dependency injection — the concrete wiring happens in one "composition root" place, making unit tests trivial (inject mocks) and infrastructure swappable without touching business logic.
 
 High-level modules shouldn't depend on low-level modules. Both should depend on abstractions.
 

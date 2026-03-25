@@ -4,6 +4,8 @@
 
 ## Dockerfile Best Practices
 
+A Dockerfile is a recipe that describes how to build a container image layer by layer. Each instruction (`FROM`, `COPY`, `RUN`) creates a new immutable layer, and Docker caches layers so that a rebuild only re-executes instructions whose inputs have changed. The most important principle for Node.js is multi-stage builds: use one stage to install all dependencies and compile TypeScript, then copy only the compiled output into a minimal production image. This keeps the production image small (no TypeScript compiler, no dev dependencies, no build tools) and reduces the attack surface. The second most important principle is layer-cache ordering: copy `package.json` and run `npm ci` before copying source code, so the expensive `npm ci` step is only re-run when dependencies change, not on every code edit.
+
 ```dockerfile
 # ✅ Production-ready multi-stage Dockerfile for Node.js
 
@@ -65,6 +67,8 @@ CMD ["node", "dist/server.js"]
 
 ## .dockerignore
 
+A `.dockerignore` file works like `.gitignore` but for the Docker build context — the directory tree sent to the Docker daemon when you run `docker build`. Without it, Docker sends your entire project directory including `node_modules` (potentially hundreds of megabytes), `.git` history, and `.env` files containing secrets. This makes builds slow and risks baking secrets into intermediate image layers. The `.dockerignore` exclusions below cover the most common sources of bloat and accidental secret exposure in Node.js projects.
+
 ```
 node_modules
 dist
@@ -83,6 +87,8 @@ docker-compose*
 ---
 
 ## docker-compose.yml for Development
+
+Docker Compose solves the multi-container development problem: your Node.js app needs a database, a cache, and sometimes a message broker all running together locally. Without Compose, you would need to manually start each container, connect them on the same network, and pass the right environment variables. Compose describes the entire environment as a single YAML file, so `docker-compose up` brings up all services at once with correct networking. The key development pattern is mounting your source directory as a volume so code changes are reflected immediately (via nodemon), while using a named volume for `node_modules` to prevent the host's version from overriding the container's. The `depends_on` with health checks ensures the app only starts once its dependencies are ready.
 
 ```yaml
 version: '3.8'
@@ -143,6 +149,8 @@ volumes:
 
 ## Key Docker Concepts
 
+Understanding Docker's layer caching model is the key to making builds fast. Every instruction in a Dockerfile produces a cached layer identified by the instruction itself and the content of any files it touched. When Docker detects that a layer's inputs are unchanged, it reuses the cached result and skips the instruction entirely — this is why the ordering of `COPY` and `RUN` instructions matters significantly. If source code changes but `package.json` hasn't, the `npm ci` layer cache hit saves the most expensive step. The commands below cover the essential build, run, and inspect operations for daily development.
+
 ```bash
 # Layer caching:
 # Each instruction creates a layer
@@ -174,6 +182,8 @@ docker inspect myapp   # full container info
 ---
 
 ## Node.js Specific Docker Tips
+
+Several Node.js behaviors interact with Docker in non-obvious ways. The choice of base image affects not just image size but compatibility with native Node.js addons: Alpine uses musl libc instead of glibc, which can break packages that compile C extensions. Signal handling is the most common production gotcha — if Node.js is not running as PID 1 with the exec form of `CMD`, it will never receive `SIGTERM` from Docker and will be force-killed after the stop timeout expires, losing in-flight requests. Graceful shutdown, which closes the HTTP server and drains connections before exiting, is not optional in production deployments.
 
 ```dockerfile
 # 1. Use Alpine for smaller images:
@@ -208,6 +218,8 @@ process.on('SIGTERM', async () => {
 ---
 
 ## Container Security
+
+By default, processes in Docker containers run as root (UID 0), which means that if an attacker achieves code execution inside the container, they have root access to everything the container can reach — including mounted volumes and the Docker socket if it's exposed. Running as a non-root user is the most impactful single hardening step because it limits what a compromised container can do. Beyond user privilege, the principle is defense-in-depth: use minimal base images (smaller attack surface), scan images for known CVEs, pin to specific image digests rather than mutable tags, and never run containers with elevated Linux capabilities unless absolutely required.
 
 ```dockerfile
 # 1. Non-root user (shown above)

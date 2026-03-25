@@ -6,6 +6,8 @@ Authentication and authorization are the most common security gaps in web applic
 
 ## Authentication vs Authorization
 
+Authentication and authorization are distinct security operations that are almost always conflated. Authentication establishes identity — it answers "who is making this request?" by verifying a credential (password, token, certificate). Authorization uses the established identity to answer "is this identity permitted to perform this action on this resource?" A system can have authentication without authorization (everyone who logs in gets the same access), but authorization without authentication is meaningless (you can't make access decisions about an unknown identity). Confusing the two leads to the most common access-control bugs: implementing AuthN correctly but missing AuthZ checks, or performing AuthZ based on unverified client-supplied data rather than the server-established identity.
+
 **Authentication (AuthN)** — who are you? Verify identity.
 **Authorization (AuthZ)** — what can you do? Verify permissions.
 
@@ -20,6 +22,8 @@ AuthZ: "Can this user perform this action?" → RBAC / ABAC / policies
 
 ### Session-based (Stateful)
 
+Session-based authentication stores the authentication state on the server: after a successful login the server creates a session record (typically in Redis or a database), issues the session ID to the client in an HttpOnly cookie, and looks up that session on every subsequent request. Because the server holds the state, it has complete control — invalidating a session (logout, account lock) is instant and requires no coordination. The trade-off is that every server must share access to the same session store, which adds a dependency for horizontal scaling.
+
 ```
 1. User logs in → server creates session → stores in DB/Redis
 2. Server returns session ID in cookie (HttpOnly)
@@ -31,6 +35,8 @@ AuthZ: "Can this user perform this action?" → RBAC / ABAC / policies
 - CSRF risk (cookie sent automatically — need CSRF token)
 
 ### Token-based / JWT (Stateless)
+
+JWT-based authentication moves the session state from the server into the token itself: the server signs a payload (user ID, role, expiry) with a secret or private key, and the client presents this token on every request. The server verifies the signature — a cheap cryptographic operation — and extracts the claims without any database lookup. This scales naturally across many server instances since there is no shared session store. The cost is that tokens cannot be revoked before they expire without adding server-side state (a blacklist), which partially negates the stateless benefit. Short expiry times (15 minutes) combined with long-lived refresh tokens are the standard compromise.
 
 ```
 1. User logs in → server creates signed JWT → returns to client
@@ -46,6 +52,8 @@ AuthZ: "Can this user perform this action?" → RBAC / ABAC / policies
 
 ## JWT — JSON Web Token
 
+A JSON Web Token is a compact, self-contained credential that encodes claims (assertions about a subject) in a JSON object, digitally signs the result, and base64url-encodes the whole thing into a string that can be passed in an HTTP header. The key property is self-contained verification: the server can validate the token using only its own secret or public key, with no database lookup. This makes JWTs horizontally scalable and stateless. The most important thing to understand about JWTs is that the payload is not encrypted — it is only signed. Anyone who possesses the token can read the claims by base64-decoding the payload. The signature only prevents tampering; it provides no confidentiality. For confidential claims, use JWE (JSON Web Encryption) or store sensitive data server-side.
+
 Three base64url-encoded parts separated by dots: `header.payload.signature`
 
 ```
@@ -54,11 +62,17 @@ eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI0MiIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTcwMDAwMH0.SIG
 ```
 
 ### Header
+
+The header identifies the algorithm used to sign the token. Always explicitly whitelist the expected algorithm during validation — the `alg: none` attack works by sending a token with the algorithm set to `none` and no signature; a naive verifier that trusts the header's algorithm claim will accept it.
+
 ```json
 { "alg": "RS256", "typ": "JWT" }
 ```
 
 ### Payload (Claims)
+
+The payload is the token's data — a JSON object of claims. Standard registered claims (`sub`, `iss`, `aud`, `exp`, `iat`) have defined semantics understood by all JWT libraries. Custom claims (`role`, `email`) can carry any application-specific data. The payload is base64url-encoded, not encrypted — anyone who possesses the token can decode and read it without knowing the signing key. Never put sensitive data (passwords, PII beyond what's needed) in the payload.
+
 ```json
 {
   "sub": "42",              // subject (user ID)
@@ -72,12 +86,17 @@ eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI0MiIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTcwMDAwMH0.SIG
 ```
 
 ### Signature
+
+The signature is what makes the token tamper-proof. It is a cryptographic function over the header and payload — any change to either (even a single character) produces a completely different signature that fails verification. The server never needs to look up the token in a database because the signature itself is proof of authenticity.
+
 ```
 HMAC-SHA256(base64(header) + "." + base64(payload), secret)
 // or RSA/ECDSA for asymmetric signing
 ```
 
 ### Symmetric vs Asymmetric Signing
+
+The choice between symmetric (HS256) and asymmetric (RS256/ES256) signing determines who can verify tokens — and that determines your architecture. With symmetric signing, anyone who can verify tokens can also forge them (because the same secret does both operations), so the secret must never leave the auth service. This works fine when there is only one service that needs to verify tokens. With asymmetric signing, the private key signs and stays on the auth service, while the public key (which can only verify, not sign) can be freely distributed to all microservices that need to verify tokens. The `/.well-known/jwks.json` endpoint is the standard mechanism for services to fetch the current public keys, including during key rotation.
 
 | | HS256 (HMAC) | RS256 (RSA) / ES256 (ECDSA) |
 |---|---|---|
@@ -89,6 +108,8 @@ HMAC-SHA256(base64(header) + "." + base64(payload), secret)
 **Prefer RS256/ES256** for microservices — only auth service needs private key; all other services verify with public key (fetchable from JWKS endpoint).
 
 ### Validation Checklist
+
+JWT validation must be both complete and explicit. Many vulnerabilities arise from partial validation — verifying the signature but not checking `exp`, trusting the token's `alg` header rather than specifying expected algorithms, or not verifying `iss` and `aud` claims, which opens the door to token confusion across services. The checklist below represents the minimum required for secure validation in production.
 
 ```javascript
 import jwt from 'jsonwebtoken';
@@ -113,6 +134,8 @@ function validateToken(token) {
 
 ### Token Revocation
 
+The stateless property of JWTs is simultaneously their greatest strength (no database lookup on every request) and their most significant security weakness. A signed token is valid until its `exp` claim says otherwise — the server cannot "un-sign" a token that has been issued. This becomes a problem when you need to invalidate a specific token immediately: a user logs out, an account is compromised, a user's role is revoked, or an administrator force-expires a session. The three approaches below represent a spectrum of tradeoffs between the pure stateless ideal and the operational reality that some revocation capability is usually required.
+
 JWTs are stateless — can't be revoked before expiry without extra infrastructure.
 
 Options:
@@ -131,9 +154,13 @@ const payload = { sub: userId, tokenVersion: user.tokenVersion };
 
 ## OAuth 2.0
 
+OAuth 2.0 solves the problem of delegated authorization: how does a third-party application access a resource on a user's behalf without the user handing over their password? Before OAuth, the only option was to give your credentials directly to the third party — a severe security risk because you couldn't selectively revoke access, the third party could impersonate you fully, and a breach of the third party exposed your credentials everywhere you used them. OAuth 2.0 introduces a consent-based authorization flow where the user authenticates directly with the resource owner (e.g., Google), grants limited permissions (scopes), and the third-party application receives a time-limited access token with only those permissions. The user's password never leaves Google, and the token can be revoked without changing the password.
+
 Authorization framework for delegated access. Allows third-party apps to access resources on behalf of a user without sharing their password.
 
 ### Roles
+
+OAuth 2.0 defines four distinct roles that interact in any authorization flow. Understanding the separation is essential: the Authorization Server issues tokens and is the only party that validates credentials; the Resource Server only validates tokens and never sees the user's password; the Client is your application; and the Resource Owner is the user consenting to access. This separation is what makes delegated access safe — your application never handles the user's credentials at the Authorization Server.
 
 ```
 Resource Owner: the user
@@ -143,6 +170,8 @@ Resource Server: API being accessed
 ```
 
 ### Authorization Code Flow (Web Apps — Most Secure)
+
+The Authorization Code Flow is the most secure and recommended grant type for server-side web applications. The key security property is that the access token is never exposed to the browser — instead, the authorization server redirects to your server with a short-lived, single-use authorization code, and your server exchanges that code for tokens using its `client_secret` in a back-channel (server-to-server) call. This means even if the redirect URL is intercepted (e.g., in browser history or server logs), the intercepted code is useless without the `client_secret`. The `state` parameter provides CSRF protection by verifying that the redirect came from the same browser session that initiated the login.
 
 ```
 1. User clicks "Sign in with Google"
@@ -174,6 +203,8 @@ Resource Server: API being accessed
 
 ### PKCE (Proof Key for Code Exchange)
 
+PKCE (pronounced "pixie") solves the authorization code interception attack for public clients — SPAs and mobile apps that cannot securely store a `client_secret` because their code is fully accessible to the user or an attacker. Without a `client_secret` to verify the token exchange, any attacker who intercepts the authorization code (e.g., via a malicious app registered for the same redirect URI scheme on mobile) could exchange it for tokens. PKCE binds the authorization code to the specific client instance that requested it: the client generates a random secret (`code_verifier`), hashes it to a `code_challenge`, and includes only the hash in the authorization request. At token exchange time, the client sends the original verifier — the auth server hashes it and compares it to the stored challenge. An attacker who intercepts only the code cannot compute the verifier from the hash alone.
+
 For SPAs and mobile apps that can't store `client_secret` securely:
 
 ```javascript
@@ -191,6 +222,8 @@ sessionStorage.setItem('pkce_verifier', verifier);
 ```
 
 ### Other Grant Types
+
+Different deployment contexts require different grant types. Client Credentials is used for machine-to-machine communication where there is no user involved — a background job calling an internal API, a microservice calling another microservice. The Refresh Token flow is the mechanism that keeps users logged in without re-entering credentials: the short-lived access token expires, the client silently exchanges the long-lived refresh token for a new access token, and the user never notices. Refresh token rotation (issuing a new refresh token with each exchange and invalidating the old one) limits the damage window if a refresh token is stolen.
 
 **Client Credentials** — machine-to-machine (no user involved):
 ```
@@ -216,6 +249,8 @@ POST /token
 ---
 
 ## OIDC — OpenID Connect
+
+OpenID Connect is an identity layer built on top of OAuth 2.0 that adds a standardized way to authenticate users and communicate their identity. OAuth 2.0 was designed purely for authorization (delegating access to resources) — it deliberately says nothing about who the user is. Applications that implemented "Sign in with Google" on top of bare OAuth 2.0 each had to call the `/userinfo` endpoint and interpret the response in ad-hoc ways. OIDC standardizes this: it adds the `id_token` (a JWT with defined claims about the user's identity), the `/.well-known/openid-configuration` discovery endpoint (so clients can find all endpoints automatically), and the `/userinfo` endpoint's response format. The `nonce` claim in the `id_token` prevents replay attacks — an attacker who intercepts an `id_token` and replays it to your app can be detected if the nonce doesn't match what your session expected.
 
 OAuth 2.0 + authentication layer. Adds `id_token` (JWT with user identity) on top of OAuth's `access_token`.
 
@@ -253,7 +288,11 @@ OIDC:      "I authorize this app AND here's proof of who I am (id_token)"
 
 ## Security Headers & CSP
 
+HTTP response headers are a browser-enforced security layer that operates independently of your application code. Once set, they instruct the browser to enforce policies on the client side — restricting which scripts can execute, requiring HTTPS, preventing embedding in iframes, and disabling unnecessary browser features. They represent a defense-in-depth layer: even if your application has an injection vulnerability that slips through, correctly configured security headers can prevent the browser from executing injected scripts (CSP), following HTTP downgrade requests (HSTS), or submitting form data to attacker origins. The headers below are non-breaking to add and represent the minimum baseline for any production web application.
+
 ### Content Security Policy (CSP)
+
+CSP is a response header that instructs the browser to enforce a whitelist of trusted sources for scripts, styles, images, and other resource types. It is the most powerful browser-side defense against XSS: even if an attacker successfully injects a `<script>` tag, CSP prevents the browser from executing it if the source is not whitelisted. The directives are additive — `default-src` sets the fallback for any resource type not explicitly listed. Start with Report-Only mode to observe what would be blocked without actually blocking anything, tune the policy until violations stop, then switch to enforcement mode. Nonces are preferred over `'unsafe-inline'` for inline scripts because they change on every request, making them impossible to predict.
 
 Tells the browser which sources are allowed to load resources — primary defense against XSS.
 
@@ -282,6 +321,8 @@ const nonce = crypto.randomBytes(16).toString('base64');
 
 ### Other Security Headers
 
+Beyond CSP, several other headers provide targeted defenses against specific attack classes. Each header below addresses one mechanism: HSTS eliminates HTTP downgrade attacks, `X-Content-Type-Options` prevents MIME confusion attacks where the browser executes a file as JavaScript even though the server declared it as text, `X-Frame-Options` prevents the page from being embedded in an iframe on an attacker's site for clickjacking, and `Permissions-Policy` restricts access to sensitive browser features the application doesn't use.
+
 ```
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 # Force HTTPS, remember for 1 year
@@ -304,6 +345,8 @@ Cross-Origin-Embedder-Policy: require-corp
 ```
 
 ### CORS (Cross-Origin Resource Sharing)
+
+CORS is a browser mechanism that allows servers to declare which origins are permitted to read their responses via JavaScript. A key distinction is that CORS does not prevent requests — the browser sends the request and the server processes it; CORS only controls whether the browser exposes the response to the requesting JavaScript. This is why CORS is not a substitute for server-side authentication: a non-browser HTTP client (curl, Postman, a server-side attacker) ignores CORS entirely. The `credentials: true` option requires an explicit origin whitelist; using a wildcard origin with credentials enabled is blocked by browsers and will cause all credentialed cross-origin requests to fail.
 
 ```javascript
 // Express

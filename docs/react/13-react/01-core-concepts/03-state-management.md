@@ -17,6 +17,8 @@ one component  transitions    subtree          simple API      predictable,
 
 ## useState vs useReducer — When to Use Which
 
+Both `useState` and `useReducer` manage local component state, but they suit different complexity levels. `useState` is idiomatic for one or two independent values where the update logic is a simple replacement. `useReducer` becomes preferable when multiple state values are interdependent (the next state of one depends on another), when you want to express transitions as named actions for clarity and testability, or when you need to pass the update mechanism deeply without creating closure-heavy setter callbacks.
+
 ### useState: Simple, Independent Values
 
 ```jsx
@@ -91,6 +93,8 @@ function UserProfile({ userId }) {
 ---
 
 ## State Lifting and Prop Drilling
+
+State lifting is the React pattern for sharing state between sibling components: move the state up to their closest common ancestor, then pass it down as props. This keeps the data flow unidirectional and predictable. The problem it creates — prop drilling — occurs when intermediate components must receive and forward props they do not themselves use, purely to pass them to a deeper descendant. Prop drilling is not always wrong (it makes data flow explicit), but it becomes painful when the same prop is threaded through 4+ components. The solutions are component composition (passing already-rendered JSX as `children`) and Context API.
 
 ### State Lifting: Shared State Goes to Common Ancestor
 
@@ -212,6 +216,8 @@ function UserAvatar() {
 
 ## Context API — Deep Dive
 
+React Context is a mechanism for making a value available to any component in a subtree without threading it through props at every level. It is best suited for values that are read by many components at different nesting levels but change infrequently: theme, locale, authenticated user, feature flags. The critical performance characteristic to understand is that every component subscribed to a context re-renders when the context value reference changes — even if the component only uses a small slice of the value. This makes Context inappropriate for high-frequency state (form inputs, mouse position) without careful memoization or context splitting.
+
 ### When Context Makes Sense
 
 - Theme (light/dark)
@@ -293,6 +299,8 @@ function App() {
 ---
 
 ## External State Libraries
+
+External state libraries solve the limitations of React's built-in state primitives for global application state. Context is not performant for frequently changing values; `useState` and `useReducer` are scoped to component instances. External libraries maintain state outside the React component tree entirely and provide subscription-based access so components only re-render when the specific slice of state they use changes. The right choice depends on your needs: Redux Toolkit for large apps with complex state transitions and a need for dev tooling, Zustand for a lightweight option with minimal boilerplate, Jotai for a bottom-up atomic model that composes naturally with Suspense.
 
 ### Redux Pattern — Core Concepts
 

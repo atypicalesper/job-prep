@@ -18,6 +18,8 @@ Logout: delete server record      Logout: wait for expiry (or blacklist)
 
 ## Stateful Authentication — Sessions
 
+Session-based authentication stores all user state on the server. The client receives only an opaque session ID (typically in a cookie) and presents it on every request. The server looks up the session in a store (Redis, database, or in-memory) to retrieve the user's identity and permissions. This approach gives the server full control: sessions can be invalidated instantly (just delete the record), and there is no risk of stale data since the server is always the source of truth. The trade-off is that every request requires a session store lookup, and the session store must be shared across all server instances in a horizontally scaled deployment.
+
 ### How It Works
 
 ```
@@ -96,6 +98,8 @@ function requireAuth(req, res, next) {
 
 ### Session Stores
 
+The session store is the most operationally significant choice in session-based auth. In-memory storage is only suitable for development — it is lost on every restart and cannot be shared across processes or servers. Redis is the standard production choice because it supports TTL-based expiry natively (sessions auto-expire without cleanup jobs), is fast enough for per-request lookups, and can be shared across all server instances in a cluster.
+
 ```
 Memory (default)     — dev only, lost on restart, no sharing
 Redis                — fast, TTL built-in, horizontally scalable ✅
@@ -114,6 +118,8 @@ const session = JSON.parse(raw);
 ---
 
 ## Stateless Authentication — JWT / Tokens
+
+Stateless authentication shifts the storage burden from server to client. The server issues a cryptographically signed token containing everything needed to identify the user (ID, role, expiry). On each request, the server verifies the signature — a local cryptographic operation that requires no external lookup. This scales effortlessly: any server with the signing key can verify any token, with no shared state required. The fundamental limitation is that tokens cannot be revoked before they expire, since the server has no record of issued tokens to delete.
 
 ### How It Works
 
@@ -143,6 +149,8 @@ const session = JSON.parse(raw);
 ```
 
 ### Access Token + Refresh Token Pattern
+
+The access token + refresh token pattern is the standard way to reconcile stateless verification with practical revocation. The access token is short-lived (15 minutes) and verified locally — no DB lookup, fully stateless. The refresh token is long-lived (7–30 days), stored server-side, and is the one thing that can be revoked. On every access token expiry, the client exchanges the refresh token for a new access token. Logout revokes the refresh token. If an access token is stolen, the attacker has at most 15 minutes of access. The refresh token is rotated on each use — single-use — so that if it is stolen, the legitimate user's next refresh will fail and trigger a security alert.
 
 ```
 ┌────────┐                              ┌────────┐
@@ -331,6 +339,8 @@ On logout: call /auth/logout → server deletes refresh token + clears cookie
 
 ## Session Fixation Attack
 
+Session fixation is an attack where the attacker establishes a known session ID before the victim logs in, then exploits the fact that the server associates credentials with the pre-existing session. It is prevented by regenerating the session ID (issuing a new one) immediately after any privilege escalation — particularly after successful login. Most session libraries provide a `session.regenerate()` method for exactly this purpose. Failing to call it means a session created before login (e.g., by an unauthenticated visitor) can become an authenticated session after login without the server issuing a new, unguessable ID.
+
 ```
 Attack:
 1. Attacker visits site, gets session ID: sess_attacker123
@@ -348,6 +358,8 @@ req.session.regenerate((err) => {
 ---
 
 ## Token Revocation Strategies
+
+The inability to immediately revoke a JWT is its most cited weakness. Because the token is self-contained and verified locally, there is no inherent mechanism to mark one as invalid. Each strategy below trades some of the statelessness benefit for stronger revocation guarantees. Strategy 1 (short TTL) is always appropriate as a baseline. Strategy 2 (blacklist) fully restores revocation but requires a lookup per request. Strategy 3 (token versioning) is a middle ground — one DB read per request, but can bulk-invalidate all of a user's tokens simultaneously (useful for "logout everywhere" or "password changed" scenarios).
 
 ```
 Problem: JWT is valid until expiry — if stolen, attacker has full access for up to expiry duration
@@ -392,6 +404,8 @@ await db.users.update({ id: userId }, { tokenVersion: tokenVersion + 1 });
 ---
 
 ## Multi-Factor Authentication (MFA)
+
+Multi-factor authentication (MFA) requires a user to prove identity using two or more independent factors: something they know (password), something they have (phone/authenticator app), or something they are (biometrics). Even if a password is stolen, an attacker without the second factor cannot log in. TOTP (Time-based One-Time Password) is the most widely deployed second factor — it generates a 6-digit code that changes every 30 seconds based on a shared secret and the current time. Because both the server and the authenticator app compute the code independently from the same shared secret and timestamp, no network communication is needed to verify the code.
 
 ### TOTP (Time-based One-Time Password)
 
@@ -485,6 +499,8 @@ app.post('/login/mfa', async (req, res) => {
 
 ## Passkeys / WebAuthn
 
+WebAuthn (Web Authentication) is the W3C standard that enables passwordless and phishing-resistant authentication. Instead of a shared secret (password), it uses asymmetric cryptography: the device stores a private key in a secure hardware enclave (Secure Enclave on Apple, TPM on Windows), and the server stores only the corresponding public key. Authentication is a challenge-response: the server sends a random challenge, the device signs it with the private key (unlocked by biometrics or PIN), and the server verifies the signature with the stored public key. Because the private key never leaves the device and the credential is bound to a specific origin (domain), phishing is cryptographically impossible — a fake site cannot receive a valid credential for the real site.
+
 ```
 Modern standard replacing passwords:
 - Uses public-key cryptography (device stores private key in secure enclave)
@@ -528,6 +544,8 @@ app.post('/webauthn/register/finish', authenticateToken, async (req, res) => {
 ---
 
 ## OAuth2 Flows Deep Dive
+
+OAuth2 defines several "grant types" — flows for obtaining tokens — each designed for a different client type and trust model. The Authorization Code flow is for apps with a server component that can keep a client secret. PKCE extends it to public clients (SPAs, mobile apps) that cannot. Client Credentials is for backend services with no user. Device Code is for input-constrained devices. Understanding which flow to use and why is essential for architecting secure integrations.
 
 ### Authorization Code Flow (web apps, SPAs)
 
@@ -646,6 +664,8 @@ await fetch('https://api.service-b.com/orders', {
 
 ## API Key Authentication
 
+API keys are the simplest form of machine authentication: a long random secret that identifies and authenticates the caller. They are appropriate for B2B integrations, CLI tools, and internal service-to-service calls where OAuth2's redirect-based flows would be impractical. Keys are never stored in plain text — always store a SHA-256 hash and compare against that hash on verification. The key is shown to the user only once at creation time. Including a visible prefix (like `sk_live_`) helps users identify key type without revealing sensitive data in logs.
+
 ```js
 // Simple API key auth (for services/B2B)
 // Keys: randomly generated, stored hashed in DB
@@ -699,6 +719,8 @@ async function apiKeyAuth(req, res, next) {
 
 ## Password Hashing
 
+Passwords must never be stored in plain text or with fast hashing algorithms (MD5, SHA-256). Fast hashes can be brute-forced at billions of operations per second on modern GPUs. Password hashing algorithms are intentionally slow and memory-hard, making brute-force attacks computationally expensive even with dedicated hardware. They also include a per-password random salt automatically, preventing rainbow table attacks. Argon2id (winner of the 2015 Password Hashing Competition) is the current best practice; bcrypt is acceptable if Argon2 is unavailable. The work factor (`SALT_ROUNDS` / `memoryCost`) should be tuned so that hashing takes roughly 250–500ms on your hardware.
+
 ```js
 import bcrypt from 'bcrypt';
 import argon2 from 'argon2'; // preferred over bcrypt (2023+)
@@ -728,6 +750,8 @@ const match = await argon2.verify(hash, password);
 ---
 
 ## Rate Limiting Auth Endpoints
+
+Authentication endpoints are high-value targets for brute-force and credential-stuffing attacks. Without rate limiting, an attacker can attempt millions of password combinations against an account. Rate limiting should be applied at two levels: per-IP (to slow down automated attacks from a single source) and per-account email (to prevent distributed attacks that spread across many IPs). Using Redis for rate limit state ensures limits are shared across all server instances. Progressive lockout (increasing delays after each failed attempt) is more user-friendly than hard lockouts.
 
 ```js
 import rateLimit from 'express-rate-limit';
@@ -776,6 +800,8 @@ app.post('/auth/login', async (req, res) => {
 
 ## SSO (Single Sign-On)
 
+Single Sign-On (SSO) allows users to authenticate once with a central Identity Provider (IdP) and access multiple Service Providers (SPs) without re-entering credentials. The IdP maintains the authenticated session; each SP trusts tokens issued by the IdP rather than managing its own user database. SAML 2.0 is the enterprise standard — XML-based and widely supported by corporate IdPs (Okta, Azure AD). OpenID Connect is the modern web standard — JSON/JWT-based and simpler to implement. For new integrations, prefer OIDC unless enterprise SAML support is a hard requirement.
+
 ### SAML 2.0 (enterprise)
 ```
 Identity Provider (IdP): Okta, Azure AD, ADFS
@@ -814,6 +840,8 @@ const payload = ticket.getPayload();
 ---
 
 ## Security Headers for Auth
+
+HTTP security headers are a defense-in-depth measure that instruct browsers to enforce security policies on your application. They protect against common attack vectors like clickjacking (X-Frame-Options/CSP frame-ancestors), MIME sniffing, XSS, and protocol downgrade attacks. `helmet` is the standard Express middleware that sets sensible defaults for all major security headers with a single line. The Content Security Policy (CSP) header is the most impactful for XSS mitigation — it restricts what scripts, styles, and resources can be loaded, preventing injected code from executing even if an attacker manages to inject it.
 
 ```js
 import helmet from 'helmet';

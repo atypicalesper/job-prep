@@ -39,6 +39,8 @@ npm install (cold):
 
 ### Bun's Built-in Tooling
 
+One of Bun's core design goals is eliminating the toolchain tax — the requirement to install, configure, and maintain separate tools for package management (npm/yarn), TypeScript execution (ts-node/tsx), bundling (webpack/esbuild), and testing (Jest/Vitest). Bun ships all four capabilities as a single binary. This reduces project setup to a single `bun install` and means TypeScript runs natively without a separate compilation step or tsconfig for the runner.
+
 Bun bundles: runtime + package manager + bundler + test runner.
 
 ```bash
@@ -63,6 +65,8 @@ bun test --coverage
 ```
 
 ### Bun APIs
+
+Bun exposes its own high-performance APIs alongside Node.js compatibility. `Bun.serve` uses JavaScriptCore's optimized HTTP implementation and is consistently faster than Node's `http` module in benchmarks. `Bun.file` returns a lazy `BunFile` object — the file content is not read until you call `.text()`, `.json()`, or `.arrayBuffer()`. The built-in SQLite (`bun:sqlite`) and password hashing APIs mean many projects can avoid external packages entirely for common backend tasks.
 
 ```typescript
 // HTTP server — Bun.serve (fastest)
@@ -105,6 +109,8 @@ const port = Bun.env.PORT ?? '3000';
 ```
 
 ### Node.js Compatibility
+
+A runtime is only as useful as the ecosystem it supports. Bun's primary adoption strategy is maximizing compatibility with existing Node.js code and npm packages — the vast majority of Node projects should run with a simple `bun install && bun run start` without any changes. The compatibility matrix below shows what is fully implemented, partially implemented, and still missing. Native addons (`.node` files compiled with node-gyp) are the largest compatibility gap because they are compiled against specific Node.js ABI versions.
 
 Bun aims to be a drop-in replacement — supports most Node.js built-in modules:
 
@@ -150,6 +156,8 @@ Deno was Ryan Dahl's "do-over" of Node.js, addressing his regrets:
 
 ### Security Model
 
+Deno's permission system implements the principle of least privilege at the runtime level. Every potentially dangerous operation (network access, file I/O, environment variable reads, subprocess spawning) is denied by default and must be explicitly granted via command-line flags. This makes it safe to run scripts from untrusted sources — a script you download and run with no flags literally cannot exfiltrate your environment variables or read your SSH keys even if it tries. Permissions can be scoped to specific hosts, paths, or variable names for production deployments.
+
 ```bash
 # Deno requires explicit permission flags:
 deno run app.ts                              # no permissions at all
@@ -161,6 +169,8 @@ deno run --allow-all app.ts                  # -A: everything (like Node)
 ```
 
 ### Deno APIs
+
+Deno prioritizes Web Platform API compatibility: wherever a Web standard exists (`fetch`, `Request`, `Response`, `ReadableStream`, `Web Crypto`), Deno uses it rather than a Node-style alternative. This means Deno code is more portable to other environments (browsers, Cloudflare Workers) and is less likely to require platform-specific shims. `Deno.serve` is the modern high-level HTTP API; lower-level `Deno.listen` is available for custom protocols.
 
 ```typescript
 // HTTP server (Deno.serve)
@@ -189,6 +199,8 @@ import { createServer } from 'node:http';
 
 ### Deno 2 — The Big Change
 
+Deno's original stance — no `package.json`, no `node_modules`, URL imports only — made it incompatible with the npm ecosystem and limited adoption. Deno 2 pragmatically reversed this, treating npm compatibility as a first-class requirement while keeping all of Deno's security and Web Platform API advantages. The result is that existing npm packages now work with Deno, making the security model and TypeScript-first experience accessible to teams without a full rewrite.
+
 Deno 2 (released October 2024) made major pragmatic changes:
 - `package.json` support — compatible with npm ecosystem
 - `node_modules` support (optional)
@@ -207,6 +219,8 @@ app.listen(3000);
 ```
 
 ### Deno KV — Built-in Database
+
+Deno KV is a key-value store built into the Deno runtime itself — no external database connection needed. Locally it uses SQLite as the backing store; on Deno Deploy it is backed by FoundationDB with strong consistency and global replication. Keys are typed arrays (tuples) that support prefix scanning, making it easy to model hierarchical data. Atomic operations let you perform conditional writes without race conditions — the `check` operation fails the transaction if the key's `versionstamp` doesn't match, enabling optimistic concurrency control.
 
 ```typescript
 const kv = await Deno.openKv();
@@ -231,6 +245,8 @@ for await (const entry of kv.list({ prefix: ['users'] })) {
 On Deno Deploy, KV is globally replicated with strong consistency via FoundationDB.
 
 ### Deno Deploy — Edge Runtime
+
+Deno Deploy is Cloudflare Workers' main competitor in the V8 isolate edge space. Code is deployed globally and runs close to users with near-zero cold starts. It is the natural production deployment target for Deno applications, with built-in KV, Queues, and Cron support. Unlike Cloudflare Workers, it has no artificial CPU time limits for paid plans and supports the full Deno 2 API surface including Node.js compatibility.
 
 ```typescript
 // Runs at edge (worldwide) like Cloudflare Workers

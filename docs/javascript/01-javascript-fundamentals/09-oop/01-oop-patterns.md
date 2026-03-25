@@ -151,6 +151,8 @@ class UserRepository extends AbstractRepository {
 
 ## Static Methods and Properties
 
+Static methods and properties belong to the class constructor itself, not to any instance. They are useful for utility functions that operate on the class's domain but don't require access to instance state, and for factory methods that provide named, semantically clear constructors as an alternative to multiple constructor signatures. Static private fields (`static #count`) are the correct way to maintain class-level state such as instance counters or caches without exposing them globally. Use static methods when the operation is conceptually about the class rather than about a specific instance.
+
 ```js
 class MathUtils {
   static PI = 3.14159;
@@ -246,6 +248,8 @@ post.serialize(); // JSON string
 ---
 
 ## Composition Over Inheritance
+
+Deep inheritance hierarchies become brittle because every subclass is tightly coupled to every ancestor — a change in the base class ripples down to all children. Composition avoids this by building objects from small, independent behavior objects rather than from a parent class. The mental model is "has-a" instead of "is-a": a duck has flying behavior and quacking behavior, rather than being a `FlyingQuackingAnimal`. Use inheritance when there is a genuine "is-a" relationship and the subclass truly conforms to the full contract of the parent (Liskov substitution). Prefer composition when you want to mix multiple behaviors, when the hierarchy would grow wide, or when behaviors need to vary independently.
 
 ```js
 // Inheritance: rigid hierarchy
@@ -400,6 +404,8 @@ const orderService = new OrderService(
 
 ## Private Fields vs Closure-based Privacy
 
+JavaScript has two mechanisms for true data hiding. Closure-based privacy predates classes: a factory function returns an object whose methods close over private variables in the enclosing scope — those variables are inaccessible from outside. The modern approach is class private fields using `#` syntax, which are hard-private: they cannot be accessed via `obj['#field']`, property enumeration, or devtools property inspection (though devtools may show them with special privilege). Private fields are preferred in new code because they work with `instanceof`, inheritance via `super`, and class syntax. Closure-based patterns remain useful for module-level state or when factory functions are preferred over `new`.
+
 ```js
 // Old pattern: closure-based (before # fields)
 function createCounter(initial = 0) {
@@ -425,6 +431,8 @@ class Counter {
 ---
 
 ## instanceof and Type Checking
+
+`instanceof` walks the prototype chain to determine whether a constructor's `prototype` appears anywhere in an object's chain — it is not a simple type tag check. This means it correctly returns `true` for subclass instances, but can give false negatives across realm boundaries (e.g., an `Array` created in an iframe fails `instanceof Array` in the parent frame). For primitives, `typeof` is the right tool, except for `null` which requires an explicit `=== null` check due to the historic `typeof null === 'object'` bug. `Array.isArray()` and `Object.prototype.toString.call()` are more reliable than `instanceof` when cross-realm correctness matters.
 
 ```js
 class Animal {}

@@ -362,6 +362,8 @@ root.print();
 
 ### Observer (Pub/Sub)
 
+The Observer pattern decouples event producers from consumers: the subject (emitter) knows nothing about who is listening, and listeners know nothing about each other. This is fundamentally different from direct method calls, which create tight coupling — the caller must know and import the callee. The mental model is a broadcast: one emitter, zero or more listeners, no return value expected. Use Observer when multiple independent components need to react to the same event, when those components may come and go at runtime, or when you want to prevent circular imports between modules. The key risk is memory leaks from listeners that are never removed.
+
 ```js
 class EventEmitter {
   #events = new Map();
@@ -455,6 +457,8 @@ console.log(editor.content); // 'Hello'
 
 ### Iterator
 
+The Iterator pattern provides a standard traversal interface for any collection without exposing its internal structure. Consumers write `for...of` or `[...range]` without knowing whether the data comes from an array, a linked list, a database query, or a computed sequence. In JavaScript this is built into the language via `[Symbol.iterator]()` — implementing it on a class gives you full integration with every iteration-consuming language feature for free.
+
 Sequential access without exposing internals:
 
 ```js
@@ -486,6 +490,8 @@ for (const n of range) console.log(n); // 1 3 5 7 9
 ```
 
 ### Chain of Responsibility
+
+The Chain of Responsibility pattern lets a request travel through an ordered sequence of handlers where each handler decides independently whether to handle it, pass it on, or short-circuit. The sender doesn't know which handler will ultimately respond. This is the canonical model for middleware pipelines (Express, Koa, HTTP interceptors) and validation chains. The key advantage over a single monolithic handler is that responsibilities are separated into small, testable units that can be added, removed, or reordered without modifying any existing handler.
 
 Pass a request along a chain of handlers:
 
@@ -528,6 +534,8 @@ auth.handle({ method: 'GET', url: '/api/data', token: '...', ip: '1.2.3.4' });
 ```
 
 ### Template Method
+
+The Template Method pattern defines a fixed algorithm skeleton in a base class while delegating specific steps to subclasses. The base class controls the overall flow — ensuring required steps happen in the right order — while subclasses customize only the variable parts. This is the inversion of the Strategy pattern: where Strategy swaps entire algorithms at runtime, Template Method fixes the structure at compile time and allows partial customization via overriding. It is appropriate when multiple implementations share the same high-level sequence but differ in specific operations.
 
 Define algorithm skeleton; let subclasses fill in steps:
 

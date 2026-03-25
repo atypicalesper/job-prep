@@ -26,9 +26,11 @@ When it matters:
 
 ## Cloudflare Workers
 
-Workers run JavaScript/TypeScript (and WASM) on Cloudflare's global network using **V8 isolates** — not Node.js processes.
+Cloudflare Workers is the largest and most mature edge compute platform. Each Worker is a JavaScript/TypeScript (or WASM) function that responds to HTTP requests and is deployed to Cloudflare's 300+ global datacenters simultaneously — there is no concept of "picking a region." Workers run JavaScript/TypeScript (and WASM) on Cloudflare's global network using **V8 isolates** — not Node.js processes.
 
 ### V8 Isolates vs Containers
+
+Traditional serverless functions spin up a full OS process (or container) per cold start, which takes 100–500ms because the OS must allocate memory, load the Node.js runtime, and execute initialization code. V8 isolates are JavaScript execution contexts inside a single shared V8 process — creating a new isolate takes microseconds because no OS process boundary is crossed. Cloudflare keeps a pool of pre-warmed V8 isolates, so Workers effectively have zero cold start. The tradeoff is strict isolation via context separation rather than process separation, and no access to the OS (no filesystem, no child processes).
 
 ```
 Traditional serverless (Lambda):
@@ -57,6 +59,8 @@ Workers have **no Node.js API access** — only Web Platform APIs:
 ---
 
 ## Basic Worker
+
+The entry point of every Worker is an exported `default` object with a `fetch` handler — a function that receives a `Request` and must return a `Response`. The `env` argument provides access to bindings (KV namespaces, D1 databases, secrets, environment variables) declared in `wrangler.toml`. The `ctx` argument provides `ctx.waitUntil()` for fire-and-forget async work that should complete even after the response is sent, and `ctx.passThroughOnException()` as a safety valve to fall back to origin on unhandled errors.
 
 ```typescript
 // src/index.ts
@@ -133,6 +137,8 @@ API_URL = "https://api.example.com"
 
 ### KV — Global Key-Value Store
 
+Cloudflare KV is an eventually consistent global key-value store. Writes propagate to all Cloudflare datacenters within seconds, but reads in distant locations may serve stale data for up to 60 seconds. This makes it ideal for data that is read frequently but updated rarely — feature flags, user preferences, rate limit counters, cached API responses. Because it is globally replicated with no single-region bottleneck, KV reads are extremely fast but you cannot rely on it for data requiring strong consistency (use Durable Objects for that).
+
 ```typescript
 // Eventually consistent, globally replicated (reads eventually fresh)
 // Great for: config, feature flags, user sessions, rate limit counters
@@ -164,6 +170,8 @@ const list = await env.CACHE.list({ prefix: 'user:', limit: 100 });
 
 ### D1 — SQLite at the Edge
 
+D1 is Cloudflare's managed relational database, built on SQLite. It runs as a primary instance with optional read replicas co-located with Workers for low-latency reads. D1 supports standard SQL, transactions via batch operations, and prepared statements with parameterized queries (preventing SQL injection). It is the right choice when you need relational data modeling, JOINs, or indexes at the edge — unlike KV, which is a flat key-value store. D1 is eventually consistent for replica reads; writes go to the primary.
+
 ```typescript
 // D1 is SQLite running at the edge
 // Consistent reads possible via replication
@@ -187,7 +195,7 @@ await env.DB.batch([
 
 ### Durable Objects — Stateful Edge
 
-Durable Objects provide **single-instance, globally consistent state** — a Cloudflare-managed actor.
+Durable Objects provide **single-instance, globally consistent state** — a Cloudflare-managed actor. The fundamental problem they solve is coordination: when you have a chat room, a shared counter, or a real-time collaborative document, multiple users' requests must be serialized through a single authoritative source. With regular Workers you can't do this because requests can land on any of Cloudflare's 300+ nodes. Durable Objects solve this by routing all requests for a given ID (e.g., a room name) to the same single instance, which runs on one machine and processes requests sequentially. Each Durable Object has its own in-memory state and persistent storage that survives restarts.
 
 ```typescript
 // Each room has ONE Durable Object — single authoritative state
@@ -244,6 +252,8 @@ export default {
 
 ### Queues — Async Message Processing
 
+Cloudflare Queues is a managed message queue for decoupling work that doesn't need to happen during the request-response cycle. A Worker acts as a producer by sending messages; a separate consumer Worker processes them in batches. This pattern is essential for work that is slow (sending emails, processing uploads), unreliable (third-party API calls that might fail), or high-volume (logging, analytics). The consumer's `message.retry()` re-queues failed messages with automatic exponential backoff.
+
 ```typescript
 // Producer (in a Worker)
 await env.QUEUE.send({
@@ -270,6 +280,8 @@ export default {
 
 ### Workers AI — Inference at Edge
 
+Workers AI runs ML model inference directly on Cloudflare's GPU-equipped edge nodes. This eliminates the round trip to a centralized inference server — the model runs at the same edge location handling the request, giving lower latency than calling an external AI API. Cloudflare hosts a catalog of open-source models (Llama 3, Mistral, BAAI embeddings) that can be called with a single `env.AI.run()` call with no model management or GPU provisioning required.
+
 ```typescript
 // Run AI models at the edge — no cold start, low latency
 const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', {
@@ -291,6 +303,8 @@ const { data } = await env.AI.run('@cf/baai/bge-small-en-v1.5', {
 ## Edge Use Cases & Patterns
 
 ### Auth at the Edge
+
+Validating authentication at the edge means unauthenticated requests are rejected before they ever reach your origin server — saving origin compute, reducing attack surface, and improving response time for auth failures. JWT validation is particularly well-suited to the edge because it is stateless (no database lookup needed) and uses Web Crypto API primitives that are available in all edge runtimes. The pattern below also injects user identity into the forwarded request headers so the origin doesn't need to re-validate the token.
 
 ```typescript
 export default {
@@ -324,6 +338,8 @@ export default {
 
 ### Geo-Routing
 
+Cloudflare Workers receive rich geographic metadata on every request via `request.cf` — country, continent, city, timezone, and even ASN. This metadata is determined at the edge from the connecting IP and requires no third-party geolocation API. Geo-routing is the standard pattern for GDPR compliance (routing EU users to EU-region infrastructure) and for serving localized content (language selection, regional pricing) without a database lookup.
+
 ```typescript
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -345,6 +361,8 @@ export default {
 ```
 
 ### Rate Limiting at Edge
+
+Rate limiting at the edge blocks abusive traffic before it consumes origin resources. The pattern uses KV as a distributed counter keyed by IP address with a TTL equal to the rate limit window. Note that because KV is eventually consistent, this implementation may allow slight over-counting in the brief window between writes propagating globally — for strict accuracy, use Durable Objects (single authoritative counter). KV-based rate limiting is sufficient for most abuse prevention scenarios and is significantly cheaper than Durable Objects at scale.
 
 ```typescript
 export default {

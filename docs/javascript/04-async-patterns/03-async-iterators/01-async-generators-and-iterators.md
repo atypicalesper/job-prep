@@ -51,6 +51,8 @@ for await (const user of paginate(cursor => api.getUsers({ cursor, limit: 100 })
 
 ## Reading Files Line by Line
 
+Processing a large file line by line with an async generator consumes constant memory regardless of file size, because only one line is in memory at any moment. The `readline` module's `createInterface` produces an async iterable of lines natively in Node.js 12+, making it the simplest way to stream file lines without manual buffering or chunk-splitting logic. This pattern is the correct alternative to `fs.readFileSync` or `file.split('\n')` for any file that might be larger than a few megabytes.
+
 ```typescript
 import { createReadStream } from 'fs';
 import { createInterface } from 'readline';
@@ -78,6 +80,8 @@ for await (const line of readLines('/var/log/access.log')) {
 ---
 
 ## Implementing AsyncIterator Manually
+
+When the data source is callback-based or requires explicit resource management that doesn't fit the linear `async function*` flow, you implement `AsyncIterator` manually as a class. The class manages its own internal buffer, page offset, and exhaustion flag, fetching the next page on demand when the buffer runs dry. Implementing `[Symbol.asyncIterator]()` returning `this` makes the cursor directly usable in `for await...of` loops and async pipeline functions. This pattern is appropriate for database cursors, paginated REST APIs, and any source with non-trivial state machines.
 
 ```typescript
 // When you can't use a generator (e.g., wrapping a callback-based API)
@@ -127,6 +131,8 @@ for await (const user of cursor) {
 ---
 
 ## Transforming Async Streams (Pipeline)
+
+Async generators can be chained into Unix-pipe style pipelines where each stage consumes an `AsyncIterable` and yields a transformed `AsyncIterable`. Critically, each stage only pulls the next item from its source when the downstream consumer requests one — so the entire pipeline processes one element at a time through all stages, with no intermediate arrays or unbounded buffering. This is memory-efficient for arbitrarily large datasets and naturally applies backpressure: if the terminal consumer is slow, the source pauses automatically.
 
 ```typescript
 // Chain async generators like Unix pipes
@@ -184,6 +190,8 @@ for await (const order of pipeline) {
 
 ## Node.js stream.pipeline with Async Generators
 
+Node.js 16+ accepts async generator functions directly in `stream.pipeline`, bridging the async generator world with the mature Node.js streams ecosystem (Transform streams, zlib compression, fs write streams). `pipeline` handles error propagation — if any stage throws, all stages are destroyed and the returned promise rejects — and manages backpressure automatically between generator stages and Node.js streams. This is the production-grade way to build ETL pipelines, export endpoints, and streaming file processors.
+
 ```typescript
 import { pipeline } from 'stream/promises';
 import { Transform, Readable, Writable } from 'stream';
@@ -210,6 +218,8 @@ await pipeline(
 ---
 
 ## Cancellation with AbortController
+
+`AbortController` is the standard cancellation primitive for async operations in both browser and Node.js. Wrapping an async iterable with an abort-aware generator checks `signal.aborted` at each iteration step and throws an `AbortError` to cleanly terminate the loop. This is preferable to a boolean flag because it composes with other abort-aware APIs: the same signal can cancel a `fetch`, a `once()` event wait, and an iterable pipeline simultaneously, all coordinated by a single `ac.abort()` call.
 
 ```typescript
 async function* withAbort<T>(
@@ -242,6 +252,8 @@ try {
 ---
 
 ## Merge Multiple Async Iterables
+
+Merging multiple async iterables into a single interleaved stream is the async equivalent of `Promise.race` applied continuously. The implementation maintains a set of pending `next()` promises — one per source iterator — and yields results via `Promise.race` as each resolves, immediately re-queuing that iterator's next promise. Exhausted iterators are removed from the set. This ensures results from all sources are emitted in arrival order, with no source starved by a slow sibling. Use this for merging real-time feeds, combining multiple event streams, or aggregating results from parallel data sources.
 
 ```typescript
 // Merge N async iterables into one, interleaved as values arrive
@@ -279,6 +291,8 @@ for await (const event of merge(kafkaStream('orders'), kafkaStream('payments')))
 ---
 
 ## Converting Callbacks to Async Iterables
+
+Event-emitter and callback-based APIs predate the async iterator protocol. Wrapping them as `AsyncIterable` gives consumers a clean `for await...of` interface without changing the underlying API. The adapter maintains two queues that run in opposite directions: a buffer for data that arrived before `next()` was called, and a resolver queue for `next()` calls that arrived before data. When data arrives it either satisfies a waiting resolver immediately or buffers for the next `next()` call; when `end` fires all pending resolvers are resolved with `done: true`. This pattern is the foundation for any library that bridges callback streams into the async iteration ecosystem.
 
 ```typescript
 // Wrap any event-based source as an async iterable

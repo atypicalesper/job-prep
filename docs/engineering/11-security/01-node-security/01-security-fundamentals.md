@@ -4,6 +4,8 @@
 
 ## OWASP Top 10 for Node.js
 
+The OWASP Top 10 is the industry standard reference for web application security risks, maintained by the Open Web Application Security Project and updated periodically based on real-world vulnerability data. It represents the most exploited and highest-impact classes of vulnerabilities rather than individual bugs. For Node.js applications specifically, the risks are shaped by the ecosystem: JavaScript's dynamic typing makes injection vulnerabilities easier to introduce, npm's large dependency surface creates supply-chain risks, and the async-first model can mask error handling gaps that become security holes. The list is ordered by prevalence and impact — Broken Access Control has been the number one risk since 2021 because it is both common and catastrophic.
+
 ```
 1. Broken Access Control         — authorization bypasses
 2. Cryptographic Failures        — weak/missing encryption
@@ -20,6 +22,8 @@
 ---
 
 ## Input Validation
+
+Input validation is the first and most fundamental defense in application security: all data arriving from outside the trust boundary (HTTP request bodies, query parameters, headers, file uploads) must be treated as potentially hostile until proven otherwise. Validation serves two purposes — it rejects malformed data early with a clear error message (422), and it normalizes and sanitizes what passes through (trimming whitespace, lowercasing emails, coercing types) so that downstream code can make safe assumptions about the data's shape. Zod is preferred in TypeScript projects because its schema definitions produce TypeScript types directly, eliminating the gap between runtime validation and static typing. The middleware pattern below shows the standard approach: validate at the route boundary so that handler functions receive data that is already typed and safe.
 
 ```typescript
 // Never trust user input — validate at every boundary
@@ -58,6 +62,8 @@ app.post('/users', validateBody(CreateUserSchema), createUserHandler);
 
 ## SQL Injection Prevention
 
+SQL injection is one of the oldest and most devastating vulnerabilities in web applications: when user-supplied data is interpolated directly into SQL query strings, an attacker can terminate the intended query and append their own SQL — reading arbitrary tables, deleting data, or in some configurations executing operating system commands. It survives because string concatenation looks simple and harmless until it isn't. The complete defense is parameterized queries (prepared statements), where the SQL structure and the user data are sent to the database separately — the database treats the parameter as a value, never as SQL syntax, making injection structurally impossible regardless of what the attacker sends.
+
 ```typescript
 // ❌ NEVER do this — SQL injection vulnerable:
 app.get('/users', async (req, res) => {
@@ -81,6 +87,8 @@ const users = await prisma.user.findMany({ where: { name } }); // Prisma
 ---
 
 ## NoSQL Injection Prevention
+
+NoSQL databases like MongoDB are not immune to injection attacks — they simply use a different attack surface. Because MongoDB queries are expressed as JavaScript objects, an attacker who can control the shape of that object (not just its values) can inject MongoDB query operators like `$gt`, `$where`, and `$regex` to bypass authentication or exfiltrate data. This is possible when user input from a JSON body is merged directly into a query object without type-checking that the values are primitives. The defenses are explicit type validation (reject anything that isn't a string where a string is expected) and sanitization middleware that strips operator keys before they reach the database.
 
 ```typescript
 // ❌ MongoDB injection:
@@ -108,6 +116,8 @@ app.post('/login', async (req, res) => {
 ---
 
 ## XSS (Cross-Site Scripting) Prevention
+
+Cross-Site Scripting occurs when an attacker injects malicious scripts into web pages that are then executed in other users' browsers. The injected script runs with the same privileges as legitimate page scripts — meaning it can steal session cookies, make authenticated API requests on behalf of the victim, and exfiltrate sensitive data. XSS is a shared responsibility between backend and frontend: the backend must not reflect unescaped user input in HTML responses, and the frontend must not insert user-controlled strings into the DOM via `innerHTML`. Content Security Policy (CSP) provides a defense-in-depth layer at the browser level by restricting which script sources are trusted, so even if injection occurs the browser refuses to execute the injected script.
 
 ```typescript
 // Backend responsibility: don't return executable scripts in responses
@@ -147,6 +157,8 @@ function escapeHtml(str: string): string {
 
 ## Helmet — Security Headers
 
+HTTP response headers are the first line of defense at the browser level: they instruct the browser how to handle the response and what it is permitted to do with it. Without them, browsers apply permissive defaults that enable entire classes of attacks — pages can be embedded in iframes on attacker-controlled sites (clickjacking), browsers will try to guess the MIME type of responses (MIME confusion attacks), and there is no restriction on where scripts can load from (XSS via injected script tags). Helmet is an Express middleware that sets these headers in a single line, applying the recommended defaults for each header. It is a zero-cost defense that should be applied to every Express application.
+
 ```typescript
 import helmet from 'helmet';
 
@@ -168,6 +180,8 @@ app.disable('x-powered-by'); // helmet does this too
 ---
 
 ## Rate Limiting
+
+Without rate limiting, any authenticated or unauthenticated endpoint can be called indefinitely from a single client, enabling brute-force attacks (trying millions of passwords against a login endpoint), credential stuffing, denial-of-service by resource exhaustion, and scraping. Rate limiting counters requests per client IP (or per user ID) within a sliding time window and rejects requests that exceed the threshold. The key design decisions are: the window size and request limit (too loose and you don't stop attacks; too strict and you break legitimate users), whether to store counters in memory (fine for single-server) or Redis (required for multiple server instances where each server would otherwise have an incomplete view of the client's request rate), and whether to apply separate, stricter limits to sensitive endpoints like login and password reset.
 
 ```typescript
 import rateLimit from 'express-rate-limit';
@@ -196,6 +210,8 @@ app.use('/auth/login', authLimiter);
 ---
 
 ## CORS (Cross-Origin Resource Sharing)
+
+CORS is a browser security mechanism that restricts JavaScript running on one origin (`https://malicious.com`) from making requests to a different origin (`https://yourapi.com`) and reading the response. Without CORS headers, the browser blocks the response even if the server processed the request. The critical security principle is that `Access-Control-Allow-Origin: *` disables the protection entirely — and when combined with `credentials: true` (which allows cookies to be sent), browsers will outright refuse to make the request. A precise allowlist of trusted origins is the correct approach, with the `development` environment loosened only for localhost. Using `cors()` with no options (wildcard) is common in tutorials but should never reach production for APIs that use cookies or handle sensitive data.
 
 ```typescript
 import cors from 'cors';
@@ -229,6 +245,8 @@ app.use(cors(corsOptions));
 ---
 
 ## Prototype Pollution
+
+Prototype pollution is a JavaScript-specific vulnerability that exploits the language's prototype chain. Every plain object in JavaScript inherits from `Object.prototype`, and if an attacker can cause your code to assign a property to `Object.prototype` itself (via keys like `__proto__` or `constructor.prototype`), every subsequent object in the process inherits that property — including server-side objects used for authorization checks. The attack vector is typically a JSON body containing `{"__proto__": {"isAdmin": true}}` that gets deep-merged into another object without filtering. The defenses are layered: strict schema validation that rejects unknown keys (Zod strips `__proto__` because it's not in the schema), explicit key checking in any custom merge functions, and using `Object.create(null)` for dictionaries that should be immune to inherited properties.
 
 ```typescript
 // Vulnerability: attacker can pollute Object.prototype
@@ -272,6 +290,8 @@ dict.__proto__; // undefined — doesn't access Object.prototype
 ---
 
 ## Secrets Management
+
+Hardcoded secrets in source code are one of the most common and most costly security mistakes — they are committed to version control, shared with every contributor, and often accidentally pushed to public repositories. Secrets have a fundamentally different lifecycle from code: they need to be rotated when compromised, scoped to environments, and audited for access. The correct model is to keep secrets entirely out of source code and build artifacts, injecting them at runtime via environment variables validated at startup. Validating at startup (not lazily on first use) ensures the application fails immediately and loudly if a required secret is missing, rather than silently in production when a code path that uses the missing secret is hit for the first time.
 
 ```typescript
 // ❌ Never hardcode secrets:

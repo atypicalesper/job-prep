@@ -6,6 +6,8 @@ Generics let you write reusable code that works with any type while preserving t
 
 ## Basic Generics
 
+A generic is a type parameter — a placeholder for a type that gets filled in at the call site rather than at the point of definition. The key mental model: generics are to types what function parameters are to values. Without generics, reusable functions must choose between `any` (losing type information) or overloading for every concrete type (not scalable). With generics, TypeScript infers the concrete type from the argument and carries it through the return type, keeping the full type chain intact.
+
 ```typescript
 // Without generics — loses type info:
 function identity(val: any): any {
@@ -31,6 +33,8 @@ const p = pair('hello', 42); // type: [string, number]
 ---
 
 ## Generic Constraints
+
+Without constraints, TypeScript knows nothing about a generic type `T` except that it exists — you cannot access any property or call any method on it. Constraints (`T extends SomeType`) tell TypeScript the minimum shape that `T` must satisfy, unlocking the operations guaranteed by that shape. The `extends` keyword here is not inheritance — it means "is assignable to" or "is a subtype of". Constraints let you write generic code that is both flexible (accepts many types) and type-safe (only allows types with the required structure).
 
 ```typescript
 // Constraint with 'extends':
@@ -61,6 +65,8 @@ getProperty(user, 'email');              // ❌ 'email' not in type
 ---
 
 ## Generic Interfaces and Classes
+
+Generics can be applied to an entire interface or class, not just individual functions. A generic interface defines a contract that can be satisfied for any type `T` — the classic use case is the Repository pattern, where the same CRUD operations are defined once and implemented for each entity. A generic class holds state of type `T` across all its methods, ensuring consistency. The type parameter is supplied when you instantiate the class or implement the interface, at which point `T` is resolved throughout.
 
 ```typescript
 // Generic interface:
@@ -119,6 +125,8 @@ const top = numStack.pop(); // type: number | undefined
 
 ## Default Type Parameters
 
+Just as function parameters can have default values, type parameters can have defaults. This is useful when a generic has a sensible fallback type that most callers will rely on, but power users need the ability to override it. The default is used when the type argument is omitted. A common pattern is defaulting to `unknown` (safe) rather than `any` (unsafe) so that untyped usage still forces narrowing.
+
 ```typescript
 interface ApiResponse<T = unknown> {
   data: T;
@@ -143,6 +151,8 @@ const userResponse: ApiResponse<User> = {
 
 ## Generic Functions vs Generic Types
 
+A generic function has its type parameter resolved each time the function is called — TypeScript infers `T` from the argument. A generic type alias has `T` baked into the type and must be specified (or inferred from context) at the annotation site. The distinction matters in JSX/TSX files: the `<T>` syntax for a generic arrow function is ambiguous with JSX tags, requiring a trailing comma (`<T,>`) or a `function` declaration to disambiguate.
+
 ```typescript
 // Generic function — T inferred from arguments:
 const wrap = <T>(val: T): { value: T } => ({ value: val });
@@ -161,6 +171,8 @@ function identity<T>(val: T): T { return val; }
 ---
 
 ## Conditional Types with Generics
+
+A conditional type is a type-level `if/else`: `T extends U ? X : Y`. When `T` is a generic type parameter, conditional types distribute over union types automatically — each member of the union is checked independently, which is what makes utility types like `Exclude` work. The `infer` keyword lets you capture an unknown sub-type within the condition (for example, the return type of a function or the resolved value of a Promise) and name it for use in the result type.
 
 ```typescript
 // T extends U ? X : Y
@@ -189,6 +201,8 @@ type DeepReadonly<T> = {
 ---
 
 ## Generic Utility Patterns
+
+Generics become most powerful when combined with advanced type features to create reusable abstractions. The builder pattern can use generics to track accumulated state at the type level — preventing invalid configurations at compile time. The pipe/compose pattern uses generics to thread types through a chain of transformations, so each stage's output type is exactly the next stage's input type. These patterns shift validation from runtime to compile time.
 
 ```typescript
 // Builder pattern with generics:

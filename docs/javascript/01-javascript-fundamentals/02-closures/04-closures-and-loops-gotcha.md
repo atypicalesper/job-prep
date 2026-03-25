@@ -57,6 +57,8 @@ t=1000ms: callback 3 runs → logs i → logs 3
 
 ## Fix 1: Use `let` (Block-Scoped)
 
+`let` in a `for` loop is special: the spec requires that each iteration of the loop creates a brand-new binding for the loop variable, initialized to the value from the previous iteration's update step. This means each closure captures a distinct `i` that is frozen at the value it had during that specific iteration. This is the idiomatic, zero-overhead fix — no wrappers, no extra allocations beyond the per-iteration binding.
+
 `let` creates a **new binding per iteration** of the for loop. Each closure captures its own copy.
 
 ```javascript
@@ -79,6 +81,8 @@ This is the simplest and most idiomatic fix. **Always prefer `let` over `var` in
 
 ## Fix 2: IIFE (Immediately Invoked Function Expression)
 
+An IIFE creates a new function scope on each iteration. The current value of `i` is passed as an argument (copied by value for primitives), so the inner function parameter `j` is an independent copy of that value — not a reference to the shared `var i`. This was the canonical fix in the ES5 era before `let` existed, and you will still encounter it in legacy code.
+
 Before `let` existed (ES5 era), the standard fix was an IIFE to create a new scope:
 
 ```javascript
@@ -100,6 +104,8 @@ for (var i = 0; i < 3; i++) {
 
 ## Fix 3: .bind() to Pass Value
 
+`Function.prototype.bind` creates a new function with specific arguments pre-applied. When `bind` is called at the point of `setTimeout` registration, the current value of `i` is captured by value (primitive copy) as a partial argument — `logValue` will receive it as `val`, independent of what `i` later becomes.
+
 ```javascript
 function logValue(val) {
   console.log(val);
@@ -116,6 +122,8 @@ for (var i = 0; i < 3; i++) {
 
 ## Fix 4: Array + forEach
 
+`forEach` calls its callback with each element as a function argument. Function parameters are new local bindings per invocation — they are not the same variable as any outer `i`. This means even if you use `var` inside the callback, the `i` parameter received by each callback invocation is a distinct value.
+
 ```javascript
 [0, 1, 2].forEach(function(i) {
   setTimeout(function() {
@@ -128,6 +136,8 @@ for (var i = 0; i < 3; i++) {
 ---
 
 ## Async Closures in Loops
+
+The root cause of the loop bug is not `setTimeout` — it is `var` combined with any asynchronous callback. Any API that accepts a function to be called later (fetch, event listeners, database queries, Promises) will exhibit the same problem when used inside a `var` loop. The fix is always the same: use `let` to create a per-iteration binding, or use one of the ES5-era workarounds when you need to support old environments.
 
 The problem isn't limited to `setTimeout`. Any async operation in a loop with `var` has this issue:
 
@@ -148,6 +158,8 @@ for (let i = 0; i < 3; i++) {
 ---
 
 ## The async/await in Loop Pattern
+
+The `forEach` + `async` combination is a common modern mistake. `forEach` was designed for synchronous iteration — it calls each callback, discards the return value, and moves on immediately. When the callback is async, `forEach` discards the returned Promise. The loop body appears to "run" but completes synchronously before any of the async work has had a chance to execute. Use `for...of` when you need sequential awaiting, or `Promise.all` + `map` when you want parallel execution with proper completion tracking.
 
 A common modern pitfall — using `await` in forEach:
 
@@ -178,6 +190,8 @@ results.forEach(data => console.log(data));
 ---
 
 ## Closure Over Mutable Object
+
+Closing over an object reference means all functions that share that closure can read and mutate the same object. This is expected behavior and is the basis for shared state patterns, but it can surprise developers who assume closures provide some form of copy semantics. When two methods close over the same `config` object and one mutates it, the other immediately sees the change — they are not working on independent copies.
 
 Closures capture variable references — including object references:
 
@@ -228,6 +242,8 @@ for (var i = 0; i < 3; i++) {
 ---
 
 ## Event Listeners in Loops
+
+Attaching event listeners inside a loop is one of the most common places the `var` / closure bug appears in real frontend code. Each listener is registered immediately, but each listener callback is only called later when the user interacts with the element. By that time, the `var i` loop variable has already advanced to its final value, so every listener reads the same number. This is the same fundamental bug as the `setTimeout` example — the fix is identical.
 
 ```javascript
 const buttons = document.querySelectorAll('button');
