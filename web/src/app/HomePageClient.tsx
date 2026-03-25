@@ -165,24 +165,34 @@ export default function HomePageClient({ pageCounts }: Props) {
             <Clock size={12} />
             Continue learning
           </p>
-          <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
-            {recentPages.map(p => (
-              <Link
-                key={p.slug}
-                href={'/' + p.slug}
-                className="recent-card shrink-0 flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm"
-                style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}
-              >
-                <BookOpen size={13} style={{ color: 'var(--accent)' }} className="shrink-0" />
-                <span
-                  className="truncate font-medium"
-                  style={{ color: 'var(--fg)', maxWidth: '180px' }}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {recentPages.map(p => {
+              const section = p.slug.split('/')[0];
+              return (
+                <Link
+                  key={p.slug}
+                  href={'/' + p.slug}
+                  className="recent-card group flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                  style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}
                 >
-                  {p.title}
-                </span>
-                <ArrowRight size={12} style={{ color: 'var(--muted)' }} className="shrink-0" />
-              </Link>
-            ))}
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: 'var(--sidebar-active)' }}
+                  >
+                    <BookOpen size={14} style={{ color: 'var(--accent)' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-medium uppercase tracking-wide mb-0.5" style={{ color: 'var(--muted)' }}>
+                      {section}
+                    </p>
+                    <p className="text-sm font-medium leading-snug" style={{ color: 'var(--fg)' }}>
+                      {p.title}
+                    </p>
+                  </div>
+                  <ArrowRight size={14} style={{ color: 'var(--muted)' }} className="shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}
