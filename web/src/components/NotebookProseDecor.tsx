@@ -15,6 +15,7 @@ export default function NotebookProseDecor() {
     const cleanup = () =>
       document.querySelectorAll(`[${ATTR}]`).forEach(el => el.remove());
 
+    document.documentElement.classList.toggle('notebook-mode', notebook);
     cleanup();
     if (!notebook) return;
 
@@ -43,7 +44,10 @@ export default function NotebookProseDecor() {
       heading.after(svg);
     });
 
-    return cleanup;
+    return () => {
+      cleanup();
+      document.documentElement.classList.remove('notebook-mode');
+    };
   }, [notebook, resolvedTheme]);
 
   return null;

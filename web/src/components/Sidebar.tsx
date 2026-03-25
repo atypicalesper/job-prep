@@ -156,7 +156,7 @@ function SectionNav({ section, pathname }: { section: NavItem; pathname: string 
       <div className="px-2 pt-2">
         <Link
           href="/"
-          className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] transition-colors hover:bg-[var(--sidebar-hover)]"
+          className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-[var(--sidebar-hover)]"
           style={{ color: 'var(--muted)' }}
         >
           <ArrowLeft size={11} />
@@ -170,7 +170,7 @@ function SectionNav({ section, pathname }: { section: NavItem; pathname: string 
         style={{ backgroundColor: 'var(--sidebar-active)', color: 'var(--fg)' }}
       >
         <span className="text-base shrink-0">{icon}</span>
-        <span className="font-semibold text-[11px] leading-tight truncate">{section.title}</span>
+        <span className="font-semibold text-xs leading-tight truncate">{section.title}</span>
       </div>
 
       {/* Nav tree — only this section */}
@@ -222,7 +222,7 @@ function NavNode({ item, pathname, depth }: { item: NavItem; pathname: string; d
     return (
       <Link
         href={href}
-        className={`nav-item block rounded py-0.5 px-2 text-[11px] leading-5 transition-colors ${active ? 'nav-active' : ''}`}
+        className={`nav-item block rounded py-1 px-2 text-xs leading-5 transition-colors ${active ? 'nav-active' : ''}`}
         style={{
           color: active ? 'var(--sidebar-active-text)' : 'var(--muted)',
           paddingLeft: `${depth * 8 + 8}px`,
@@ -238,7 +238,7 @@ function NavNode({ item, pathname, depth }: { item: NavItem; pathname: string; d
     <div>
       <button
         onClick={() => setOpen(o => !o)}
-        className="nav-item w-full flex items-center justify-between py-0.5 px-2 rounded text-[11px] leading-5 font-medium text-left transition-colors hover:bg-[var(--sidebar-hover)]"
+        className="nav-item w-full flex items-center justify-between py-1 px-2 rounded text-xs leading-5 font-medium text-left transition-colors hover:bg-[var(--sidebar-hover)]"
         style={{ color: isActive ? 'var(--fg)' : 'var(--muted)', paddingLeft: `${depth * 8 + 8}px` }}
       >
         <span className="truncate">{item.title}</span>

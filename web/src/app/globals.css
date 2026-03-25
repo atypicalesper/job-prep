@@ -92,6 +92,7 @@ body {
   margin-top: 2.5rem;
 }
 .prose h3 { font-size: 1.15rem; font-weight: 600; margin-top: 1.75rem; }
+.notebook-mode .prose h2 { border-bottom: none; padding-bottom: 0; }
 
 .prose a {
   color: var(--accent);
