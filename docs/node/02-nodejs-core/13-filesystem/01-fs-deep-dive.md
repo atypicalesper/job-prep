@@ -2,6 +2,8 @@
 
 ## fs Module Variants
 
+Node.js exposes the same underlying filesystem operations through three different API styles, and choosing the wrong one is a common source of bugs and performance problems. The callback-based API (`fs.readFile(path, cb)`) is the original design and is still used internally and in older codebases. The sync API (`fs.readFileSync`) is simple but blocks the entire event loop for the duration of the I/O operation — every other request waits. The Promise-based API (`fs/promises`) is the modern correct choice: it integrates with `async`/`await`, does not block the event loop, and has identical semantics to the callback API without the pyramid nesting.
+
 Node.js exposes three filesystem APIs:
 
 ```js
@@ -15,6 +17,8 @@ Always prefer `fs/promises` in modern Node.js (v14+). Sync methods block the eve
 ---
 
 ## 1. fsPromises Basics
+
+`fs/promises` exposes the same filesystem operations as the callback and sync APIs but returns Promises, making them compatible with `async`/`await` and eliminates the boilerplate of nested callbacks. These are the operations you will use for the vast majority of file work: reading config files, writing output, managing directories, and checking existence. The `access` pattern for existence checks is preferred over `fs.existsSync` in async code because `existsSync` blocks the event loop and is subject to time-of-check/time-of-use (TOCTOU) race conditions where the file state can change between the check and the subsequent operation.
 
 ```js
 const fsp = require('fs/promises');
@@ -59,6 +63,8 @@ try {
 
 ## 2. FileHandle — Low-Level File Operations
 
+`FileHandle` is the object returned by `fsp.open()` and represents a raw OS file descriptor wrapped in a Promise-based interface. While `fsp.readFile` / `fsp.writeFile` are convenience wrappers that open, operate, and close in a single call, `FileHandle` exposes the underlying primitives: reading or writing at specific byte offsets, querying file metadata (`stat`), flushing to disk (`sync` / `datasync`), and reading large files in fixed-size chunks without loading the entire file into memory. Use `FileHandle` when you need random-access I/O, must guarantee durability after a write, or are building a file format reader that navigates non-linearly through a binary file. Always close the handle in a `finally` block (or use the `await using` syntax in Node 22+) — a leaked file descriptor is an OS resource that causes `EMFILE` errors once the process limit is reached.
+
 `FileHandle` gives you fine-grained control: read specific byte ranges, lock files, sync to disk.
 
 ```js
@@ -91,6 +97,8 @@ try {
 
 ### Write with FileHandle
 
+Writing through a `FileHandle` gives you control over precisely when data is flushed from the OS page cache to durable storage. `fh.write()` is non-blocking — it copies data into the OS buffer and returns quickly. `fh.sync()` blocks until the kernel confirms the data is physically written to the storage device, which is essential for crash-safe writes (e.g., committing a WAL entry in a custom database). `fh.datasync()` is similar but skips flushing file metadata (size, timestamps), making it slightly faster while still guaranteeing data durability.
+
 ```js
 const fh = await fsp.open('/data/output.bin', 'w');
 try {
@@ -109,6 +117,8 @@ try {
 
 ### Using `using` keyword (Node 22+ / TypeScript 5.2+)
 
+The `using` and `await using` keywords implement the TC39 Explicit Resource Management proposal: when a `using`-declared variable goes out of scope (including on exception), `Symbol.asyncDispose` is called automatically. For `FileHandle`, this means `fh.close()` is guaranteed to run even if an error is thrown in the middle of the block, eliminating the `try/finally` boilerplate that was previously required to prevent file descriptor leaks.
+
 ```ts
 // Automatic cleanup via Symbol.asyncDispose
 {
@@ -121,6 +131,8 @@ try {
 ---
 
 ## 3. Directory Operations
+
+Directory listing in Node.js ranges from a flat name array to a fully typed recursive walk. The `withFileTypes: true` option returns `Dirent` objects that know whether each entry is a file, directory, or symlink, saving an extra `stat()` call per entry. Node.js v20.1+ added a `recursive` option to `readdir`, making deep tree walks a one-liner. For older Node.js versions or when you need streaming semantics (processing files as you find them rather than collecting all paths first), an async generator that yields paths one at a time is the idiomatic pattern.
 
 ```js
 // List directory
@@ -160,6 +172,8 @@ for await (const file of walkDir('/data')) {
 
 ### `fs.watch` — native, efficient
 
+`fs.watch` uses native OS file-system event APIs (inotify on Linux, kqueue on macOS, FSEvents on macOS, ReadDirectoryChangesW on Windows) to deliver change notifications without polling. It is efficient and low-latency. However, the raw API has known cross-platform inconsistencies: Linux does not support `recursive` without additional setup, events can fire multiple times for a single logical change (an editor's atomic save triggers rename + change), and the `filename` argument can be `null` on some platforms. In production, use `chokidar` which normalises all of this.
+
 ```js
 const fs = require('fs');
 
@@ -183,6 +197,8 @@ watcher.close();
 - `filename` can be `null` on some platforms
 
 ### `fs.watchFile` — polling based
+
+`fs.watchFile` checks file metadata at a fixed polling interval rather than using OS events. This makes it reliable on network file systems (NFS, CIFS) and virtual file systems where OS events are not delivered, but wastes CPU on stat calls even when nothing changes. Prefer `fs.watch` or `chokidar` for local files.
 
 ```js
 fs.watchFile('/data/config.json', { interval: 1000 }, (curr, prev) => {
@@ -236,6 +252,8 @@ await watcher.close();
 
 ## 5. Streams for Large Files
 
+`fsp.readFile` loads the entire file into a single Buffer in memory before returning. For files that fit comfortably in RAM (a few MB) this is fine, but for log files, video files, or large datasets the memory spike can crash the process or trigger excessive garbage collection. The stream-based alternative reads and processes data incrementally: `createReadStream` emits fixed-size chunks as they arrive from the OS, and `pipeline` connects the readable to writable stages with automatic backpressure. The `readline.Interface` wrapping a `createReadStream` is the standard pattern for line-by-line processing of text files (CSV, NDJSON) — it handles both `\n` and `\r\n` line endings and processes one line at a time without buffering the entire file.
+
 For large files, avoid `readFile` (loads entire file into memory). Use streams:
 
 ```js
@@ -269,6 +287,8 @@ for await (const line of rl) {
 ---
 
 ## 6. Temporary Files
+
+Temporary files are needed when you must materialise data on disk for a subprocess (e.g., passing a large image to ffmpeg), process data too large for a single buffer, or atomically replace a file (write temp → rename). The `'wx'` flag creates the file exclusively — it fails if the file already exists, preventing a race condition where two processes try to use the same temp name. Always clean up in a `finally` block; the `.catch(() => {})` on `unlink` handles the case where the file was already cleaned up or never fully created.
 
 ```js
 const os = require('os');

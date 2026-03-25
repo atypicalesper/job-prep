@@ -27,6 +27,8 @@ The generator is **lazy** — code runs only when `.next()` is called.
 
 ## yield* — Delegating to Another Iterable
 
+`yield*` delegates iteration to any iterable — another generator, an array, a string, or any `[Symbol.iterator]`-compliant object — yielding each of its values in sequence as if they were produced inline. This solves the composition problem: without `yield*`, you'd need a manual `for...of` loop inside the generator to flatten a nested source. It also propagates the final `return` value of a delegated generator back as the expression value of the `yield*` statement itself, enabling coroutine-style pipelines where subgenerators can pass results back up to callers.
+
 ```javascript
 function* inner() {
   yield 'a';
@@ -46,6 +48,8 @@ function* outer() {
 ---
 
 ## Generators are Iterators AND Iterables
+
+A generator object is self-referential: its `[Symbol.iterator]()` method returns `this`, making it both an iterator (has `next()`) and an iterable (has `[Symbol.iterator]()`). This dual nature means you can use a generator object directly with `for...of`, spread, or destructuring without needing to call `[Symbol.iterator]()` first. The practical consequence is that a generator returned from a function is immediately usable everywhere an iterable is expected — you don't need a wrapper object.
 
 ```javascript
 function* range(start, end, step = 1) {
@@ -130,6 +134,8 @@ calc.next(null); // { value: 35, done: true }  — done
 
 ## return() and throw()
 
+`return()` and `throw()` are the two external control methods on a generator object. `return(value)` forces the generator to finalize immediately — it triggers any `finally` blocks and returns `{ value, done: true }`. `throw(error)` injects an exception at the generator's current suspension point, as if the `yield` expression had thrown; if the generator has a `try/catch` wrapping the `yield`, it can intercept the error and continue. These methods are how the runtime communicates early termination and error conditions back into suspended generator code, and why generators are the correct primitive for resource-managing iterators.
+
 ```javascript
 function* gen() {
   try {
@@ -159,6 +165,8 @@ g2.throw(new Error('oops')); // logs 'cleanup', throws if not caught inside
 ## Practical Use Cases
 
 ### Lazy Data Transformation Pipeline
+
+A generator pipeline processes data one element at a time through a chain of transformations, allocating no intermediate arrays. Each stage only requests the next value from its source when the downstream consumer requests a value from it — this is pull-based, or "lazy," evaluation. This is valuable when working with large datasets (files, database cursors, infinite sequences) where materializing all intermediate results would be prohibitively expensive. The entire pipeline shares a single pass over the data regardless of how many transformation stages are stacked.
 
 ```javascript
 function* map(iter, fn) {
@@ -192,6 +200,8 @@ const result = take(3,
 
 ### Unique ID Generator
 
+Generators are a clean fit for any stateful counter or sequence that must produce unique values across multiple call sites. Because the generator's local state (the `id` variable) is private and persistent between `yield` calls, there is no global mutable variable to accidentally reset or share incorrectly. Multiple independent generator instances share no state, so different ID namespaces remain isolated without any coordination.
+
 ```javascript
 function* idGenerator(prefix = '') {
   let id = 1;
@@ -210,6 +220,8 @@ userIds.next().value;  // 'USR-3'
 ```
 
 ### State Machine
+
+Generators naturally encode state machines because `yield` checkpoints the exact position in the function — the program counter is part of the generator's saved state. Each `next()` call advances to the next valid state without any explicit switch/case or state variable tracking. The generator body reads like a sequential description of the state sequence, which is far easier to reason about and modify than a traditional state-variable approach.
 
 ```javascript
 function* trafficLight() {

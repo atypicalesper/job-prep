@@ -6,7 +6,11 @@ The 23 GoF patterns grouped by purpose. Focus on the most common in Node.js inte
 
 ## Creational Patterns
 
+Creational patterns deal with the problem of object construction: when to create an object, which class to instantiate, and how to manage the lifetime of the resulting instance. They decouple the code that uses an object from the code that decides how to create it, so that construction logic can evolve independently from business logic.
+
 ### Singleton
+
+The Singleton pattern ensures that a class has exactly one instance throughout the lifetime of a process, and provides a global access point to that instance. It exists to avoid the waste and inconsistency of creating multiple copies of a resource that should be shared — a database connection pool, a logger, a configuration object. The key property is that the instance is lazily created on first access and cached for all subsequent calls. Prefer module-level singletons in Node.js (the module cache handles deduplication) over class-based Singletons, which are harder to test because they resist dependency injection. Avoid using Singletons for application logic — they introduce hidden global state that makes reasoning about execution order and test isolation difficult.
 
 ```typescript
 // Ensure only one instance exists
@@ -42,6 +46,8 @@ export default connection;
 
 ### Factory Method
 
+The Factory Method pattern centralizes object creation behind a function or method so that the caller never needs to know which concrete class it is getting. The problem it solves is that construction decisions (which logger to use, which payment adapter to instantiate) tend to be conditional on runtime configuration, environment, or user input — embedding those `if/switch` blocks directly in business logic makes it brittle and hard to extend. By delegating construction to a factory, adding a new variant only requires touching the factory, not every call site. Use it when the exact class to instantiate is determined at runtime and you want call sites to remain ignorant of that decision.
+
 ```typescript
 // Create objects without specifying exact class
 interface Logger {
@@ -73,6 +79,8 @@ const logger = createLogger(process.env.LOG_TYPE as any);
 ```
 
 ### Builder
+
+The Builder pattern separates the construction of a complex object from its representation, allowing the same construction process to produce objects with different configurations. It solves the "telescoping constructor" problem: when an object has many optional fields, a constructor with a dozen parameters becomes unreadable and error-prone (which argument is which?). Builder uses a fluent API of named setter methods, each returning `this`, so the caller only sets what they need and the intent is self-documenting. It is especially useful for query builders, HTTP request clients, and test fixture factories where objects are partially configured in many different ways.
 
 ```typescript
 // Construct complex objects step by step
@@ -132,7 +140,11 @@ const query = new QueryBuilder()
 
 ## Structural Patterns
 
+Structural patterns are about composing classes and objects into larger structures while keeping those structures flexible and efficient. They solve the problem of incompatibility and layering: how to make existing code work with new interfaces, how to add behavior without modifying existing classes, and how to control access to expensive or sensitive objects.
+
 ### Adapter
+
+The Adapter pattern wraps an existing class with a different interface so that otherwise-incompatible code can work together without modification. The classic case is integrating a third-party library or legacy system whose API doesn't match the interface your application expects — rewriting the library isn't an option, but writing a thin translation layer around it is. The adapter translates calls from the expected interface into calls the wrapped object understands, hiding the impedance mismatch from the rest of the system. Use it when you need to integrate external APIs, legacy code, or any collaborator that you don't own and can't change.
 
 ```typescript
 // Convert incompatible interfaces to work together
@@ -175,6 +187,8 @@ class LegacyPaymentAdapter implements PaymentProcessor {
 ```
 
 ### Decorator
+
+The Decorator pattern attaches additional responsibilities to an object at runtime by wrapping it in another object that implements the same interface. It solves the feature-explosion problem that inheritance creates: if you have a `DataSource` and want to support every combination of encryption and compression, subclassing produces a combinatorial explosion of classes (`EncryptedSource`, `CompressedSource`, `EncryptedCompressedSource`...). Decorators are stackable — each wraps the previous, delegating to it while adding its own behavior before or after. The key mental model is that decorators are transparent: any code working with the base interface works identically with the decorated version. Use Decorator instead of inheritance whenever you need composable, layered behavior at runtime.
 
 ```typescript
 // Add behavior to objects without modifying them
@@ -229,6 +243,8 @@ const source = new CompressionDecorator(
 
 ### Proxy
 
+The Proxy pattern provides a surrogate that controls access to another object, intercepting calls before they reach it. It exists to add cross-cutting concerns — caching, access control, logging, lazy initialization — without changing the target object's code. The proxy and the target share the same interface, so callers are unaware they're talking to a proxy. The key distinction from Decorator is intent: a proxy manages the lifecycle and access to the object (often acting as a stand-in for an expensive or remote resource), while a Decorator adds new behavior to an existing one. Common real-world uses include HTTP caching layers, database connection pools, and authorization wrappers.
+
 ```typescript
 // Control access to another object
 
@@ -268,7 +284,11 @@ class CachingUserServiceProxy implements UserService {
 
 ## Behavioral Patterns
 
+Behavioral patterns define how objects communicate and distribute responsibility. They solve the problem of tight coupling between objects that need to collaborate: when object A directly calls object B, A must know B exists, making both hard to change independently. Behavioral patterns introduce indirection — through events, strategies, commands, or chains — so that collaborators are loosely coupled and their interactions can be reconfigured without modifying the participants.
+
 ### Observer
+
+The Observer pattern defines a one-to-many relationship where multiple "observers" are automatically notified when a single "subject" changes state. It decouples the source of an event from the code that reacts to it: the subject doesn't need to know who is listening or how many listeners there are. This makes it easy to add new reactions to existing events without modifying the emitting code. Node.js's `EventEmitter` is a direct implementation of this pattern. Use Observer when multiple independent components need to respond to the same state change, but coupling them directly would create a tangled dependency web.
 
 ```typescript
 // One-to-many dependency — when one changes, all dependents are notified
@@ -309,6 +329,8 @@ userEmitter.on('deleted', ({ userId }) => cleanupData(userId));
 ```
 
 ### Strategy
+
+The Strategy pattern defines a family of algorithms, encapsulates each one, and makes them interchangeable at runtime. It exists to eliminate large `if/switch` blocks that select between different algorithms or behaviors — instead of baking the selection logic into the consumer, you pass in the desired behavior as an object. This allows the algorithm to vary independently from the context that uses it. The mental model is "the context delegates work to a strategy object it was given." Use Strategy whenever you have a single operation that can be performed in multiple ways and the choice may vary at runtime (sorting algorithms, pricing rules, authentication strategies, compression codecs).
 
 ```typescript
 // Define a family of algorithms, make them interchangeable
@@ -363,6 +385,8 @@ const sorter = new Sorter<number>(
 
 ### Command
 
+The Command pattern encapsulates a request as a standalone object that contains all information needed to perform an action. This object-as-request model unlocks capabilities that a direct method call cannot provide: the command can be queued for later execution, logged for auditing, undone by reversing its effect, or retried without the invoker knowing anything about the operation's internals. The key properties are that a Command exposes an `execute()` method and optionally an `undo()` method, decoupling the code that initiates an operation from the code that performs it. Use Command when you need operation history (undo/redo), deferred or queued execution, or a transaction log.
+
 ```typescript
 // Encapsulate requests as objects — supports undo, queue, log
 
@@ -407,6 +431,8 @@ class InsertCommand implements Command {
 ```
 
 ### Chain of Responsibility
+
+Chain of Responsibility passes a request through a sequence of handlers, where each handler decides either to process the request and stop the chain, or to pass it to the next handler. This pattern solves the problem of conditionally applying processing steps without hard-coding their order or composition in the invoker. The mental model is a pipeline: each stage in the pipeline is independent, has a single job, and can short-circuit the rest. Express middleware is the canonical Node.js example — each `app.use()` handler is one link in the chain, and calling `next()` passes control forward. Use CoR when you have a variable number of processing steps that need to be composed flexibly (auth, rate limiting, logging, validation).
 
 ```typescript
 // Pass requests along a chain of handlers (Express middleware!)

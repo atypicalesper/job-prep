@@ -40,6 +40,8 @@ Both produce identical behavior. The class syntax is just more readable and prov
 
 ## What class Actually Does
 
+`class` syntax with `extends` does two distinct things: it sets up the instance prototype chain so instances of the subclass inherit instance methods from the parent, and it sets up the constructor function chain so the subclass also inherits static methods from the parent. Both are accomplished by manipulating prototypes under the hood, and you can verify this directly by inspecting `Dog.prototype.__proto__` and `Dog.__proto__` after a class declaration.
+
 ```javascript
 class Dog extends Animal {
   constructor(name, breed) {
@@ -107,6 +109,8 @@ alice instanceof Person; // true
 
 ## extends and super — How Inheritance Works
 
+`extends` wires up the prototype chain so the subclass inherits from the parent. `super` provides two capabilities: calling the parent class constructor (`super(args)`) and calling a specific parent class method (`super.methodName()`). In a derived class constructor, `this` does not exist until after `super()` is called — the parent constructor is responsible for allocating and initializing `this`. Forgetting `super()` in a subclass constructor throws a `ReferenceError: Must call super constructor in derived class before accessing 'this'`.
+
 ```javascript
 class Vehicle {
   constructor(make, model) {
@@ -142,6 +146,8 @@ tesla.describe(); // 'Tesla Model 3 with 4 doors'
 ## Class Features
 
 ### Private Fields (ES2022)
+
+Private class fields (`#field`) are a language-level privacy mechanism that makes properties completely inaccessible outside the class body — not even through `obj['#field']` or DevTools object inspection can bypass them (DevTools shows them in a separate "Private properties" section). They are enforced by the parser and are fundamentally different from the naming convention `_private` or WeakMap-based approaches. Private fields are stored as part of the instance's internal slot structure, not on the prototype chain, so they have no inheritance and no `hasOwnProperty` visibility.
 
 ```javascript
 class BankAccount {
@@ -181,6 +187,8 @@ acc.#balance;  // SyntaxError — truly private!
 
 ### Static Methods and Properties
 
+Static members belong to the class constructor itself, not to instances. They are not accessible via `instance.method()` — only via `ClassName.method()`. Static methods are useful for factory functions, utility helpers, and managing class-level state (like an instance counter). They are inherited by subclasses: `SubClass.staticMethod()` works because `SubClass.__proto__ === ParentClass` (another prototype chain, this time for the constructor functions themselves).
+
 ```javascript
 class MathUtils {
   static PI = 3.14159;
@@ -207,6 +215,8 @@ MathUtils.getInstanceCount(); // 1
 ```
 
 ### Getters and Setters
+
+Getters and setters define computed or validated properties that appear as plain property accesses to the caller. A getter is invoked when you read `obj.property`; a setter is invoked when you write `obj.property = value`. They are defined on the prototype (not on instances), so they are shared and incur no per-instance memory overhead. Use them when a property value should be derived from other state, or when assignment needs validation logic, rather than exposing the raw underlying field.
 
 ```javascript
 class Temperature {
@@ -278,6 +288,8 @@ function createUser(name, email) {
 ---
 
 ## Mixins — Multiple Inheritance Workaround
+
+JavaScript's prototype chain is linear — a class can only extend one parent — so true multiple inheritance is not available. Mixins are a composition pattern that works around this by defining behavior as functions that take a superclass and return a new subclass that extends it. By chaining mixin calls, you layer multiple behaviors onto a base class. Each mixin forms a new anonymous class in the prototype chain, which is why deep mixin stacks have a slight prototype lookup overhead.
 
 JavaScript doesn't support multiple inheritance, but you can compose functionality with mixins:
 

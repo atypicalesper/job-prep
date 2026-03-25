@@ -25,6 +25,8 @@ Promise States:
 
 ## Creating Promises
 
+The `Promise` constructor takes an executor function and runs it synchronously — the executor is not deferred. Inside the executor you call `resolve(value)` to fulfill the promise or `reject(reason)` to reject it. Only the first call matters; subsequent calls to either function are silently ignored. Errors thrown inside the executor are automatically converted to rejections. The pattern of wrapping an async operation in `new Promise((resolve, reject) => {...})` is called "promisification."
+
 ```javascript
 // Constructor takes an executor function (runs synchronously!)
 const p = new Promise((resolve, reject) => {
@@ -58,6 +60,8 @@ Promise.resolve({ then: (resolve) => resolve(42) }); // resolves to 42
 ---
 
 ## The `.then()` Chain
+
+`.then()` is the core mechanism of promise composition. It always returns a *new* Promise, which means every `.then()` call extends the chain rather than modifying the original promise. The new promise's value is determined by what you return from the handler: a primitive value wraps to a fulfilled promise, returning another promise makes the chain wait for it, and throwing an error converts the new promise to a rejected state. This predictable return semantics is what makes chaining reliable.
 
 `.then(onFulfilled, onRejected)` returns a **new Promise**:
 
@@ -97,6 +101,8 @@ What you return from `.then()` determines the next promise:
 
 ## Error Propagation
 
+Promise error propagation is automatic and ordered: a rejection (or a throw in a `.then` handler) skips all subsequent fulfilled handlers in the chain and travels directly to the nearest rejection handler (`.catch` or the second argument of `.then`). Once a rejection handler runs and returns normally (or returns a value), the chain recovers and subsequent fulfilled handlers resume. This gives you Rails-style centralized error handling while still allowing recovery at any point in the chain.
+
 Errors skip fulfilled handlers and go to the next rejection handler:
 
 ```javascript
@@ -115,6 +121,8 @@ Promise.resolve('start')
 ---
 
 ## .catch() and .finally()
+
+`.catch(fn)` is purely a convenience alias for `.then(undefined, fn)` — they are identical in behavior. `.finally(fn)` runs its callback regardless of whether the promise fulfilled or rejected, and crucially, it *passes through* the original value or rejection reason to the next handler without interfering. This makes it ideal for cleanup logic (hiding a spinner, closing a connection) where you want to ensure something always runs but don't want to alter the result.
 
 ```javascript
 // .catch(fn) is shorthand for .then(undefined, fn)
@@ -135,6 +143,8 @@ fetch('/api')
 ---
 
 ## Promise Resolution Procedure
+
+The resolution procedure defines exactly how a Promise's value is determined when `resolve(x)` is called. It is specified in the Promises/A+ spec and implemented consistently across all compliant libraries and native Promises. Understanding it explains why returning a Promise from `.then()` makes the chain wait (the outer promise adopts the inner promise's state) and why returning `Promise.resolve(x)` inside `.then()` is slightly slower than returning `x` directly (an extra microtask tick to unwrap the thenable).
 
 When you `resolve(x)`:
 
@@ -157,6 +167,8 @@ Promise.resolve()
 ---
 
 ## Implementing a Basic Promise (Simplified)
+
+Building a Promise from scratch is the most direct way to internalize how the state machine, handler queuing, and microtask scheduling all fit together. The key design points: state is stored privately and can only transition once (pending → fulfilled/rejected); handlers registered after settlement are called immediately via `queueMicrotask`; handlers registered before settlement are stored and called when settlement occurs; each `.then()` returns a new Promise that is resolved by the return value of the handler.
 
 ```javascript
 class MyPromise {
@@ -227,6 +239,8 @@ class MyPromise {
 
 ## Microtask Scheduling
 
+One of the fundamental guarantees of the Promise specification is that `.then()` handlers are *always* called asynchronously — as microtasks — even when the Promise is already resolved at the time `.then()` is registered. This design choice ensures consistent ordering: you can safely write code after a `.then()` registration and know it executes before the handler does. Without this guarantee, synchronously-resolved Promises would behave differently from asynchronously-resolved ones, breaking reasoning about execution order.
+
 Promises always execute callbacks asynchronously — even if already resolved:
 
 ```javascript
@@ -245,6 +259,8 @@ This guarantees consistent behavior — `.then()` is always async.
 ---
 
 ## Common Mistakes
+
+These are the most frequent Promise misuse patterns in production codebases. "Promise constructor antipattern" (wrapping a Promise in another Promise) is particularly common because it feels intuitive but adds unnecessary complexity and can silently swallow errors. "Forgetting to return" breaks the chain by passing `undefined` to the next handler rather than the promise you intended.
 
 ```javascript
 // ❌ Creating unnecessary promise wrapper:

@@ -48,6 +48,8 @@ DNS → TCP → TLS → HTTP request
 
 ### What blocks what?
 
+Not all resources are equal in their impact on rendering. The browser can parse HTML incrementally as bytes arrive, but CSS is render-blocking because the browser refuses to paint anything until it has a complete CSSOM (painting with incomplete styles would cause a visible flash). Synchronous scripts block both parsing and rendering because they may call `document.write()` and modify the DOM. `defer` and `async` break this blocking behavior in different ways — `defer` always executes in order after parsing completes, while `async` executes as soon as the script downloads, potentially interrupting parsing.
+
 | Resource | Blocks HTML Parsing | Blocks Rendering |
 |----------|--------------------|--------------------|
 | CSS `<link>` | No | **Yes** (render-blocking) |
@@ -146,6 +148,9 @@ Incremental + concurrent to avoid long pauses.
 ## DOM & CSSOM
 
 ### DOM Construction
+
+The DOM is a live, tree-structured in-memory representation of the HTML document that JavaScript can query and mutate. Building it is a multi-step tokenization and parsing process — raw bytes from the network are decoded into characters, tokenized into HTML tags and text nodes, then assembled into a tree of `Node` objects. Because HTML parsing is incremental, the browser can begin displaying content before the entire document has arrived, which is why placing scripts at the bottom of `<body>` used to be the primary performance technique.
+
 ```
 Bytes → Characters → Tokens → Nodes → DOM tree
 ```
@@ -206,7 +211,7 @@ requestAnimationFrame(() => {
 ## Paint & Composite
 
 ### Painting
-After layout, browser paints each layer into bitmaps. Paint is expensive for:
+After layout, the browser converts the computed geometry and styles into actual pixels in a series of 2D draw calls — this process is called painting. Each layer is painted independently into an off-screen bitmap. Paint is expensive for:
 - `background-color` changes
 - `color`, `text-shadow`
 - `visibility`
@@ -240,6 +245,9 @@ Compositor thread combines layers and sends to GPU. **GPU-accelerated properties
 ```
 
 **`will-change` — promote to own layer:**
+
+`will-change` is a hint to the browser that an element will be animated. The browser responds by promoting the element to its own compositor layer ahead of time, so when the animation begins the compositor thread can handle it entirely without involving the main thread. This eliminates jank caused by main-thread JavaScript running during an animation. Use it sparingly — each promoted layer consumes GPU memory, and over-promotion causes more harm than good.
+
 ```css
 .heavy-animation {
   will-change: transform; /* hint browser to promote */

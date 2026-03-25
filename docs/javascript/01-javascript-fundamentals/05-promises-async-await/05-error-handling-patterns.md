@@ -2,6 +2,8 @@
 
 ## try/catch with async/await
 
+`try/catch` is the standard error-handling mechanism for `async/await` code. It works for both rejected Promises (via `await`) and synchronous exceptions thrown in the async function body. The key property: `catch` only intercepts errors from expressions that are `await`ed — errors inside non-awaited callbacks (like `setTimeout`) escape the `try/catch` because they run in a different call stack context.
+
 ```javascript
 async function fetchUser(id) {
   try {
@@ -22,6 +24,8 @@ async function fetchUser(id) {
 
 ## .catch() on Promise Chain
 
+`.catch()` can be used as an alternative or complement to `try/catch`. Attaching `.catch(fn)` inline (on a single operation rather than the whole function) lets you handle that specific failure gracefully and continue execution with a fallback value. This is more granular than wrapping the entire function in try/catch and avoids masking errors from unrelated operations.
+
 ```javascript
 // .catch() at end of chain
 fetchUser(1)
@@ -40,6 +44,8 @@ async function safeOp() {
 ```
 
 ## The `to()` Helper — Go-Style Error Handling
+
+Deeply nested try/catch blocks are difficult to read and make error-handling logic harder to follow. The `to()` helper is inspired by Go's multiple-return error pattern: it converts a Promise into a `[error, result]` tuple, so errors and results can be checked with a flat `if` statement rather than nested catch blocks. This keeps the happy path linear while making error handling explicit at each step.
 
 Avoids deeply nested try/catch:
 
@@ -63,6 +69,8 @@ async function loadDashboard(userId) {
 ```
 
 ## Unhandled Rejections
+
+An unhandled Promise rejection occurs when a Promise rejects and no `.catch()` handler or `try/catch` around an `await` is present to handle it. In Node.js v15 and later, an unhandled rejection terminates the process with a non-zero exit code — the same severity as an uncaught synchronous exception. Earlier Node.js versions only printed a warning, which led to silent failures in production. Always handle rejections, either locally or via a global handler as a safety net.
 
 ```javascript
 // ❌ Creates unhandled rejection
@@ -88,6 +96,8 @@ process.on('unhandledRejection', (reason, promise) => {
 
 ## Error Boundaries in async Functions
 
+An error boundary is a higher-order function that wraps an async operation in a try/catch and provides a fallback value or function on failure. It is a reusable abstraction for the common pattern of "try this, fall back to that." By accepting a fallback as either a value or a function (which receives the error), it handles both simple defaults and error-aware fallback logic.
+
 ```javascript
 // Wrap entire async flow with error boundary
 async function withErrorBoundary(fn, fallback) {
@@ -106,6 +116,8 @@ const data = await withErrorBoundary(
 ```
 
 ## Retry with Exponential Backoff
+
+Retry with exponential backoff is the standard resilience pattern for transient failures in distributed systems. After each failed attempt, the delay before the next retry doubles (base × 2^attempt), giving the remote service time to recover. Random jitter (±10%) is added to prevent thundering herd: if many clients retry simultaneously with the same schedule, they hammer the recovering service all at once. The maximum delay cap prevents the backoff from growing impractically large for long retry sequences.
 
 ```javascript
 async function withRetry(fn, options = {}) {
@@ -133,6 +145,8 @@ const data = await withRetry(() => fetch('/api/data').then(r => r.json()), {
 ```
 
 ## Custom Error Classes
+
+A custom error hierarchy allows you to distinguish between different categories of errors programmatically — checking `err instanceof NotFoundError` rather than parsing `err.message` strings. Extending `Error` properly requires calling `super(message)` to set the `message` property, manually setting `this.name` (because `constructor.name` does not propagate automatically in transpiled code), and using `Error.captureStackTrace` (V8-specific) to exclude the constructor itself from the stack trace. The `isOperational` flag separates expected runtime errors (which should be handled gracefully) from unexpected programmer errors (which should crash the process and trigger an alert).
 
 ```javascript
 class AppError extends Error {

@@ -13,7 +13,7 @@ Re-renders are not always bad — React is fast. Optimize only when you can meas
 
 ## React.memo
 
-Prevents re-rendering when props haven't changed (shallow comparison).
+`React.memo` wraps a component and performs a shallow comparison of its props before deciding whether to re-render. If all props pass the comparison (same primitive values, same object references), React reuses the previous render output and skips calling the component function. The custom comparator overload allows deep equality checks for specific props — useful when a prop is a new object reference but its contents haven't changed. Use `React.memo` on pure display components in frequently-re-rendering parents, especially list items in large lists.
 
 ```jsx
 const ExpensiveList = React.memo(function ExpensiveList({ items, onSelect }) {
@@ -39,7 +39,7 @@ const MemoItem = React.memo(Item, (prev, next) =>
 
 ## useCallback
 
-Stabilizes function references so `React.memo` children don't re-render.
+Every render creates a new function object for every inline function in JSX. When that function is passed as a prop to a `React.memo`-wrapped child, the new reference causes the child to re-render even if the function's behavior is unchanged. `useCallback` stores the function in a memoization cache and returns the same reference across renders until its dependencies change. The cost of `useCallback` is real — a dependency array allocation and comparison on every render — so it only pays off when the saved child re-render cost exceeds this overhead.
 
 ```jsx
 function Parent() {
@@ -61,7 +61,7 @@ function Parent() {
 
 ## useMemo
 
-Memoizes expensive computations.
+`useMemo` caches a computation result and recomputes it only when its listed dependencies change. It is valuable in two scenarios: when the computation itself is expensive (filtering/sorting large datasets, complex aggregations), and when the result is an object or array used as a prop or `useEffect` dependency — because JavaScript's reference equality means a freshly-computed `{ a: 1 }` is never equal to an older `{ a: 1 }` even if the data is identical. Measure before adding `useMemo` — the dependency comparison runs on every render, and for cheap computations this overhead can exceed the savings.
 
 ```jsx
 function FilteredList({ items, filter }) {
@@ -84,7 +84,7 @@ function FilteredList({ items, filter }) {
 
 ## List Virtualization
 
-For lists with thousands of items, only render what's visible.
+Rendering a list of 10,000 items creates 10,000 DOM nodes, each of which the browser tracks for layout, painting, and events. Virtualization solves this by maintaining a fixed pool of DOM nodes equal to the number of visible rows plus a small overscan buffer, and recycling them as the user scrolls. The scroll container has the full height of the list (so the scrollbar is accurate), but only the visible items exist as real DOM elements. This technique makes previously impossible UIs — trading dashboards, chat histories, large data tables — performant.
 
 ```jsx
 import { FixedSizeList } from 'react-window';
@@ -151,7 +151,7 @@ function Analytics() {
 
 ## Context Splitting
 
-Avoid making all consumers re-render when unrelated context slice changes.
+A single large context is a common performance anti-pattern. Every component that consumes the context re-renders whenever any part of the context value changes — even if that component only uses one field. Splitting the context into separate contexts aligned with update frequency means a component subscribed to `ThemeContext` is unaffected by changes to `UserContext` or `CartContext`. The general rule: group values that change together and are consumed together into one context; separate values with different update frequencies.
 
 ```jsx
 // ❌ Single context — all consumers re-render on any change
@@ -168,6 +168,8 @@ Or use a selector pattern with `useSyncExternalStore` / Zustand's `useStore(stat
 ---
 
 ## Avoid Inline Object/Array Props
+
+Inline object and array literals in JSX (`style={{ margin: 8 }}` or `colors={['red', 'blue']}`) create a new reference on every render. If the receiving component uses `React.memo`, the prop comparison always fails — the memo is effectively disabled. The fix is to hoist the value to a constant outside the component (for truly static values) or use `useMemo` (for values that depend on props or state). This is one of the most common reasons `React.memo` appears to "not work."
 
 ```jsx
 // ❌ New array on every render → child always re-renders
@@ -189,6 +191,8 @@ const boxStyle = { margin: 8 };
 
 ## Avoid State That Causes Unnecessary Re-renders
 
+Storing derived data in state — values that can be computed from other state or props — is an anti-pattern that causes unnecessary re-renders and keeps two values in sync manually. When the source data changes, you must update both the original and the derived state, which risks inconsistency and triggers an extra render per sync. The fix is to compute the derived value directly in the render function (or via `useMemo` for expensive computations). React's model is: minimize state to the minimal canonical representation, and derive everything else.
+
 ```jsx
 // ❌ Storing derived data in state
 const [filteredItems, setFilteredItems] = React.useState([]);
@@ -201,6 +205,8 @@ const filteredItems = React.useMemo(() => items.filter(...), [items, filter]);
 ---
 
 ## Profiling
+
+React's built-in `Profiler` component records render timing for a subtree, reporting the component ID, whether it mounted or updated, and how long the render took in milliseconds. Use this for pinpointing which part of a large tree is slow when the DevTools Profiler is not available (e.g., in automated performance benchmarks). In development, React DevTools Profiler gives a flame graph view of all renders during a recorded interaction — highlight which components rendered, how long each took, and why they rendered. Always profile before optimizing; the bottleneck is rarely where you expect it.
 
 ```jsx
 // Wrap in React.Profiler to measure render timing
@@ -219,6 +225,8 @@ const filteredItems = React.useMemo(() => items.filter(...), [items, filter]);
 ---
 
 ## Web Workers for Heavy Computation
+
+The browser's main thread handles JavaScript execution, rendering, and user input — all on the same thread. A heavy computation (generating reports, running image processing, parsing large JSON) that runs on the main thread blocks all three simultaneously, making the UI unresponsive. Web Workers run JavaScript in a separate OS thread, communicating with the main thread via `postMessage`. The computation can run at full CPU speed without blocking the UI. The `useWorker` hook below encapsulates the worker lifecycle — creating it on mount, terminating it on unmount — and wraps the message-passing in a Promise for clean `async/await` usage.
 
 ```js
 // worker.js

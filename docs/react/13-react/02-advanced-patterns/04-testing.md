@@ -2,6 +2,8 @@
 
 ## Tools
 
+React testing works in layers: unit tests for individual components and hooks, integration tests for user flows that span multiple components, and end-to-end tests for full browser scenarios. The stack below covers all three layers. React Testing Library is the standard for component testing because it renders real DOM (via jsdom) and queries by accessibility roles and text — the same signals a real user relies on. MSW intercepts network requests at the service worker level, meaning your code uses the real `fetch` API without needing to mock it, giving you more confidence that requests are formed correctly.
+
 | Tool | Role |
 |---|---|
 | **Vitest / Jest** | Test runner, assertions |
@@ -22,6 +24,8 @@ Test behavior, not implementation. Query by accessible roles/text, not CSS class
 
 ## Setup
 
+Vitest is the recommended test runner for Vite-based React projects — it shares Vite's config and transform pipeline, making TypeScript, JSX, and path aliases work without additional configuration. The `jsdom` environment simulates a browser DOM in Node.js, allowing components to render and interact with virtual DOM nodes. The `@testing-library/jest-dom` package adds custom matchers like `toBeInTheDocument()` and `toBeVisible()` that make test assertions more readable.
+
 ```bash
 npm install --save-dev @testing-library/react @testing-library/user-event @testing-library/jest-dom
 ```
@@ -40,6 +44,8 @@ import '@testing-library/jest-dom';
 ---
 
 ## Rendering & Querying
+
+`render` mounts a component into a jsdom document and returns utilities for querying the rendered output. `screen` is the global query object that searches the entire rendered document — prefer it over the `container` return value because `screen` encourages accessible queries. The query priority list below reflects how real users perceive your UI: by role and label first, by text content second, by test IDs as a last resort. Test IDs are an escape hatch for elements with no accessible name — not a first choice.
 
 ```jsx
 import { render, screen } from '@testing-library/react';
@@ -74,6 +80,8 @@ screen.getByTestId('submit-btn');
 ---
 
 ## User Interactions
+
+`userEvent` from `@testing-library/user-event` v14+ simulates real user interactions by dispatching the full sequence of browser events that each action produces. Typing with `userEvent.type` fires `pointerdown`, `keydown`, `keypress`, `input`, `keyup` events in order — unlike `fireEvent.change` which dispatches only a single synthetic event. This matters because many components and libraries listen for `keydown` or `input` events specifically. Always call `userEvent.setup()` and await interactions — the async API handles timers and focus management correctly.
 
 ```jsx
 import userEvent from '@testing-library/user-event';
@@ -144,6 +152,8 @@ test('useCounter', () => {
 
 ## Mocking Network Requests (MSW)
 
+Mock Service Worker (MSW) intercepts HTTP requests at the network level using a service worker in the browser or Node.js's `http` module in tests. Unlike mocking `fetch` directly, MSW lets your application code use the real `fetch` API without any modification — the mock is transparent. This means your tests verify that the correct URL is called, the correct request body is sent, and the component responds correctly to various server responses (success, loading, error). The handler setup follows the same pattern as a real API route handler, making tests easy to read and maintain.
+
 ```js
 // src/mocks/handlers.ts
 import { http, HttpResponse } from 'msw';
@@ -178,6 +188,8 @@ test('shows error on network failure', async () => {
 
 ## Testing Context
 
+Components that consume Context must be rendered inside the appropriate Provider. Rather than wrapping every test individually, the pattern is to create a `renderWithProviders` utility that wraps the component under test with all required Providers at configured initial state. This utility can be placed in a shared test helpers file and imported wherever needed, keeping tests concise while providing the full context environment the component expects.
+
 ```jsx
 function renderWithProviders(ui, { initialState = {} } = {}) {
   function Wrapper({ children }) {
@@ -202,6 +214,8 @@ test('shows user name when logged in', () => {
 
 ## Snapshot Testing
 
+Snapshot testing captures the rendered output of a component and stores it as a serialized string file. On subsequent test runs, the output is compared against the stored snapshot — any difference fails the test. This is useful as a regression check for stable, rarely-changing UI components where you want to be notified if the HTML structure changes unexpectedly. The weakness is that snapshots are easy to update blindly (`jest --updateSnapshot`) and large snapshots become meaningless diffs. Prefer targeted assertions with `getByRole`/`toBeInTheDocument` for component behavior; use snapshots only as a secondary check on structure.
+
 ```jsx
 test('renders correctly', () => {
   const { container } = render(<Button>Click me</Button>);
@@ -214,6 +228,8 @@ test('renders correctly', () => {
 ---
 
 ## Testing React Query / SWR
+
+React Query and SWR manage server state and maintain an internal cache. Tests that render components using these libraries must provide their respective Provider with a fresh `QueryClient` per test — otherwise cached results from one test bleed into the next. Setting `retry: false` in the test client prevents React Query from retrying failed requests (which it does by default in production), making error state tests immediate instead of waiting for retry backoff delays.
 
 ```jsx
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -253,6 +269,8 @@ expect(screen.getByRole('button', { name: /close/i })).toBeEnabled();
 ---
 
 ## E2E with Playwright
+
+Playwright drives a real browser (Chromium, Firefox, or WebKit) against your running application, testing the full stack from UI to network to server. Unlike unit tests that mock everything and test components in isolation, E2E tests verify that all layers work together correctly — the most realistic form of testing. Playwright's auto-waiting eliminates most `sleep()` calls: it waits for elements to be visible, for navigation to complete, and for network requests to settle before proceeding. Use E2E tests for critical user journeys (login, checkout, core CRUD flows) but avoid testing every edge case at this level — they are slow and flaky compared to unit tests.
 
 ```js
 // playwright.config.ts

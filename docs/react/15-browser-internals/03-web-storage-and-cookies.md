@@ -16,6 +16,8 @@
 
 ## Cookies
 
+Cookies are small text values (up to ~4 KB each) that the browser automatically attaches to every HTTP request to the matching origin. This makes them the right mechanism for session tokens and CSRF tokens — the server receives auth credentials on every request without any JavaScript involvement. The `document.cookie` API is deliberately awkward (a single string getter/setter that concatenates all cookies) because cookies predate proper JS storage APIs; in practice, always use a helper or the server-side `Set-Cookie` header to manage them.
+
 ### Setting cookies (client-side)
 
 ```js
@@ -39,6 +41,8 @@ document.cookie = 'session=; Max-Age=0; Path=/';
 
 ### Cookie attributes
 
+Cookie attributes are directives appended to the `Set-Cookie` header that control the cookie's security and lifetime. They are the primary defense mechanism against the two main cookie-based attacks: XSS (mitigated by `HttpOnly`, which hides the cookie from JavaScript entirely) and CSRF (mitigated by `SameSite`, which restricts cross-site submission). Understanding these attributes is essential for implementing secure authentication.
+
 ```http
 Set-Cookie: session=abc123;
   HttpOnly;           // JS cannot read — XSS protection
@@ -61,6 +65,8 @@ Set-Cookie: session=abc123;
 
 ## localStorage
 
+`localStorage` is a synchronous key-value store scoped to an origin that persists indefinitely until explicitly cleared. It is the simplest browser storage API — no async, no transactions, no schema. The synchronous API is intentional for read simplicity but is also its main limitation: reads block the main thread, so storing large objects causes measurable jank. Use it for small, infrequently written data like user preferences, feature flag overrides, or UI state that should survive page refreshes.
+
 ```js
 // Store — must serialize objects
 localStorage.setItem('user', JSON.stringify({ id: 1, name: 'Tarun' }));
@@ -82,6 +88,8 @@ for (let i = 0; i < localStorage.length; i++) {
 ```
 
 ### Storage event (cross-tab sync)
+
+The `storage` event is the browser's mechanism for broadcasting localStorage changes to other tabs on the same origin. Critically, it does NOT fire in the tab that made the change — only in other tabs. This makes it ideal for cross-tab coordination: logout propagation, syncing shopping cart changes, or invalidating caches in background tabs.
 
 ```js
 // Fires in OTHER tabs (not the tab that set the value)
@@ -139,6 +147,8 @@ Async, transactional, key-value (with indexes) database in the browser. Can stor
 
 ### Raw API (verbose — use a wrapper in production)
 
+IndexedDB's native API is callback-based and verbose by design — it was specified before Promises were standard. Every operation requires opening a transaction, getting an object store reference, making a request, and attaching success/error handlers. The pattern is shown here for conceptual understanding; production code should use a Promise wrapper like `idb`.
+
 ```js
 const request = indexedDB.open('AppDB', 1);
 
@@ -163,6 +173,8 @@ request.onsuccess = (e) => {
 ```
 
 ### idb (clean promise wrapper — recommended)
+
+The `idb` library by Jake Archibald wraps IndexedDB's entire callback-based API in Promises, making it fully `async/await` compatible. It is a thin wrapper (~1KB) with no abstraction overhead — every operation maps directly to an underlying IndexedDB call. The `upgrade` callback in `openDB` runs inside a version transaction, which is the correct place to create or modify object stores and indexes.
 
 ```js
 import { openDB } from 'idb';
@@ -199,6 +211,8 @@ await tx.done;
 ---
 
 ## Cache API (Service Workers)
+
+The Cache API is a storage mechanism designed specifically for HTTP request/response pairs. Unlike localStorage (strings) or IndexedDB (arbitrary JS values), it stores complete `Response` objects — headers, status codes, and body streams included. It is the backing store for Service Worker caching strategies, letting the SW intercept fetch requests and respond from cache instead of the network. Cache entries are stored by `Request` object key (URL + method + relevant headers), and the API is available in both Service Worker and Window contexts.
 
 ```js
 // In Service Worker

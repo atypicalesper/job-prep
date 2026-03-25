@@ -2,6 +2,8 @@
 
 ## Setup
 
+Tailwind CSS is a utility-first CSS framework that replaces traditional stylesheet authoring with a set of single-purpose class names applied directly in JSX. Instead of writing `.card { padding: 1rem; border-radius: 0.5rem; }`, you write `className="p-4 rounded-lg"`. This eliminates naming things, prevents style sheet growth over time, and makes it trivially easy to see all styles for a component without leaving the file. The trade-off is that markup becomes class-heavy — tools like `cn()` and `cva` exist specifically to manage that complexity. Setting up Tailwind requires configuring PostCSS (for the build step), pointing the `content` array at your source files (so unused classes get purged), and importing the three Tailwind directives in your global stylesheet.
+
 ```bash
 npm install tailwindcss postcss autoprefixer
 npx tailwindcss init -p
@@ -68,7 +70,12 @@ export default config;
 
 ## Design System Primitives
 
+A design system primitive is a low-level, general-purpose UI component with no domain knowledge — it knows how to look and behave, but not what business concept it represents. Building these primitives as the foundation of your UI gives you consistency (every button looks the same), composability (you assemble more complex components from primitives), and a single place to make system-wide visual changes. The three primitives below — Button, Input, and Modal — represent the most common building blocks of any application UI.
+
 ### Button
+
+The Button component uses `class-variance-authority` (CVA) to manage the combinatorial explosion of visual variants without writing conditional ternaries. CVA takes a base class string and a variant map, and returns a typed function that generates the correct class string for any combination of variant and size. The component uses `forwardRef` so it can be composed with third-party libraries that need to attach refs (like Radix UI or Floating UI). The `cn()` utility at the end allows consumers to pass a `className` override that merges cleanly with the generated classes.
+
 ```tsx
 // components/ui/Button.tsx
 import { type ButtonHTMLAttributes, forwardRef } from 'react';
@@ -135,6 +142,9 @@ export function cn(...inputs: ClassValue[]) {
 ```
 
 ### Input
+
+The Input component wraps a native `<input>` with consistent styling, an accessible label, and an optional inline error state. The error prop changes the border color and background to a red tint, providing a clear visual signal without needing external state. Using `forwardRef` is important here so parent forms (especially when used with React Hook Form's `register()`) can attach refs to the underlying input. The label is always associated with the input via `htmlFor`/`id` for screen reader accessibility.
+
 ```tsx
 // components/ui/Input.tsx
 import { forwardRef, type InputHTMLAttributes } from 'react';
@@ -174,6 +184,9 @@ Input.displayName = 'Input';
 ```
 
 ### Modal / Dialog
+
+A modal is an overlay component that traps the user's focus and requires them to interact with it before returning to the page beneath. The implementation here uses a React portal (`createPortal`) to render the overlay directly into `document.body`, bypassing any CSS stacking context issues from parent elements. It handles two critical accessibility concerns: closing on Escape keypress and preventing body scroll while open. The `role="dialog"` and `aria-modal="true"` attributes tell screen readers this is a modal, and `aria-labelledby` associates the dialog with its title. Note: for production use, consider Radix UI's Dialog primitive, which handles focus trapping and more edge cases.
+
 ```tsx
 // components/ui/Modal.tsx
 'use client';
@@ -248,7 +261,12 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
 
 ## Responsive Layout Patterns
 
+Tailwind's responsive design system is mobile-first: you write base styles for the smallest screen and use breakpoint prefixes (`sm:`, `md:`, `lg:`) to add or override styles at larger sizes. This is different from many traditional CSS approaches that target small screens with overrides — Tailwind's approach means your base markup is always the mobile layout, and complexity is added upward. The three patterns below cover the most common responsive challenges: navigation, content grids, and two-column sidebar layouts.
+
 ### Responsive Navigation
+
+A responsive navigation bar must serve two distinct layouts: a horizontal link row on desktop and a collapsible drawer on mobile. The Tailwind approach uses `hidden sm:flex` (invisible on mobile, flex row on desktop) for the desktop links and `sm:hidden` (visible on mobile only) for the hamburger button. The mobile drawer conditionally renders based on a `useState` boolean — the drawer appears below the nav bar within the same container, avoiding the complexity of absolute positioning. The `aria-expanded` attribute on the button keeps the component accessible to screen reader users.
+
 ```tsx
 'use client';
 
@@ -292,6 +310,9 @@ export function Nav() {
 ```
 
 ### Card Grid
+
+A responsive grid is one of Tailwind's most common and cleanest patterns. The `grid` utility creates a CSS Grid container, `grid-cols-N` sets the number of columns, and `gap-N` sets the gutters. By chaining responsive prefixes, a single `className` string moves from a single column on mobile to two on tablet to three on desktop — no media query CSS to write or maintain.
+
 ```tsx
 // Responsive grid: 1 col mobile → 2 col tablet → 3 col desktop
 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -302,6 +323,9 @@ export function Nav() {
 ```
 
 ### Sidebar Layout
+
+A sidebar layout stacks vertically on mobile (using `flex-col`) and switches to a side-by-side arrangement on larger screens (`md:flex-row`). The `shrink-0` on the sidebar prevents it from squishing when the content area is wide. The `min-w-0` on the main content area is a subtle but important fix — flex children have a default `min-width: auto` which can cause text overflow; setting `min-w-0` allows the content to shrink and respect its container.
+
 ```tsx
 // Sidebar collapses to top on mobile
 <div className="flex flex-col md:flex-row gap-6">
@@ -319,6 +343,9 @@ export function Nav() {
 ## Component Patterns
 
 ### Compound Component
+
+The compound component pattern is a way to group tightly related components under a single namespace while sharing implicit state via context. Instead of passing data through props at every level or using a flat list of unrelated components, you create a parent (`Card`) that provides context and attach sub-components to it as named properties (`Card.Header`, `Card.Body`). This gives consumers a clean, readable JSX API that clearly communicates structural intent, while keeping the internals flexible. Use this pattern when multiple components must coordinate around shared state or when you want to enforce a specific nesting structure.
+
 ```tsx
 // Keeps related components together with shared context
 const CardContext = createContext<{ elevated?: boolean }>({});
@@ -349,6 +376,9 @@ Card.Body = function CardBody({ children }: { children: React.ReactNode }) {
 ```
 
 ### Render Props / Slot Pattern
+
+The slot pattern (sometimes called render props or inversion of control) is a technique for creating flexible container components that accept their variable content as props rather than hardcoding it. The `EmptyState` component below has a fixed layout and styling but accepts its icon, title, description, and action button from the outside. This makes it reusable across dozens of different contexts — each use site provides different content but benefits from the same visual treatment and layout. The `action` prop is optional and rendered conditionally, so callers that don't need an action button simply omit it.
+
 ```tsx
 // Flexible skeleton that accepts content as props
 interface EmptyStateProps {
@@ -373,6 +403,8 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
 ---
 
 ## Dark Mode
+
+Dark mode in Tailwind works through the `class` strategy: when a `dark` class is present on the `<html>` element, any class prefixed with `dark:` activates. This means the same component can declare both its light and dark styles in a single `className` string. The `next-themes` library handles the mechanics of persisting the user's preference, syncing with `prefers-color-scheme`, and toggling the `dark` class without causing a flash of the wrong theme on initial render. The `darkMode: 'class'` config tells Tailwind to generate `dark:` variants.
 
 ```tsx
 // tailwind.config.ts

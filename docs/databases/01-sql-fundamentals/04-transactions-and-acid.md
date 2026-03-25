@@ -4,6 +4,8 @@
 
 ## ACID Properties
 
+A transaction is a group of SQL operations that must either all succeed or all fail together. ACID is the set of guarantees that makes this possible in a reliable way. These properties were defined because in systems with concurrent access and possible hardware failures, executing multiple operations "as if" they were a single atomic action requires careful coordination from the database engine. Each letter of ACID addresses a different failure mode: partial execution (Atomicity), constraint violations (Consistency), interference between concurrent transactions (Isolation), and data loss after a crash (Durability).
+
 ```
 A — Atomicity:    All operations in a transaction succeed or ALL fail (all-or-nothing)
 C — Consistency:  Transaction takes DB from one valid state to another (constraints always satisfied)
@@ -14,6 +16,8 @@ D — Durability:   Committed transactions survive crashes (written to disk/WAL)
 ---
 
 ## Transaction Basics
+
+A transaction wraps one or more SQL statements in a block that either commits atomically on success or rolls back entirely on failure. Without transactions, a crash between two related updates (like a debit and a credit) would leave the database in an inconsistent state. The `BEGIN`/`COMMIT`/`ROLLBACK` pattern is standard SQL; in application code, you typically wrap this in a try/catch to ensure rollback happens on any error, including application-level exceptions not just SQL errors.
 
 ```sql
 BEGIN; -- or START TRANSACTION
@@ -46,6 +50,8 @@ try {
 
 ## Isolation Levels and Their Problems
 
+Isolation describes how visible one transaction's intermediate state is to other concurrent transactions. The SQL standard defines four isolation levels that trade off consistency against concurrency. Lower isolation levels allow more concurrency but expose your transactions to anomalies (dirty reads, non-repeatable reads, phantom reads). Higher isolation levels prevent these anomalies but require more locking or version tracking, which reduces throughput. PostgreSQL's default is `READ COMMITTED`; most applications never need anything stricter unless implementing financial ledgers or serializable workflows.
+
 ```
 Problems transactions cause:
 1. Dirty Read      — reading uncommitted data from another transaction
@@ -76,6 +82,8 @@ BEGIN ISOLATION LEVEL SERIALIZABLE;
 
 ## Locking
 
+Explicit row-level locks let you control concurrency beyond what the isolation level provides. `SELECT ... FOR UPDATE` acquires an exclusive lock on the selected rows, preventing other transactions from modifying them until you commit or rollback. This is pessimistic locking — you lock preemptively, assuming conflict is likely. `FOR SHARE` allows multiple concurrent readers but blocks writers. `SKIP LOCKED` is a specialized option that skips already-locked rows instead of waiting, enabling multiple workers to process a queue without blocking each other.
+
 ```sql
 -- Row-level locking:
 SELECT * FROM accounts WHERE id = 1 FOR UPDATE;
@@ -104,6 +112,8 @@ SELECT * FROM accounts WHERE id = 1 FOR UPDATE NOWAIT;
 
 ## Deadlocks
 
+A deadlock occurs when two transactions each hold a lock the other needs, creating a circular wait. Neither can proceed, and the database must intervene by killing one transaction and rolling it back. Deadlocks cannot be completely eliminated, but they can be made rare and predictable: the primary prevention strategy is to always acquire locks on multiple rows in the same consistent order across all transactions. If transaction A always locks row 1 before row 2, and transaction B does the same, a deadlock is impossible.
+
 ```sql
 -- Classic deadlock:
 -- Transaction A:
@@ -127,6 +137,8 @@ UPDATE accounts SET balance = balance + 200 WHERE id = 1;
 ---
 
 ## Optimistic vs Pessimistic Locking
+
+These are two philosophies for handling concurrent access to the same data. Pessimistic locking assumes conflicts are likely and blocks competing transactions upfront by holding a lock for the duration of the operation. Optimistic locking assumes conflicts are rare — it reads without locking, performs work, then verifies at write time that no one else modified the record (using a version number or timestamp). If the version has changed, it retries. Optimistic locking avoids blocking but requires application-level retry logic; it is preferred when read-to-write ratios are high and actual conflicts are infrequent.
 
 ```sql
 -- Pessimistic: lock the row before reading (FOR UPDATE)
@@ -152,6 +164,8 @@ WHERE id = 1 AND version = 5;
 ---
 
 ## Savepoints
+
+A savepoint is a named marker within a transaction that you can roll back to without abandoning the entire transaction. This enables partial rollback — if a secondary operation fails, you can revert only that part while keeping the work done before the savepoint. Savepoints are useful for complex workflows where multiple steps can partially succeed, or for nested retry logic where an inner operation may fail but the outer transaction should continue.
 
 ```sql
 BEGIN;

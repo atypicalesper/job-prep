@@ -4,6 +4,8 @@
 
 ## Document Model vs Relational
 
+MongoDB stores data as BSON documents (Binary JSON) rather than rows in tables. The fundamental difference from SQL is that related data can either be embedded directly in the document (denormalization) or stored in a separate collection and referenced by ID (normalization). There is no join at the storage level — MongoDB's `$lookup` aggregation stage performs joins in memory. The design question is always: should this data live inside the parent document or in its own collection? The answer depends on access patterns, data size, and how frequently the data changes independently.
+
 ```javascript
 // SQL: users + posts are separate tables, JOIN to combine
 // MongoDB: embed related data or reference
@@ -56,6 +58,8 @@ Reference when:
 
 ## CRUD with Mongoose
 
+Mongoose is an ODM (Object Document Mapper) for MongoDB and Node.js. It adds schema validation, type casting, and a query API on top of the native MongoDB driver. Defining a schema is optional in raw MongoDB but important in application code — it enforces structure, provides defaults, enables validators, and generates TypeScript types. Indexes defined in the schema are synced to the database when the model is first used (or during explicit `syncIndexes()`).
+
 ```javascript
 import mongoose from 'mongoose';
 
@@ -99,6 +103,8 @@ await User.deleteMany({ createdAt: { $lt: cutoffDate } });
 
 ## Query Operators
 
+MongoDB queries are expressed as JSON-like filter documents rather than SQL strings. Operators are prefixed with `$` and can be nested to build arbitrarily complex predicates. The query document is implicitly an `AND` of all top-level conditions; explicit `$and`, `$or`, and `$nor` allow combining conditions with different logical relationships. Array operators like `$all` and `$elemMatch` let you query into embedded arrays without destructuring them first.
+
 ```javascript
 // Comparison:
 { age: { $gt: 25, $lte: 50 } }          // 25 < age <= 50
@@ -132,6 +138,8 @@ await User.deleteMany({ createdAt: { $lt: cutoffDate } });
 ---
 
 ## Aggregation Pipeline
+
+The aggregation pipeline is MongoDB's answer to SQL's `GROUP BY`, `JOIN`, `HAVING`, and derived columns — all in one composable system. A pipeline is an ordered array of stages; each stage transforms the stream of documents produced by the previous stage. The key mental model: documents flow through stages like water through a pipe, with each stage either filtering, reshaping, joining, or computing values. Order matters — a `$match` placed early reduces the number of documents all subsequent stages must process, making it much cheaper.
 
 ```javascript
 // Pipeline: array of stages, each transforms the documents
@@ -184,6 +192,8 @@ const result = await Order.aggregate([
 
 ## Indexes in MongoDB
 
+MongoDB indexes serve the same fundamental purpose as SQL indexes: allow the query planner to find matching documents without scanning the entire collection. Without an index, MongoDB performs a `COLLSCAN` (collection scan) — reading every document. MongoDB indexes are B-Tree-based by default. Compound indexes follow the same left-prefix rule as SQL: only queries that filter or sort on the leftmost field(s) of the index can use it. Special index types — sparse (skip missing-field documents), partial (only documents matching a condition), TTL (auto-expire), text (full-text), and wildcard — handle cases where a standard B-Tree index is insufficient.
+
 ```javascript
 // Single field:
 db.users.createIndex({ email: 1 });         // ascending
@@ -218,6 +228,8 @@ db.products.createIndex({ 'attributes.$**': 1 });
 ---
 
 ## Transactions in MongoDB (4.0+)
+
+MongoDB 4.0 added multi-document ACID transactions, which allow multiple operations across multiple documents (and collections) to be committed or rolled back atomically — similar to SQL transactions. Before 4.0, only single-document operations were atomic. Multi-document transactions are more expensive than in PostgreSQL because MongoDB was not designed with locking primitives optimized for them. Use them when you genuinely need cross-document atomicity; for most cases, schema design that keeps related data in one document (embedding) avoids the need for transactions.
 
 ```javascript
 const session = await mongoose.startSession();
@@ -255,6 +267,8 @@ try {
 ---
 
 ## Common Anti-patterns
+
+These are the mistakes that cause MongoDB applications to fail at scale. The most dangerous is the unbounded growing array: embedding an ever-growing list (posts, comments, events) in a parent document will eventually hit MongoDB's 16MB BSON document limit and degrade performance long before that. A close second is issuing queries without indexes — a `COLLSCAN` on a large collection in production can bring down an entire service. Knowing these anti-patterns lets you recognize and fix them in code review before they reach production.
 
 ```javascript
 // ❌ Growing arrays — embedding unbounded data:

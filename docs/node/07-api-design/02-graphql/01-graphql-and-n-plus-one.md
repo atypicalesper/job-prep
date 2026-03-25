@@ -18,6 +18,8 @@ Good for: simple APIs           Good for: complex data, multiple clients
 
 ## Schema Definition
 
+The GraphQL schema is the contract between the server and all its clients. It is written in Schema Definition Language (SDL) and defines every type, every field on each type, and the root operation types: `Query` (reads), `Mutation` (writes), and `Subscription` (real-time events). Unlike a REST API where the shape of the response is determined by the server implementation, a GraphQL schema is the authoritative specification — clients know exactly what fields are available and what types they return before making any request. `!` after a type means the field is non-nullable; its absence means the field may be null. Input types (`input`) are separate from output types to enforce the distinction between data you send and data you receive.
+
 ```graphql
 type User {
   id: ID!
@@ -70,6 +72,8 @@ input CreateUserInput {
 
 ## The N+1 Problem
 
+GraphQL's resolver model — one function per field — is elegant but creates a structural trap. When a list query returns N items and each item has a resolver that independently queries the database for related data, the result is N+1 database queries (1 for the list + N for each item's related data). This happens silently and is invisible in development with small datasets, but in production with 100 users it becomes 101 queries, and the problem scales linearly. DataLoader is the standard solution.
+
 ```javascript
 // Query: give me 10 users and their posts
 const query = `
@@ -101,6 +105,8 @@ const resolvers = {
 ---
 
 ## DataLoader — The Solution
+
+DataLoader is a batching and caching utility for data fetching. Its fundamental trick is to collect all individual `.load(key)` calls that happen within a single event loop tick and deliver them together to a batch function, which performs one database query for all keys at once. The resolver model remains clean — each resolver calls `loader.load(user.id)` as if it were making one request — but DataLoader coalesces all those calls into a single `WHERE id = ANY(...)` query. The batch function's contract is strict: it must return a Promise that resolves to an array in the **same order and same length** as the input keys array. DataLoader uses that ordering to route each result back to the correct resolver.
 
 ```javascript
 import DataLoader from 'dataloader';
@@ -158,6 +164,8 @@ const resolvers = {
 
 ## DataLoader with Caching
 
+DataLoader has an optional per-request cache keyed by the load key. When a resolver calls `loader.load('user:1')` and the same key is loaded again later in the same request — perhaps by a different part of the query tree — DataLoader returns the same Promise rather than issuing a duplicate load. This per-request caching is distinct from a shared application cache: it only lives for the duration of one request and is garbage collected when the request context is freed. For mutations, disable caching or clear specific keys to ensure the mutation's effects are visible to subsequent reads within the same request.
+
 ```javascript
 // DataLoader caches within a request by default:
 // Multiple resolvers loading the same user ID → one DB call per request
@@ -182,6 +190,8 @@ loader.prime('user:1', { id: '1', name: 'Alice' });
 ---
 
 ## Full Apollo Server Setup
+
+Apollo Server is the most widely used Node.js GraphQL server library. It integrates with Express (and other frameworks) via middleware and handles the HTTP layer, query parsing, validation, execution, and response formatting. The `context` function runs once per request and is the correct place to create per-request DataLoader instances (not global ones), verify authentication tokens, and attach the authenticated user to the context. Error formatting in the `formatError` hook is how you prevent internal error details from leaking to clients in production.
 
 ```javascript
 import { ApolloServer } from '@apollo/server';
@@ -235,6 +245,8 @@ app.use('/graphql',
 
 ## Mutations and Subscriptions
 
+Mutations are the GraphQL equivalent of POST/PUT/DELETE — they change server state and return the updated data. Subscriptions are persistent connections (typically over WebSocket) where the server pushes updates to subscribed clients when relevant events occur. The `pubsub.publish` / `asyncIterator` pattern connects mutations to subscriptions: when a mutation creates a post, it publishes to a named channel; the subscription resolver filters events from that channel and forwards matching ones to each subscribed client. In production, replace the default in-memory PubSub with a Redis-backed implementation to support multiple server instances.
+
 ```javascript
 const resolvers = {
   Mutation: {
@@ -269,6 +281,8 @@ const resolvers = {
 ---
 
 ## Query Complexity and Depth Limiting
+
+GraphQL's flexibility is also its security risk: a client can craft a deeply nested query (`users { posts { comments { author { posts { ... } } } } }`) that causes exponential database queries and CPU time. Unlike REST where the server controls response shape, GraphQL servers must explicitly defend against malicious or accidental query abuse. Depth limiting prevents deeply nested queries. Complexity limiting assigns a cost score to each field and rejects queries that exceed a total budget. Both checks run during validation before any resolvers are called, so they add negligible overhead to legitimate queries while protecting against abuse.
 
 ```javascript
 import depthLimit from 'graphql-depth-limit';

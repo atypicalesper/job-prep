@@ -138,7 +138,7 @@ function withLogger(fn, name = fn.name) {
 
 ## Currying
 
-Transform a multi-arg function into a chain of single-arg functions:
+Currying transforms a function that takes N arguments into a chain of N single-argument functions. The key benefit is **partial application via specialization**: you call the curried function with some arguments up front and get back a new function pre-loaded with those arguments, ready to receive the rest later. This enables creating reusable, domain-specific function variants (`double`, `triple`, `onClick`) from a single general-purpose function without any wrapper boilerplate. Currying differs from partial application: currying always produces single-argument functions in a strict chain, while partial application fixes any number of arguments in one step. Use currying (or libraries like Ramda/fp-ts that curry by default) when building composable point-free pipelines.
 
 ```js
 // Manual curry
@@ -180,7 +180,7 @@ const onButtonClick = onClick(() => console.log('clicked'));
 
 ## Partial Application
 
-Pre-fill some arguments of a function:
+Partial application fixes a subset of a function's arguments now and returns a new function that accepts the remaining arguments later. Unlike currying (which always produces single-argument chains), partial application can fix any number of arguments in one call. It solves the configuration problem: when you have a general-purpose function and a known context (a log level, a base URL, a multiplier), partial application creates a context-aware version without repeating the fixed argument at every call site. `Function.prototype.bind` is the built-in partial application mechanism.
 
 ```js
 function partial(fn, ...presetArgs) {
@@ -238,6 +238,8 @@ processUsers(rawUsers);
 ---
 
 ## Functors and Monads (simplified)
+
+A **functor** is any container that implements a `map` method which applies a function to its contents and returns the same container type — `Array` is the most familiar example. A **monad** extends this with a `flatMap`/`chain` method that handles nested containers and sequencing. The practical value in JavaScript is handling nullable values and errors without null checks scattered throughout the code. The `Maybe` monad wraps a potentially-absent value; every `.map()` on a `Nothing` is a no-op, so you can chain transformations safely and only handle the absent case once at the end. Use this pattern when you find yourself writing deeply nested `if (x && x.y && x.y.z)` guards.
 
 ```js
 // Functor: a container you can map over
@@ -311,6 +313,8 @@ function memoizeWeak(fn) {
 ---
 
 ## Transducers (advanced)
+
+Transducers are composable transformation functions that are independent of the data source and sink. Where chaining `.filter().map()` creates one intermediate array per step, a transducer composes the transformations into a single reducing function that processes each element exactly once. This makes transducers ideal for processing large arrays or streams where allocating intermediate collections is too expensive. Transducers are context-free: the same transducer can be applied to arrays, generators, observable streams, or any reducible container. The cost is a higher conceptual overhead compared to method chaining.
 
 Composable, efficient data transformations — no intermediate arrays:
 

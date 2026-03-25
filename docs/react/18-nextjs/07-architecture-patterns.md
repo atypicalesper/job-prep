@@ -2,6 +2,8 @@
 
 ## Feature-Based Folder Structure
 
+A feature-based folder structure organizes code by domain (what it does) rather than by file type (what kind of file it is). Instead of a top-level `components/` that holds components for every feature and a top-level `hooks/` that mixes unrelated logic, each feature gets its own directory containing all the files it needs — components, server actions, query functions, and validation schemas. This makes features self-contained: you can understand, test, and eventually extract a feature without hunting across multiple top-level directories. The `app/` directory remains thin, containing only routing files (`page.tsx`, `layout.tsx`) that import from `features/`.
+
 ```
 src/
 ├── app/                          ← Routing only (page.tsx, layout.tsx, etc.)
@@ -59,6 +61,8 @@ src/
 ---
 
 ## Data Layer Separation
+
+Separating your data access logic into a dedicated layer (query functions in `features/*/lib/queries.ts`) provides a single, canonical place to write and optimize database queries. Pages and Server Actions import from this layer instead of writing inline queries — this prevents the same query from being implemented slightly differently in three places, and makes it easy to add caching, logging, or pagination in one spot. Wrapping queries with React's `cache()` ensures deduplication within a render pass — if two Server Components in the same tree call `getPost(slug)`, the database is queried only once.
 
 ```ts
 // features/posts/lib/queries.ts
@@ -126,6 +130,8 @@ export async function createPost(prevState: unknown, formData: FormData) {
 
 ## Prisma Singleton (prevent connection pool exhaustion)
 
+In Next.js development, the module system is re-evaluated on every hot reload. If `PrismaClient` were instantiated at module scope without any guard, each hot reload would create a new client with its own connection pool — eventually exhausting PostgreSQL's `max_connections` limit. The singleton pattern uses `globalThis` (which persists across module re-evaluations in the same Node.js process) to store the single PrismaClient instance and reuse it on subsequent reloads. In production there are no hot reloads, so this is purely a development concern, but the pattern is safe in both environments.
+
 ```ts
 // lib/db.ts
 import { PrismaClient } from '@prisma/client';
@@ -147,6 +153,8 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
 
 ## Environment Variables
 
+Next.js has a tiered environment variable system that controls what code can access what secrets. Variables without a prefix are server-only — they are never bundled into client-side code and are safe for database URLs, API secrets, and auth keys. Variables prefixed with `NEXT_PUBLIC_` are deliberately exposed to the browser — use these only for non-sensitive values like your public API base URL or analytics IDs. The `.env.local` file holds actual secrets and must never be committed; `.env.example` documents the shape of required variables (with empty values) and is committed as a reference for other developers.
+
 ```bash
 # .env.local (never commit)
 DATABASE_URL="postgresql://user:pass@localhost:5432/mydb"
@@ -164,6 +172,9 @@ GITHUB_SECRET=
 ```
 
 ### Type-safe env validation
+
+Environment variables are untyped strings by default — a missing variable silently becomes `undefined` and only fails at the point of use, often deep in a request handler. Validating the entire environment with a Zod schema at startup changes this: if any required variable is missing or malformed, the server refuses to start and throws a descriptive error immediately. This converts runtime surprises into a clear startup failure. The `NEXT_PUBLIC_` prefix variables must be listed explicitly in the schema because Tailwind's tree-shaking only inlines them at build time.
+
 ```ts
 // lib/env.ts
 import { z } from 'zod';
@@ -184,6 +195,8 @@ export const env = envSchema.parse(process.env);
 ---
 
 ## Error Boundaries
+
+An error boundary is a React component that catches JavaScript errors anywhere in its child component tree and renders a fallback UI instead of crashing the whole page. In Next.js, `error.tsx` files provide file-system-level error boundaries — each one catches errors from the route segment it lives in (and all its children) while leaving the rest of the layout intact. The `reset` function tells React to retry rendering the segment; if the error was transient (a network blip, a race condition), this often recovers without a full page reload. The `digest` property on the error is a server-side hash useful for correlating client-side errors with server logs.
 
 ```tsx
 // app/error.tsx — catches all unhandled errors in the subtree
@@ -219,6 +232,8 @@ export default function GlobalError({
 
 ## Loading UI Hierarchy
 
+Loading UI in Next.js is defined through the `loading.tsx` file convention, which creates implicit `<Suspense>` boundaries at each route segment level. The hierarchy mirrors the route segment hierarchy — a `loading.tsx` inside `dashboard/` shows while the dashboard page loads, and a `loading.tsx` inside `dashboard/analytics/` shows only while that sub-page loads, without affecting the parent dashboard layout. This means you can have granular, context-appropriate loading states at each level of your app without manually wrapping each page in `<Suspense>`.
+
 ```
 app/
 ├── loading.tsx          ← Global loading (rare)
@@ -241,6 +256,8 @@ Use Route Handlers when:
 - Webhooks (Stripe, GitHub)
 - File uploads
 - Non-form data (binary, streaming)
+
+For Next.js-internal mutations (forms, data changes triggered by users within the app), prefer Server Actions — they require less code and have CSRF protection built in. Route Handlers are the right tool when you need a stable, versioned HTTP interface that external systems will call, or when you're handling requests that don't originate from a form action. The handler below shows the standard pattern: authenticate, validate input with Zod, query the data layer, and return a typed JSON response.
 
 ```ts
 // app/api/posts/route.ts
@@ -274,6 +291,8 @@ export async function POST(req: NextRequest) {
 ---
 
 ## Production Checklist
+
+A production checklist is a pre-deployment sanity check that covers the categories where Next.js apps most commonly fail: security (leaked secrets, unauthenticated mutations), performance (accidentally dynamic pages, unoptimized assets), reliability (missing error boundaries, unhandled 404s), and observability (no way to diagnose issues after they happen). Running through this list before every deploy prevents the class of bugs that are hard to reproduce locally but appear immediately under real traffic.
 
 ```
 Security:

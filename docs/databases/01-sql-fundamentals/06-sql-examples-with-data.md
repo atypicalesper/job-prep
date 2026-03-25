@@ -6,6 +6,8 @@ Every example below includes CREATE TABLE, INSERT data, the query, and the exact
 
 ## Schema Setup — Run This First
 
+The schema below is shared across all examples in this file. It models a small company with employees organized into departments, orders placed by employees, and a product catalog. Having a concrete dataset with known values makes it possible to reason about query results before running them — a key skill in SQL interviews. Run this setup block once in PostgreSQL before executing any individual example.
+
 ```sql
 -- ─────────────────────────────────────────────────────────────────
 -- TABLES
@@ -89,6 +91,8 @@ INSERT INTO products (name, category, price, stock) VALUES
 ---
 
 ## Section 1: JOIN Examples
+
+Each example below demonstrates a specific join type with concrete output so you can verify your mental model. The key insight to develop: every join type is a question about how to handle rows with no match on the other side. Tracing through the output and noting which rows appear or disappear is the fastest way to internalize the differences.
 
 ### 1.1 INNER JOIN — Employees With Their Department
 
@@ -283,6 +287,8 @@ LEFT JOIN orders o ON o.employee_id = e.id AND o.status = 'completed';
 
 ## Section 2: GROUP BY & HAVING Examples
 
+These examples demonstrate aggregation with concrete numeric results. Running these against the shared schema confirms the execution order rule: `WHERE` runs first (filters individual rows), then `GROUP BY` (partitions rows into groups), then `HAVING` (filters groups). The output shows exactly how aggregate functions collapse multiple rows into one summary row per group.
+
 ### 2.1 Average Salary by Department
 
 ```sql
@@ -366,6 +372,8 @@ Frank | 110000.00 | Sales       |  91333.33
 ---
 
 ## Section 3: Window Functions Examples
+
+These examples show window functions producing per-row results alongside the original rows — notice that unlike `GROUP BY`, all rows are preserved. Comparing the output of `ROW_NUMBER`, `RANK`, and `DENSE_RANK` side-by-side makes the tie-handling differences immediately clear. The running total and moving average examples demonstrate how the window frame controls which rows are included in each calculation.
 
 ### 3.1 Rank Employees by Salary Within Department
 
@@ -532,6 +540,8 @@ Carol | Engineering |  90000.00 | Alice      | Carol
 
 ## Section 4: Subqueries and CTEs
 
+Subqueries and CTEs both allow you to build complex queries from simpler named parts. The examples here show how CTEs improve readability for multi-step analysis: each CTE captures an intermediate result with a meaningful name, and the final query assembles them. The recursive CTE example is particularly instructive — it shows how SQL can traverse a parent-child hierarchy of arbitrary depth by having the query reference its own output.
+
 ### 4.1 Correlated Subquery — Employees Earning More Than Their Manager
 
 ```sql
@@ -689,6 +699,8 @@ WHERE EXISTS (
 
 ## Section 5: UPDATE, DELETE, and UPSERT
 
+Modifying data with conditions derived from other tables requires joining inside `UPDATE` or `DELETE` statements. The syntax differs between databases (PostgreSQL uses `FROM`; MySQL uses a direct `JOIN`). UPSERT (`INSERT ... ON CONFLICT`) is an atomic operation that inserts a row if it does not exist, or updates it if it does — essential for avoiding race conditions when multiple processes may try to create the same record simultaneously.
+
 ### 5.1 UPDATE with JOIN — Give a 10% Raise to Engineering
 
 ```sql
@@ -754,6 +766,8 @@ DO UPDATE SET salary = GREATEST(employees.salary, EXCLUDED.salary);
 ---
 
 ## Section 6: Advanced Aggregations
+
+These examples show advanced aggregation techniques that go beyond simple `COUNT`/`SUM`. Conditional aggregation (using `FILTER` or `CASE WHEN`) computes multiple grouped statistics in a single query pass — equivalent to several separate queries but far more efficient. The percentile and gap-finding examples demonstrate PostgreSQL-specific functions (`PERCENTILE_CONT`, `LEAD`) that solve common analytical problems cleanly.
 
 ### 6.1 Conditional Aggregation — Order Stats by Status Per Employee
 
@@ -925,6 +939,8 @@ employee_id | amount  | status    | created_at
 
 ## Section 7: Indexes — EXPLAIN Output
 
+This section shows the concrete difference an index makes to query execution using `EXPLAIN ANALYZE`. The plan output proves the concept: before an index, the planner uses a `Seq Scan` and examines every row; after adding the index, it uses an `Index Scan` and jumps directly to the matching rows. The final example demonstrates that applying a function (`UPPER()`) to an indexed column defeats the index — and that an expression index solves it.
+
 ```sql
 -- Create an index and observe EXPLAIN difference:
 EXPLAIN ANALYZE
@@ -970,6 +986,8 @@ EXPLAIN SELECT * FROM employees WHERE UPPER(name) = 'ALICE';
 ---
 
 ## Section 8: Transaction Examples
+
+These examples demonstrate practical transaction patterns. The savepoint example shows partial rollback: you can undo a failed sub-operation while keeping earlier successful work within the same transaction. The `SKIP LOCKED` job queue is a production-ready pattern for building concurrent workers — each worker atomically claims one job and skips any rows already claimed by another worker, eliminating both blocking and double-processing.
 
 ### 8.1 Basic Transaction — Salary Transfer (Ensure Atomicity)
 

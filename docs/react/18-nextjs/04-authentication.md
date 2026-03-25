@@ -2,6 +2,8 @@
 
 ## Setup
 
+Auth.js (formerly NextAuth) is the de-facto authentication library for Next.js. It handles the complexity of OAuth flows, session management, CSRF protection, and database adapters so you don't have to build any of that yourself. Version 5 (the beta) is a full rewrite that works natively with the App Router — it exports a single `auth()` function that works uniformly in Server Components, Route Handlers, and middleware. The central `auth.ts` file is where you configure every aspect of authentication: which providers to allow, how sessions are stored, and how to transform tokens into session objects.
+
 ```bash
 npm install next-auth@beta
 ```
@@ -77,7 +79,12 @@ export const { GET, POST } = handlers;
 
 ## Reading the Session
 
+Auth.js provides two different APIs for reading the current session depending on where your component runs. The pattern differs because Server Components run at request time on the server (where you can call `auth()` directly as an async function), while Client Components run in the browser (where they need a React context provided by `SessionProvider` to access session data reactively). Always prefer the server-side `auth()` call when possible — it avoids a client-side network request and keeps sensitive session data off the browser.
+
 ### Server Component
+
+In a Server Component, reading the session is a single `await auth()` call that returns the session object or `null`. This call reads from the session cookie on the incoming request — there's no network round trip involved. It's the simplest and most performant way to guard a page or pass user data to server-rendered UI. Call it at the top of the component and redirect immediately if there's no session.
+
 ```tsx
 import { auth } from '@/auth';
 
@@ -90,6 +97,9 @@ export default async function ProfilePage() {
 ```
 
 ### Client Component
+
+In Client Components, the session is accessed via the `useSession()` hook which reads from the nearest `SessionProvider` context. The hook returns both the session data and a `status` string (`'loading'`, `'authenticated'`, or `'unauthenticated'`), allowing you to render a spinner while the session resolves on initial load. Always handle the `loading` state to avoid a flash of the wrong UI.
+
 ```tsx
 'use client';
 import { useSession } from 'next-auth/react';
@@ -133,6 +143,8 @@ export default async function RootLayout({ children }) {
 
 ## Route Protection with Middleware
 
+Middleware-based route protection is the most efficient way to guard entire sections of your app. Rather than checking auth in each individual page (which still renders the page tree before redirecting), middleware intercepts the request before any page code runs and redirects immediately. Auth.js v5 integrates directly with Next.js middleware — you wrap your middleware function with `auth()`, which gives you access to `req.auth` (the session) on every request. This is your first line of defense for coarse-grained access control.
+
 ```ts
 // middleware.ts
 import { auth } from '@/auth';
@@ -166,6 +178,8 @@ export const config = {
 ---
 
 ## Role-Based Authorization
+
+Role-based authorization extends basic authentication (are you logged in?) with authorization (what are you allowed to do?). The pattern involves three steps: storing the role in your database, propagating it through the JWT and session via Auth.js callbacks, and then extending TypeScript's `Session` type so the compiler knows the `role` field exists. Without the TypeScript module augmentation, you'd get type errors every time you access `session.user.role`. Middleware is appropriate for blanket role-based redirects; for fine-grained checks (resource ownership, conditional UI), do the check inside the page or action itself.
 
 ```ts
 // types/next-auth.d.ts — extend the session type
@@ -223,6 +237,8 @@ export default async function EditorPage() {
 
 ## Sign In / Sign Out Actions
 
+Auth.js v5 exposes `signIn` and `signOut` functions that work as Server Actions — they can be called directly from form `action` props without any client-side JavaScript. This is the recommended pattern because it works even before JavaScript hydrates, degrades gracefully, and avoids writing a separate API route for auth. For OAuth providers, `signIn('github')` initiates the full OAuth redirect flow server-side. For credentials, it calls your `authorize` function and sets the session cookie on success.
+
 ```tsx
 // In Server Components or Server Actions
 import { signIn, signOut } from '@/auth';
@@ -275,6 +291,8 @@ export function SignOutButton() {
 ---
 
 ## Prisma Schema for Auth.js
+
+Auth.js with the Prisma adapter requires a specific set of database tables to store users, OAuth accounts, sessions, and verification tokens. These four models are not optional — the adapter reads and writes to them during the auth flow. The `User` model is the canonical user record; `Account` stores OAuth provider tokens (one user can link multiple providers); `Session` stores server-side sessions when using the `database` strategy; and `VerificationToken` is used for email verification flows. You can extend the `User` model with your own fields (like `role` and `hashedPassword`) but must keep the Auth.js required fields.
 
 ```prisma
 model User {
@@ -332,6 +350,8 @@ enum Role {
 ---
 
 ## Cookies & Sessions
+
+When you need authentication without Auth.js — or need to store arbitrary server-side state — Next.js exposes a `cookies()` API in Server Components, Server Actions, and Route Handlers. Cookies set via this API are `httpOnly` by default when you configure them that way, meaning JavaScript cannot read them (protecting against XSS). The `sameSite: 'lax'` setting is the recommended default — it prevents CSRF attacks while allowing cookies to be sent when navigating from an external link. Always set `secure: true` in production to ensure cookies are only sent over HTTPS.
 
 ```ts
 // Manual cookie management (without Auth.js)

@@ -2,6 +2,8 @@
 
 ## Promise.all — All Must Succeed
 
+`Promise.all` takes an iterable of Promises and returns a single Promise that fulfills with an array of results when *all* input Promises fulfill, or rejects immediately when *any* input Promise rejects. It is the standard tool for running independent async operations in parallel and waiting for all of them to complete. The fail-fast behavior means you cannot get partial results from `Promise.all` — if any one operation fails, the entire batch is considered failed. Use `Promise.allSettled` if you need partial results.
+
 Waits for ALL promises. **Fails fast** on first rejection.
 
 ```javascript
@@ -16,6 +18,8 @@ const [users, products, orders] = await Promise.all([p1, p2, p3]);
 ```
 
 ### Fail-Fast Behavior
+
+"Fail fast" means the returned Promise rejects as soon as any input Promise rejects — it does not wait for the remaining Promises to settle. The other Promises continue executing (JavaScript has no cancellation primitive), but their results are ignored. If you need to clean up or cancel them, you need `AbortController` or a custom cancellation mechanism.
 
 ```javascript
 const slow  = new Promise(resolve => setTimeout(() => resolve('slow'), 3000));
@@ -67,6 +71,8 @@ const [adminUsers, regularUsers] = await Promise.all([
 ---
 
 ## Promise.allSettled — Wait for All, Never Fails
+
+`Promise.allSettled` waits for every input Promise to reach a terminal state (fulfilled or rejected) and then fulfills with an array of descriptor objects — one per input — each describing whether that Promise fulfilled or rejected and with what value or reason. It never rejects. This makes it ideal for batch operations where you want to process all results, including failures, rather than stopping at the first error.
 
 Waits for ALL promises to settle. Never rejects. Returns array of result objects.
 
@@ -130,6 +136,8 @@ async function fetchAll(urls) {
 
 ## Promise.race — First to Settle (Either Way)
 
+`Promise.race` fulfills or rejects with the result of whichever input Promise settles first — whether that settlement is a fulfillment or a rejection. It is not "first to succeed" — it is literally the first to settle, regardless of outcome. The primary use case is implementing timeouts: racing the actual operation against a timer Promise that rejects after a deadline.
+
 Resolves or rejects with the **first** promise that settles (fulfilled OR rejected).
 
 ```javascript
@@ -181,6 +189,8 @@ const data = await Promise.race([
 
 ## Promise.any — First to Succeed (Ignores Rejections)
 
+`Promise.any` is the optimistic counterpart to `Promise.race`: it fulfills with the first Promise that *succeeds*, ignoring all rejections unless every input Promise has rejected. When all inputs reject, it throws an `AggregateError` that bundles all the individual rejection reasons. Use it for "try multiple sources, use the first that works" scenarios — redundant API endpoints, cache-or-network fetching, mirror selection.
+
 Resolves with the **first fulfilled** promise. Only rejects if ALL promises reject.
 
 ```javascript
@@ -202,6 +212,8 @@ await Promise.any([
 ```
 
 ### AggregateError
+
+`AggregateError` is a built-in error type introduced alongside `Promise.any` to represent multiple errors as a single object. It extends `Error` and adds an `errors` array containing all the individual rejection reasons in input order. Always check `e instanceof AggregateError` before accessing `e.errors`.
 
 When `Promise.any` rejects, it throws an `AggregateError` containing all rejection reasons:
 
@@ -252,6 +264,8 @@ const content = await Promise.any(
 ---
 
 ## Implementing Them from Scratch
+
+Implementing these combinators from scratch is a standard interview task that tests deep understanding of Promise mechanics. The key patterns: `Promise.all` uses a counter and index-preserving array to track individual results; `Promise.allSettled` uses per-promise `.then`/`.catch` to convert both outcomes to status objects; `Promise.race` attaches both `resolve` and `reject` handlers to every input, letting the first settlement win.
 
 ### Implement Promise.all
 

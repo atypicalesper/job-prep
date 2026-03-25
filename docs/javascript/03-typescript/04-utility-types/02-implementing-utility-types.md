@@ -6,6 +6,8 @@ A classic interview question: "Can you implement `Partial`, `Required`, `Readonl
 
 ## Mapped Types — The Foundation
 
+A mapped type is a new type created by iterating over the keys of an existing type and applying a transformation to each property. The syntax `{ [K in keyof T]: ... }` reads as "for each key K in T, produce a property with type ...". This is the mechanism behind every object-transforming utility type in TypeScript's standard library. The `+` and `-` modifiers add or remove `?` (optional) and `readonly` from each property — `Required<T>` uses `-?` to strip optionality, and `Mutable<T>` uses `-readonly` to strip immutability.
+
 ```typescript
 // Syntax: { [K in keyof T]: ... }
 // K iterates over keys of T
@@ -35,6 +37,8 @@ type MyMutable<T> = {
 ---
 
 ## Implementing All Standard Utilities
+
+Understanding the implementations is the difference between using utility types as black boxes and being able to extend or debug them. Each implementation reveals a core mechanic: `Exclude` and `Extract` exploit distributive conditional types; `ReturnType` and `Parameters` exploit `infer`; `Omit` is built from `Pick` and `Exclude` combined. Implementing these from scratch in an interview demonstrates mastery of the three pillars — mapped types, conditional types, and `infer`.
 
 ```typescript
 // Partial<T>
@@ -117,6 +121,8 @@ type MyAwaited<T> =
 
 ## Advanced Custom Utilities
 
+When built-in utilities fall short, you can compose custom ones using the same primitives. The most common extension is making utilities recursive — `DeepPartial` and `DeepReadonly` apply the transformation at every nesting level, not just the top. `KeysOfType` and `PickByValue` invert the usual approach: instead of selecting keys by name, they select keys by the type of their value. `UnionToIntersection` is an advanced utility that exploits contravariance in function parameters to convert a union into an intersection — rarely needed but a deep demonstration of TypeScript's type inference.
+
 ```typescript
 // Deep Partial
 type DeepPartial<T> = T extends object
@@ -193,6 +199,8 @@ type Result = Overwrite<Base, Updates>;
 ---
 
 ## Practical Implementations Used in Production
+
+These patterns show how mapped and conditional types eliminate entire categories of runtime bugs in real application code. A strongly typed event emitter uses generics and mapped types so that the payload type is inferred from the event name — passing the wrong payload shape is a compile error, not a runtime failure. A type-safe reducer uses a conditional type on the `payload` field so that actions without payloads never accidentally expose a `.payload` property.
 
 ```typescript
 // Strongly-typed event emitter:

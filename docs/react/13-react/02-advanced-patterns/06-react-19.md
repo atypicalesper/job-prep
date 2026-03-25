@@ -21,6 +21,8 @@ React 19 (stable December 2024) ships several major features that fundamentally 
 
 An **Action** is an async function passed to a form (or called directly) that handles mutations. React manages the pending state automatically.
 
+Actions are React 19's answer to a pattern that every form had to implement manually: tracking `isPending`, handling errors, and resetting form state after success. Before Actions, this required `useState` for every piece of form status, `try/catch` blocks, and `finally` clauses to reset loading state. Actions replace this boilerplate — you write the async mutation logic, React manages the pending/error/reset lifecycle automatically within a concurrent transition.
+
 ### Before React 19 (the old way)
 
 ```tsx

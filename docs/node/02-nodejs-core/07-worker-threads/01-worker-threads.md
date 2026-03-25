@@ -4,6 +4,8 @@
 
 ## Why Worker Threads?
 
+Node.js runs all JavaScript on a single thread, which means a CPU-intensive operation — sorting a million records, generating a PDF, running inference — blocks the event loop and delays every other request for its entire duration. Worker Threads solve this by giving each piece of CPU-intensive work its own OS thread and V8 instance, allowing it to run in parallel with the main event loop. Unlike child processes, Worker Threads share the same process memory and have much lower startup cost (~5ms vs ~50ms). The communication model is message passing by default (structured-clone copy), with an opt-in `SharedArrayBuffer` path for zero-copy sharing of large binary data.
+
 ```
 Node.js is single-threaded — one CPU core for JS execution.
 CPU-intensive tasks block the event loop for all requests.
@@ -18,6 +20,8 @@ Worker Threads:
 ---
 
 ## Basic Worker Thread
+
+A Worker Thread is an OS thread that runs its own V8 instance and event loop within the same Node.js process. Unlike child processes, workers share the same process memory space (enabling zero-copy data transfer via `SharedArrayBuffer`) and have lower startup overhead. The main thread and workers communicate by posting structured-cloned messages — the data is deep-copied unless you explicitly transfer ownership of an `ArrayBuffer`. `workerData` is the one-time payload passed at construction; subsequent communication uses `parentPort.postMessage` / `worker.postMessage`. Always listen for the `'error'` and `'exit'` events on the worker or unhandled rejections in the worker file will silently kill the thread.
 
 ```javascript
 // worker.js — runs in a separate thread
@@ -63,6 +67,8 @@ console.log(result); // 15
 ---
 
 ## Worker Thread Pool
+
+Spawning a new worker for every task defeats the purpose of using threads — thread creation has significant overhead (~50–100ms per worker). A pool pre-creates a fixed number of workers and queues tasks to idle ones. When a worker finishes a task it immediately picks up the next item from the queue. This pattern keeps CPU cores saturated without the latency of thread startup. For production use, consider the `piscina` library which implements a battle-tested pool with backpressure, transfer lists, and resource limits. Roll your own pool only when you need fine-grained control over scheduling or worker lifecycle.
 
 ```typescript
 // Reuse workers instead of creating new ones per task (expensive!)
@@ -154,6 +160,8 @@ const results = await Promise.all(
 
 ## SharedArrayBuffer — Zero-Copy Communication
 
+Structured-clone copying (the default for `postMessage`) is safe but expensive for large data — a 100MB image buffer takes tens of milliseconds to copy. `SharedArrayBuffer` avoids this by giving multiple threads access to the exact same memory region. The trade-off is that concurrent reads and writes are now possible, introducing data races. The `Atomics` API provides hardware-guaranteed atomic operations (compare-and-swap, atomic add, etc.) that prevent races on integer values in a `TypedArray`. Use `SharedArrayBuffer` when throughput matters more than simplicity; for most tasks, structured-clone messaging is safe and fast enough.
+
 ```javascript
 // For high-performance scenarios where copying is too expensive
 
@@ -228,6 +236,8 @@ Use Child Processes when:
 ---
 
 ## Practical: Image Processing Worker
+
+Image processing is the canonical use case for Worker Threads: it is CPU-bound, produces a discrete result, and benefits from being parallelised across all available cores. Libraries like `sharp` call native C++ code that blocks its thread for the duration of the resize or encode operation. Running that in a worker thread means the main event loop continues serving HTTP requests while images are processed concurrently. The `buffer.buffer` transferable pattern (passing the underlying `ArrayBuffer` instead of a copy) eliminates the serialization overhead for large binary payloads.
 
 ```javascript
 // image-worker.js:

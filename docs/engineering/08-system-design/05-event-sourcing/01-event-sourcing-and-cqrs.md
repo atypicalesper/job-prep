@@ -4,6 +4,8 @@
 
 ## Traditional CRUD vs Event Sourcing
 
+Traditional persistence models store the current state of an entity: when something changes, you overwrite the previous value with the new one. This is simple and efficient for most applications, but it destroys information — you know what the state is now, but not how it got there, what it was before, or why it changed. Event Sourcing inverts this model: instead of storing current state, you store an immutable, append-only log of every change (event) that has ever occurred. Current state is a derived view computed by replaying all events in order. The append-only log becomes the single source of truth, making the system's full history queryable, auditable, and replayable. The fundamental trade-off is operational complexity: event sourcing requires more infrastructure and mental overhead than CRUD, but provides capabilities (audit trails, time travel, projections) that are impossible to retrofit into a CRUD system after the fact.
+
 ```
 Traditional CRUD — store current state:
   UPDATE orders SET status = 'shipped' WHERE id = 1;
@@ -29,6 +31,8 @@ Event Sourcing — store events (facts that happened):
 
 ## Event Sourcing Core Concepts
 
+Before reading the code, it is important to have a firm mental model of the vocabulary, because these terms have precise meanings that differ from their informal usage. An event is not a notification or a trigger — it is a statement of fact about something that has already happened, expressed in past tense and never modified. An aggregate is the consistency boundary: all events for one aggregate are applied in order to produce that aggregate's state. Projections are secondary read models derived from the event stream and can be rebuilt from scratch at any time, which means you can add new query patterns retroactively without migrating data. Understanding these distinctions prevents the most common event sourcing mistakes, such as making events mutable or coupling projections to the aggregate's internal logic.
+
 ```
 Event:       An immutable fact that happened in the past (past tense)
              { type: 'OrderShipped', orderId: 1, trackingId: 'UPS-123', at: '...' }
@@ -51,6 +55,8 @@ Event store: Append-only log of events (EventStoreDB, Kafka, PostgreSQL table)
 ---
 
 ## Implementing Event Sourcing in Node.js
+
+The implementation below shows the canonical structure: typed domain events, an aggregate class that rebuilds itself from an event stream via a pure `applyEvent` reducer, an append-only event store with optimistic concurrency, and a command handler that loads the aggregate, applies business logic, and persists the new events. The `aggregateVersion` field on every event is central — it enables optimistic concurrency control, where two concurrent writes to the same aggregate are detected because only one can match the expected version. The aggregate itself never writes to the store directly; it only raises events and accumulates them as "uncommitted", leaving persistence to the command handler.
 
 ```typescript
 // ─── Domain Events ──────────────────────────────────────────────────────────
@@ -291,6 +297,8 @@ class OrderCommandHandler {
 
 ## CQRS — Command Query Responsibility Segregation
 
+CQRS recognizes that the optimal data model for writing is rarely the same as the optimal model for reading. On the write side you need normalized data, transactional integrity, and rich domain behavior. On the read side you need fast, denormalized views tailored to specific query patterns — joining across five tables at query time is slow, but a pre-built summary table makes it a trivial single-table SELECT. CQRS separates these into two distinct models: commands mutate state and return nothing meaningful except success/failure; queries return data and have no side effects. When combined with Event Sourcing, the write side produces events that drive one or more projections on the read side, each independently optimized for its query pattern. The cost is eventual consistency: the read model may lag milliseconds behind the write side while the projection processes new events.
+
 ```
 Traditional: one model handles both reads and writes
   Problem: write optimized schema ≠ read optimized schema
@@ -325,6 +333,8 @@ CQRS: separate the write model from the read model
 ---
 
 ## Projections — Building Read Models from Events
+
+A projection is an event handler that builds and maintains a read-optimized view by processing the event stream. Each time a new event is appended to the event store, it is dispatched to all registered projections, which update their respective read tables accordingly. The power of projections is that they are fully disposable and rebuildable: if your query requirements change, you modify the projection logic and run the `rebuild()` method to replay all historical events through the new logic. This means you can add new read models retroactively without migrating your canonical data — the events contain everything. The projection shown here maintains a flat `order_summary` table that makes dashboard queries trivial single-table reads rather than expensive multi-table joins.
 
 ```typescript
 // Projection: maintain a denormalized "order_summary" table
@@ -411,6 +421,8 @@ class OrderQueryService {
 
 ## Event Sourcing + Kafka for Cross-Service Projections
 
+When projections live inside the same service that owns the event store, they can be updated synchronously in the same process. But in a microservices system, multiple independent services often need to react to the same domain events — inventory needs to reserve stock when an order is placed, the notification service needs to send confirmation emails, and analytics needs to update dashboards. Kafka bridges the gap: after appending events to the local event store (the source of truth), you publish the same events to a Kafka topic keyed by aggregate ID. The key-based partitioning guarantees that all events for a given order arrive at the same Kafka partition in the same order they were produced, which preserves the event sequence that downstream consumers depend on.
+
 ```typescript
 // Publish events to Kafka after appending to event store:
 class OrderCommandHandler {
@@ -448,6 +460,8 @@ class OrderCommandHandler {
 ---
 
 ## Snapshots — Performance Optimization
+
+Replaying every event from the beginning of time to reconstruct an aggregate's current state is correct but increasingly expensive as aggregates accumulate events over their lifetime. An order that has been through hundreds of status transitions, a bank account with years of transactions, or a document with thousands of edit history entries would require replaying thousands of events on every command. Snapshots address this by periodically persisting the fully computed aggregate state at a given event version. On the next load, the system starts from the snapshot and replays only the events that arrived after it, reducing the replay cost to a small constant. Snapshots do not replace the event log — the log remains the source of truth, and the snapshot is just a cache of a point-in-time state that can be discarded and recreated from events if needed.
 
 ```typescript
 interface Snapshot {
@@ -508,6 +522,8 @@ if (order.getState().version % SNAPSHOT_THRESHOLD === 0) {
 
 ## When to Use Event Sourcing + CQRS
 
+Event Sourcing and CQRS are powerful but come with significant complexity costs — more infrastructure, steeper learning curve, eventual consistency to reason about, and the permanent challenge of event versioning. They are not a default architecture choice; they are specialized tools for specific problems. The clearest signal to use them is when audit history is a non-negotiable business requirement (you need to know exactly what happened and when, not just the current state), or when you need multiple independently optimized read models over the same data. The clearest signal to avoid them is when your team is small, the domain is simple CRUD, and you have no cross-service event consumers — in that case the overhead is pure cost with no benefit.
+
 ```
 USE when:
   ✓ Audit trail is a business requirement (finance, healthcare, e-commerce)
@@ -533,6 +549,8 @@ Complexity costs:
 ---
 
 ## Event Versioning — Handling Schema Changes
+
+Events are immutable and eternal — once appended to the store, they must never be modified because the entire system's history is built on them. Yet business requirements evolve and the shape of an event that was perfectly adequate at launch may be inadequate a year later. This creates a tension: the code needs to move forward but the old events cannot. The recommended approach is upcasting: instead of touching the stored events, you add a transformation layer that converts old event schemas to the current schema on read. The aggregate and projections always see the latest event shape; the upcaster handles backward compatibility transparently. For breaking changes too large for upcasting, versioned event types (`OrderPlacedV2`) can coexist with older versions in the aggregate's switch handler.
 
 ```typescript
 // Problem: event schema changes over time.

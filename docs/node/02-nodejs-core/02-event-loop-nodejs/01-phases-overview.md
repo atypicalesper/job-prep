@@ -33,6 +33,8 @@ Between EVERY phase transition, Node.js drains:
 
 ## Phase Descriptions
 
+Each phase of the event loop has a FIFO queue of callbacks. When the event loop enters a phase, it executes callbacks in that phase's queue until the queue is exhausted or a configured limit is reached, then moves to the next phase. Understanding the order and behavior of phases is essential for predicting the execution order of asynchronous code and for diagnosing subtle timing bugs.
+
 ### 1. Timers Phase
 - Executes `setTimeout` and `setInterval` callbacks whose threshold has passed
 - Checks the min-heap of timers and runs any that are ready
@@ -69,6 +71,8 @@ Between EVERY phase transition, Node.js drains:
 
 These run between EVERY phase, not as part of any phase:
 
+The nextTick and Promise microtask queues are not part of the libuv event loop — they are a Node.js-layer concept layered on top. After every single callback that completes (not just between phases), Node.js drains these two queues before yielding back to the event loop. This gives them a higher priority than any event loop phase. The practical implication: code scheduled with `process.nextTick` or resolved Promises will always run before any I/O callback, timer, or `setImmediate` callback that is waiting in the event loop queue.
+
 ### process.nextTick Queue
 - Runs BEFORE any other async (including Promise microtasks)
 - Drains completely before moving to next
@@ -86,6 +90,8 @@ PHASE COMPLETION → drain nextTick → drain Promise microtasks → NEXT PHASE
 ---
 
 ## Complete Execution Order
+
+Tracing execution order through the event loop requires knowing both the phase order and the microtask-draining rule. Synchronous code runs first (the initial script execution), then the two microtask queues drain, then the event loop begins its first iteration with the timers phase. The key subtlety: `setTimeout(fn, 0)` vs `setImmediate` order is non-deterministic outside of I/O callbacks because it depends on whether the minimum timer threshold (1ms) has elapsed by the time the timers phase is entered. Inside an I/O callback the order is always deterministic — `setImmediate` wins because the check phase follows immediately after poll.
 
 ```javascript
 // Let's trace this:
@@ -126,6 +132,8 @@ fs.readFile(__filename, () => {
 
 ## Why setImmediate is Preferred for Recursive Operations
 
+When you need to recursively schedule work — for example, processing a large array in chunks — the choice of scheduling primitive determines whether I/O and other callbacks can interleave with your work. `process.nextTick` drains completely before the event loop advances to the next phase, so infinite recursion with `nextTick` permanently blocks the loop. `setImmediate` executes one callback per check phase iteration, allowing I/O, timers, and other work to run between iterations. `setImmediate` is therefore the correct tool for breaking up large synchronous work without starving the event loop.
+
 ```javascript
 // ❌ Recursive nextTick — starves event loop COMPLETELY
 function badRecursion() {
@@ -145,6 +153,8 @@ goodRecursion();
 ---
 
 ## Process Lifecycle
+
+Node.js does not exit after running your script's top-level synchronous code. It keeps running as long as there are "active handles" — open server sockets, pending timers, active file watchers, or other I/O operations that need a callback. The process exits naturally when the event loop has nothing left to do. This behavior can be controlled explicitly: `timer.unref()` tells Node that the timer should not prevent exit, while `timer.ref()` (the default) says it should. `process.exit()` forces immediate termination regardless of pending handles.
 
 ```javascript
 // Node.js keeps running as long as there's work in the event loop:

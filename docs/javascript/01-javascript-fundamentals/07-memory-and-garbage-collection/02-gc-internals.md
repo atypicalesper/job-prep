@@ -4,6 +4,8 @@
 
 ## How V8 Manages Memory
 
+V8 partitions its heap into distinct regions — called "spaces" — each optimized for a different object lifetime and access pattern. Rather than treating all allocations identically, the heap layout reflects the empirical observation that most objects either die very quickly or live for a very long time. Separating these populations allows V8 to apply fast, cheap collection to short-lived objects and slower, more thorough collection to long-lived ones. Understanding this layout is essential for diagnosing allocation pressure and tuning Node.js memory usage.
+
 ```
 V8 Heap is divided into spaces:
 
@@ -92,6 +94,8 @@ Stop-the-world pause during final phase:
 
 ## GC Roots
 
+GC roots are the fixed set of starting points from which the garbage collector traces the live object graph. Any object reachable by following references from a root is considered "live" and will not be collected; everything else is eligible for reclamation. Roots include the global object, the currently executing call stack, closures that have been returned and are still referenced, and native C++ handles held by Node.js internals. The practical implication is that a single unintentional root reference — a lingering closure, a global variable, an uncleaned event listener — can anchor an entire object subgraph and prevent it from being collected.
+
 ```javascript
 // GC roots — objects the GC always considers reachable:
 // 1. Global object (globalThis)
@@ -163,6 +167,8 @@ delete p3.z; // don't do this in hot paths
 
 ## Memory Limits and Tuning
 
+Node.js inherits V8's default heap size limits, which were originally sized for browser tabs and can be insufficient for long-running server processes dealing with large datasets. The old-space limit (roughly 1.5 GB on 64-bit systems) is a hard ceiling — exceeding it triggers an OOM crash with no recovery. These limits can be raised via command-line flags before the process starts, and V8 exposes runtime statistics via the `v8` module so you can monitor heap pressure without external tooling. The `--expose-gc` flag is useful in tests and debugging but should never be used in production as it allows application code to trigger GC at arbitrary points.
+
 ```bash
 # Node.js default heap sizes:
 # 64-bit: ~1.5GB Old Space, ~16MB New Space
@@ -206,6 +212,8 @@ const stats = v8.getHeapStatistics();
 ---
 
 ## WeakRef and FinalizationRegistry
+
+`WeakRef` and `FinalizationRegistry` expose GC-aware reference semantics that were previously unavailable in JavaScript. A `WeakRef` holds a reference to an object without preventing the GC from collecting it — you must call `.deref()` to access the value and check whether it is still alive. `FinalizationRegistry` schedules a callback to run some time after the target object has been collected, which is useful for cleaning up associated external resources or stale cache keys. The critical caveat is that neither provides any timing guarantee — GC may run soon, much later, or not at all (in short processes) — so these APIs must not be used in code paths that require deterministic cleanup or correctness guarantees.
 
 ```javascript
 // WeakRef: reference an object without preventing GC

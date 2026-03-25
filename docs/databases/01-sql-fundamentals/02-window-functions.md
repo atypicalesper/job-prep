@@ -6,6 +6,8 @@ Window functions compute a value for each row using a set of rows related to the
 
 ## Syntax
 
+The `OVER` clause is what turns an ordinary aggregate function into a window function. It defines the "window" — the set of rows considered for each calculation. `PARTITION BY` divides the result set into groups (like `GROUP BY`, but without collapsing rows). `ORDER BY` within the window specifies the ordering used for rank-based or cumulative calculations. The optional frame clause (`ROWS BETWEEN ...`) further restricts the window to a sliding range of rows relative to the current row.
+
 ```sql
 function_name() OVER (
   [PARTITION BY column(s)]  -- define groups (like GROUP BY but rows kept)
@@ -17,6 +19,8 @@ function_name() OVER (
 ---
 
 ## Ranking Functions
+
+Ranking functions assign a position number to each row within a partition based on an `ORDER BY` expression. `ROW_NUMBER` always produces unique sequential integers regardless of ties. `RANK` assigns the same rank to tied rows but then skips rank numbers — if two rows tie for rank 2, the next rank is 4. `DENSE_RANK` also gives the same rank to ties but never skips — the next rank after tied 2 is 3. `NTILE(n)` divides the rows into n roughly equal buckets. For "find the Nth highest" interview problems, `DENSE_RANK` is almost always the correct choice because it handles ties without skipping.
 
 ```sql
 -- Sample data: employees(id, name, department, salary)
@@ -53,6 +57,8 @@ FROM employees;
 ---
 
 ## Nth Highest Salary — Classic Interview Problem
+
+This is one of the most frequently asked SQL interview questions. There are three main approaches: using `DENSE_RANK` in a subquery (cleanest and handles ties correctly), using `LIMIT`/`OFFSET` (database-specific and fragile with ties), and using a correlated subquery (least efficient). The `DENSE_RANK` approach is preferred because it is readable, handles duplicates correctly, and works across most SQL databases.
 
 ```sql
 -- Method 1: DENSE_RANK (handles ties correctly)
@@ -92,6 +98,8 @@ WHERE rnk = 1;
 ---
 
 ## Aggregate Window Functions
+
+Standard aggregate functions (`SUM`, `AVG`, `COUNT`) can be used as window functions by adding an `OVER` clause. Without `OVER` they collapse rows into one; with `OVER` they compute a value for each row using the defined window. `PARTITION BY` resets the calculation for each group (e.g., a running total per user). When used with an `ORDER BY` inside `OVER`, the aggregate runs cumulatively — each row adds to the total from all previous rows in the partition.
 
 ```sql
 -- Running total (cumulative sum):
@@ -141,6 +149,8 @@ FROM employees;
 
 ## LAG and LEAD — Accessing Adjacent Rows
 
+`LAG` and `LEAD` are offset functions that let a row "look back" or "look ahead" to an adjacent row's value within the same partition, without requiring a self-join. This is the idiomatic way to compute period-over-period comparisons (day-over-day, month-over-month), detect state changes, or measure gaps between events in a sequence. Both functions take an optional offset argument (default 1) and an optional default value to return when no adjacent row exists.
+
 ```sql
 -- Compare current row with previous:
 SELECT
@@ -174,6 +184,8 @@ FROM daily_revenue;
 
 ## FIRST_VALUE, LAST_VALUE, NTH_VALUE
 
+These navigation functions return the value of an expression at a specific position within the window — the first row, the last row, or the Nth row. `FIRST_VALUE` is straightforward. `LAST_VALUE` has a notorious gotcha: by default, the window frame only extends to the current row (`RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW`), so `LAST_VALUE` returns the current row's own value, not the last in the partition. You must explicitly extend the frame to `UNBOUNDED FOLLOWING` to get the true last value.
+
 ```sql
 -- First sale in each department:
 SELECT
@@ -200,6 +212,8 @@ FROM employees;
 ---
 
 ## Frame Clauses
+
+The frame clause refines the window by defining which rows relative to the current row are included in the calculation. `ROWS` mode counts physical rows; `RANGE` mode includes all rows whose `ORDER BY` value equals the current row's value (useful when there are ties). The frame clause matters most for sliding window calculations like moving averages, where you want each row to consider only a fixed number of preceding/following rows rather than the entire partition.
 
 ```sql
 -- ROWS — physical rows

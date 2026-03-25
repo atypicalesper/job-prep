@@ -10,6 +10,8 @@ TCP guarantees delivery, order, and error detection. It does this by adding over
 
 ### The Three-Way Handshake
 
+Before any data can flow, TCP requires both sides to agree on starting sequence numbers — random numbers that identify the position of each byte in the data stream and enable the receiver to detect gaps, duplicates, and reordering. The three-way handshake accomplishes this synchronization in one round trip and also confirms that both sides are reachable and willing to communicate. The choice of random initial sequence numbers (rather than starting at 0) prevents stale packets from a previous connection on the same port from being accepted as valid data in a new connection.
+
 ```
 Client                          Server
   |                               |
@@ -29,6 +31,8 @@ Client                          Server
 
 ### Four-Way Teardown
 
+TCP connections are full-duplex — each direction is independent, and either side can stop sending while still receiving. This is why the teardown requires four steps rather than two: each side must independently close its sending direction with a FIN and receive acknowledgement. A three-way teardown is possible when the server piggybacks its FIN onto its ACK, but the four-way form is more common because the server may still have data to send after acknowledging the client's FIN.
+
 ```
 Client                          Server
   |── FIN ─────────────────────>|  "I'm done sending"
@@ -44,6 +48,8 @@ Why four steps? Because FIN only closes one direction. Each side closes independ
 ---
 
 ## TCP Sequence Numbers & Reliability
+
+Sequence numbers are TCP's fundamental mechanism for reliability: by numbering every byte, both sides can detect what arrived, what is missing, and what arrived out of order. The sender increments the sequence number by the number of bytes sent; the receiver acknowledges by sending back the next sequence number it expects, implicitly acknowledging everything before it. This cumulative acknowledgement scheme means a single ACK can confirm receipt of many segments, and a retransmission only needs to retransmit the missing segment rather than everything that followed it.
 
 Every byte of data has a sequence number. This enables:
 
@@ -68,6 +74,8 @@ Sender:   retransmits seq=6 after RTO (Retransmission Timeout)
 
 ## TCP Flow Control — Sliding Window
 
+Flow control solves the mismatch between a sender that can transmit data faster than the receiver can process it. Without flow control, a fast sender would flood a slow receiver's buffer, causing the receiver to drop packets — triggering retransmissions that ironically make the problem worse. TCP solves this by having the receiver continuously advertise how much free space it has in its buffer as a 16-bit window size field in every ACK. The sender is only allowed to have that many bytes in flight (sent but not yet acknowledged) at any moment. This creates a feedback loop: as the receiver's application reads data and frees buffer space, it advertises a larger window, allowing the sender to speed up.
+
 **Problem**: fast sender, slow receiver → receiver's buffer overflows.
 
 **Solution**: receiver advertises a **window size** (rwnd) — how many bytes it can accept.
@@ -87,9 +95,13 @@ Window size is dynamic:
 
 ## TCP Congestion Control
 
+Congestion control is TCP's mechanism for being a responsible citizen on a shared network. Unlike flow control (which prevents overwhelming the receiver), congestion control prevents overwhelming the network itself — the routers and links between sender and receiver. Without it, all TCP senders would transmit at full speed, filling router queues until packets are dropped, triggering retransmissions from all senders simultaneously, which fills the queues again — a death spiral known as congestion collapse. TCP infers congestion from packet loss (routers drop packets when queues are full) and reduces its sending rate accordingly. The congestion window (`cwnd`) is maintained by the sender and limits how much data can be in flight, independent of the receiver's window.
+
 **Problem**: network between sender and receiver has limited capacity. If sender ignores this, routers drop packets → retransmissions → more congestion → collapse.
 
 ### Four Phases
+
+TCP congestion control progresses through four distinct phases based on the current estimate of the network's capacity. The naming of "Slow Start" is counterintuitive — it refers to starting with a small congestion window (one segment) rather than using a small growth rate; in fact it grows exponentially. The transition from exponential to linear growth (Congestion Avoidance) happens when the window reaches the slow-start threshold, a value learned from past packet loss events. Fast Retransmit and Fast Recovery are optimizations that recover from isolated packet loss without fully restarting the slow-start process, preserving throughput by keeping the window relatively large.
 
 ```
 1. Slow Start
@@ -128,6 +140,8 @@ cwnd
 
 ## TCP Headers
 
+The TCP header contains all the fields needed to implement reliable, ordered, connection-oriented delivery. Unlike the IP header (which concerns itself with routing), the TCP header concerns itself with delivery guarantees between two processes on two hosts. Each field serves a specific purpose in TCP's reliability or flow-control mechanisms. Understanding the header fields is important for reading packet captures, diagnosing connection issues, and reasoning about what information is available for features like load balancing and firewalling.
+
 ```
  0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -157,6 +171,8 @@ Key fields:
 ---
 
 ## UDP — User Datagram Protocol
+
+UDP strips TCP down to the bare minimum: it provides port-based multiplexing (so multiple applications on the same host can receive packets) and an optional checksum, and nothing else. There is no connection setup, no delivery acknowledgement, no ordering, and no congestion control. This makes UDP unsuitable for applications that need guaranteed delivery, but ideal for applications where the overhead of reliability would be counterproductive — a retransmitted video frame arrives too late to be useful, a duplicate DNS response is harmless, and game state that is even 100ms old is meaningless. Many modern protocols (QUIC, WebRTC data channels, online games) implement custom reliability on top of UDP to get precisely the semantics they need without paying for TCP's general-purpose overhead.
 
 UDP is connectionless, unreliable, and has minimal overhead. 8-byte header vs TCP's 20+.
 
@@ -198,6 +214,8 @@ UDP is connectionless, unreliable, and has minimal overhead. 8-byte header vs TC
 
 ## TCP vs UDP Comparison
 
+The choice between TCP and UDP comes down to one question: does your application need the network to guarantee delivery, or does it need the network to deliver as fast as possible and handle failures itself? TCP pays for its reliability guarantees with setup overhead (one RTT for the handshake), per-packet acknowledgement overhead, and head-of-line blocking within a connection. UDP pays nothing but provides nothing — the application must implement any reliability it needs. The table below maps each protocol's properties to the use cases they favor.
+
 | Feature | TCP | UDP |
 |---|---|---|
 | Connection | 3-way handshake | None |
@@ -215,6 +233,8 @@ UDP is connectionless, unreliable, and has minimal overhead. 8-byte header vs TC
 ---
 
 ## Port Numbers
+
+A port number is a 16-bit integer (0–65535) that identifies a specific application process on a host. IP addresses route packets to the right machine; port numbers route packets to the right application on that machine. This separation allows a single server to run dozens of services simultaneously — web server on 80, SSH on 22, PostgreSQL on 5432 — each distinguished by its port. The OS multiplexes all incoming packets to the correct process based on the (source IP, source port, destination IP, destination port) 4-tuple, which uniquely identifies every TCP connection.
 
 Ports identify specific processes/services on a host. Range: 0–65535.
 
@@ -245,6 +265,8 @@ Ports identify specific processes/services on a host. Range: 0–65535.
 
 ## TCP States
 
+TCP connections progress through a well-defined state machine throughout their lifecycle — from the initial `LISTEN` to the final `CLOSED`. These states are visible via `netstat` or `ss` on any Linux/macOS machine, making them a practical debugging tool. The most operationally significant state is `TIME_WAIT`, which keeps a connection's slot occupied for up to 120 seconds after close to prevent port reuse confusion. Under heavy load, a server that closes many short-lived connections can accumulate thousands of `TIME_WAIT` entries; `SO_REUSEADDR` and proper keep-alive tuning are the remedies.
+
 ```
 CLOSED → LISTEN (server opens socket)
 LISTEN → SYN_RCVD (server receives SYN)
@@ -267,8 +289,10 @@ ss -tan  # Linux, faster
 
 ## TCP Optimizations in Practice
 
+The kernel provides several socket options that tune TCP behavior for specific workload profiles. The defaults are chosen for general-purpose use and are sensible for most applications, but specialized workloads — real-time game servers, long-polling APIs, services that restart frequently — benefit from explicitly tuning these options. Knowing when and why to deviate from the defaults is the mark of understanding rather than cargo-culting.
+
 ### Nagle's Algorithm
-Batches small writes into one segment to reduce small-packet overhead. Can add latency for interactive apps.
+Nagle's algorithm addresses the "small packet problem": without it, an application that writes one byte at a time (a terminal emulator, a chat app typing character by character) would generate a separate TCP segment for each byte, each carrying 40 bytes of TCP/IP headers for one byte of data. Nagle's algorithm buffers small writes and sends them as a single segment once the previous segment is acknowledged or the buffer is large enough. This is a significant efficiency improvement for throughput-sensitive applications but adds measurable latency for interactive applications where you want each keystroke or game input sent immediately. Batches small writes into one segment to reduce small-packet overhead. Can add latency for interactive apps.
 
 ```javascript
 // Node.js — disable Nagle for low-latency (e.g., game servers, telnet)
@@ -276,6 +300,8 @@ socket.setNoDelay(true);  // TCP_NODELAY
 ```
 
 ### TCP Keep-Alive
+Long-lived TCP connections that carry no application traffic for extended periods can become "zombie" connections: one side believes the connection is open, but the other side has crashed, rebooted, or had its network path torn down. Without a detection mechanism, the surviving side will hold the connection open indefinitely, leaking memory and file descriptors. TCP keep-alive sends periodic probe packets on idle connections; if no response is received after a configured number of probes, the OS closes the connection and notifies the application. This is especially important for database connection pools and WebSocket servers that maintain thousands of long-lived connections.
+
 Sends probe packets on idle connections to detect dead peers.
 
 ```javascript
@@ -283,6 +309,8 @@ socket.setKeepAlive(true, 60000);  // probe after 60s idle
 ```
 
 ### SO_REUSEADDR
+When a server process exits, any TCP connections it owned enter `TIME_WAIT` for up to 120 seconds. During this window, the OS refuses to let a new process bind to the same port, because a late-arriving packet from the old connection might be mistaken for data in the new one. For development servers or services that restart frequently (e.g., after a crash), this means a 1–2 minute wait before the service can restart cleanly. `SO_REUSEADDR` instructs the OS to allow binding to a port that has connections in `TIME_WAIT`, effectively bypassing this restriction — safe in practice because TCP's sequence number randomization makes accidental packet acceptance extremely unlikely.
+
 Allows binding to a port in TIME_WAIT. Needed for servers that restart quickly.
 
 ```python
@@ -294,6 +322,8 @@ s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 ---
 
 ## QUIC / HTTP/3
+
+QUIC is a transport protocol designed by Google and standardized by the IETF (RFC 9000) that reimplements the reliability and security features of TCP + TLS in user space on top of UDP. The motivation is that TCP is implemented in operating system kernels, which update slowly, while QUIC running in user space can be updated with every application release. QUIC also directly addresses TCP's most significant modern limitations: the three-way handshake adds one round trip of latency before any data flows (QUIC achieves 0-RTT for known servers), and TCP's single bytestream causes head-of-line blocking for HTTP/2's multiplexed streams (QUIC provides independent stream delivery so a lost packet only blocks the stream it belongs to, not all streams). HTTP/3 is simply HTTP semantics running over QUIC instead of TCP.
 
 QUIC is built on UDP but re-implements reliability, multiplexing, and security in user space:
 

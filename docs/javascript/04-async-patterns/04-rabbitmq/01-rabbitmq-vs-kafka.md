@@ -18,6 +18,8 @@ Kafka — Dumb broker, smart consumer
 
 ## RabbitMQ Architecture
 
+RabbitMQ's routing model is built around three concepts: exchanges receive messages from producers, queues hold messages for consumers, and bindings define the rules for routing messages from an exchange to a queue. Producers never send directly to a queue — they always publish to an exchange and let the exchange decide where the message goes. This separation is what gives RabbitMQ its flexible routing capabilities. Exchanges come in four types, each implementing a different routing algorithm: `direct` (exact key match), `topic` (wildcard pattern match), `fanout` (broadcast), and `headers` (match on message headers).
+
 ```
 Producer → Exchange → [Binding] → Queue → Consumer
                │
@@ -59,6 +61,8 @@ ch.publish('cache-invalidate', '', Buffer.from(JSON.stringify({ key: 'user:42' }
 
 ### Consumer with manual ACK
 
+RabbitMQ delivers messages to consumers via push — the broker sends messages as fast as the `prefetch` limit allows. Manual acknowledgement (`ch.ack(msg)`) tells the broker the message was successfully processed and can be permanently deleted. `ch.nack(msg)` signals failure; with `requeue: false` the broker routes the message to the Dead Letter Exchange (if configured) rather than requeueing it for redelivery. `prefetch(N)` is a critical flow-control setting: it limits unacknowledged messages to N, preventing a fast producer from overwhelming a slow consumer.
+
 ```js
 await ch.assertQueue('orders.paid', { durable: true });
 ch.prefetch(10); // max 10 unacked messages at once (flow control)
@@ -76,6 +80,8 @@ ch.consume('orders.paid', async (msg) => {
 ```
 
 ### Dead Letter Exchange (DLX)
+
+A Dead Letter Exchange is a regular exchange that receives messages when they are rejected (`nack` with `requeue: false`), expire (message TTL exceeded), or overflow a queue. By configuring `x-dead-letter-exchange` on a queue you create a safety net: failed messages are not silently dropped but routed to a predictable location for inspection and reprocessing. The `x-death` header automatically appended to dead-lettered messages records the full history of why and how many times the message was rejected, which is invaluable for debugging.
 
 ```js
 // Queue that sends failed messages to a DLX
@@ -101,6 +107,8 @@ ch.consume('orders.paid.dead', (msg) => {
 ---
 
 ## Kafka Architecture
+
+Kafka's architecture is fundamentally different from RabbitMQ's: instead of a smart routing broker, Kafka is a distributed, ordered log. A topic is divided into partitions, and each partition is an immutable, append-only sequence of messages. Consumers maintain their own offset (position) in each partition and pull messages at their own pace — the broker does not track per-consumer state beyond the committed offset. This design enables multiple completely independent consumer groups to read the same messages (fan-out) and allows any group to replay from an earlier offset at any time, neither of which is possible with a traditional message queue.
 
 ```
 Topic: orders
@@ -209,6 +217,8 @@ const result = await new Promise((resolve) => {
 
 ### RabbitMQ — Publisher confirms
 
+By default, `ch.publish()` is fire-and-forget — the broker may or may not have persisted the message when the call returns. Publisher confirms (`confirmSelect`) switches the channel to confirm mode: the broker sends an acknowledgement once it has written the message to disk. This is the RabbitMQ equivalent of Kafka's `acks=-1` and is required for durable, loss-safe publishing in production.
+
 ```js
 await ch.confirmSelect();
 await ch.publish('exchange', 'key', Buffer.from(data));
@@ -217,6 +227,8 @@ await new Promise((resolve, reject) => ch.waitForConfirms((err) => err ? reject(
 ```
 
 ### Kafka — Idempotent producer
+
+An idempotent Kafka producer assigns a sequence number to each message batch. If the broker receives a duplicate (from a retry after a lost ack), it recognizes the sequence number and discards the duplicate rather than appending it twice. This provides exactly-once delivery guarantees within a single producer session without requiring transactions. Setting `acks: -1` alongside idempotency ensures all in-sync replicas have persisted the message before the producer considers the send successful.
 
 ```js
 const producer = kafka.producer({

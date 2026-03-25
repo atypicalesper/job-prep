@@ -4,6 +4,8 @@
 
 ## WebSocket vs HTTP
 
+HTTP is a request-response protocol — the client initiates every exchange and the server can only respond. This model is efficient for traditional web pages and REST APIs, but it breaks down for real-time applications that need the server to push updates as they happen (a new chat message, an auction bid, a live sports score). Polling workarounds (repeatedly asking "anything new?") waste bandwidth and CPU and still introduce latency equal to the poll interval. The WebSocket protocol solves this by upgrading an HTTP connection to a persistent, full-duplex TCP channel: after the initial handshake, either party can send a message frame to the other at any time with minimal overhead (~2–10 bytes of framing, no HTTP headers on each message).
+
 ```
 HTTP (request-response):
   Client → Request → Server → Response → done
@@ -20,6 +22,8 @@ WebSocket:
 ---
 
 ## Basic WebSocket Server (ws library)
+
+The `ws` package is the most widely used low-level WebSocket library for Node.js. It handles the HTTP Upgrade handshake, frame parsing, and ping/pong control frames, and exposes a clean event-based API. The key design decision is how to map connections to users: storing sockets in a `Map<userId, WebSocket>` allows direct delivery to a specific user, while a `Set` of all sockets supports broadcast. The `readyState === WebSocket.OPEN` check before writing is mandatory — attempting to send on a closing or closed socket throws. Heartbeat detection via `ping` / `pong` is essential because TCP's half-open state means a broken connection can appear `OPEN` indefinitely without any data flowing on it.
 
 ```javascript
 import { WebSocketServer, WebSocket } from 'ws';
@@ -109,6 +113,8 @@ function handleMessage(userId: string, message: any, ws: WebSocket) {
 
 ## Socket.io — Higher-Level Abstraction
 
+Socket.io builds on top of the raw WebSocket protocol and adds several production-critical features that `ws` does not provide: automatic transport fallback to HTTP long-polling when WebSockets are blocked (corporate firewalls, old proxies), room-based message grouping, automatic reconnection with exponential backoff, and a Redis adapter that makes all `io.to('room').emit()` calls work across multiple server instances. The `socket.join(room)` / `io.to(room).emit(event, data)` pattern is the core abstraction — it lets you think in terms of rooms (chat channels, user-specific feeds, org-wide broadcasts) without managing per-socket delivery logic yourself. Prefer Socket.io when you need these features; use raw `ws` when you want minimal overhead and are building the higher-level features yourself.
+
 ```javascript
 import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
@@ -181,6 +187,8 @@ io.on('connection', (socket) => {
 
 ## Scaling WebSockets Across Multiple Servers
 
+WebSocket connections are fundamentally stateful and sticky: a connected client's socket object lives in one server process's memory and cannot be accessed by any other process. This breaks horizontal scaling — if a load balancer routes two users to different server instances, neither server can deliver a message from user A to user B's socket because they are in different processes with no shared memory. The solution is a message bus that all server instances share: when any server needs to deliver a message to a user who might be connected to a different server, it publishes to a Redis channel; every server subscribes and delivers the message to any locally connected socket that matches. Socket.io's Redis adapter implements this pattern transparently so that `io.to('room').emit(...)` works regardless of which server each room member is connected to.
+
 ```
 Problem: WebSocket connections are stateful — a user connected to Server A
 can't receive messages from Server B.
@@ -231,6 +239,8 @@ async function broadcastToRoom(roomId: string, data: any) {
 
 ## Architecture: Chat at Scale
 
+This diagram shows the complete scaled WebSocket architecture. The load balancer uses sticky sessions (IP hash or cookie-based) so each client always reconnects to the same server instance — this means the server's in-memory socket map is always valid for that client's connection. When a message needs to be delivered cross-server (Alice on Server 1 sending to Bob on Server 2), Server 1 publishes the message to a Redis Pub/Sub channel, all server instances are subscribed, and Server 2 receives the event and delivers it to Bob's local socket. The load balancer's sticky-session configuration is essential: without it, a reconnecting client might land on a different server that has no record of the user's room memberships.
+
 ```
                     ┌─────────────────┐
                     │  Load Balancer  │
@@ -273,6 +283,8 @@ Alice → Server 1 → publish to Redis → Server 2 → deliver to Bob
 ---
 
 ## Connection State and Reconnection
+
+WebSocket connections drop constantly in the real world: mobile devices switch between WiFi and cellular, laptops sleep and wake, load balancers time out idle connections, and server deployments restart processes. A production client must automatically reconnect and resume normal operation without user intervention. The key insight is that reconnection delay should grow exponentially with each failed attempt (to avoid overwhelming a recovering server with thundering-herd reconnects) and reset to the base value on a successful connection. Messages sent while disconnected should be queued locally and flushed on the next successful connection if delivery guarantees matter.
 
 ```javascript
 // Client-side: handle reconnection with exponential backoff
@@ -335,6 +347,8 @@ class ReconnectingWebSocket {
 ---
 
 ## Server-Sent Events (SSE) — One-Way Alternative
+
+Server-Sent Events (SSE) is an HTTP-based push mechanism where the server keeps a long-lived response open and writes events to it as they occur. Unlike WebSockets, SSE is strictly one-directional (server → client), works over standard HTTP/1.1 with no protocol upgrade, automatically reconnects on the browser side when the connection drops, and passes through HTTP proxies and load balancers that might block WebSocket upgrades. The `text/event-stream` content type activates the browser's built-in `EventSource` client, which handles reconnection transparently. SSE is the right choice for notifications, progress updates, live feeds, and any use case where the client only needs to receive data — not send it. Reserve WebSockets for bidirectional communication.
 
 ```javascript
 // SSE: server → client only, over regular HTTP

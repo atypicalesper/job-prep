@@ -44,6 +44,8 @@ account.getBalance();          // still 1300
 
 ## 2. Function Factories
 
+A function factory is a higher-order function that returns a new, specialized function each time it is called. The returned function closes over the arguments passed to the factory, making those arguments a permanent part of its behavior. This pattern is powerful for creating families of related functions — validators, formatters, loggers — without repeating the shared configuration in every call.
+
 Create specialized functions based on parameters:
 
 ```javascript
@@ -68,6 +70,8 @@ validateScore(85);   // { valid: true }
 ---
 
 ## 3. Memoization
+
+Memoization is an optimization where a function caches its return values indexed by its input arguments, so repeated calls with the same arguments skip recomputation entirely. The cache is a variable in the outer scope, closed over by the memoized wrapper — invisible to callers but persistent across all invocations. Only use memoization for pure functions (same inputs always produce the same output with no side effects), and be mindful that the cache grows unboundedly unless you add an eviction policy.
 
 Cache expensive function results:
 
@@ -180,6 +184,8 @@ window.addEventListener('scroll', handleScroll);
 
 ## 6. Once — Execute Exactly Once
 
+The `once` pattern guarantees a function runs at most one time regardless of how many times the wrapper is invoked. It is useful for initialization logic that is dangerous to repeat — database connections, event listener registration, app bootstrapping. The `called` flag and the cached `result` both live in the outer function's scope, closed over by the returned wrapper. Even after the inner function runs, the wrapper safely returns the stored result on subsequent calls.
+
 ```javascript
 function once(fn) {
   let called = false;
@@ -208,6 +214,8 @@ initializeApp(); // silent
 
 ## 7. Partial Application
 
+Partial application is the technique of creating a new function by pre-filling (partially applying) one or more arguments of an existing function. The pre-filled arguments are captured in the closure of the returned function. Unlike `bind`, this generic implementation works with any function and any subset of leading arguments, enabling highly composable function pipelines without losing the original function's identity.
+
 Pre-fill some arguments:
 
 ```javascript
@@ -231,6 +239,8 @@ add5and3(10);   // 18 (5 + 3 + 10)
 ---
 
 ## 8. Currying
+
+Currying transforms a function that takes multiple arguments into a chain of functions that each take one argument. Each intermediate function closes over the arguments collected so far, waiting until all required arguments have been provided before calling the original function. Currying enables point-free programming styles and makes it easy to create reusable, partially-applied variants of any function.
 
 Transform a multi-argument function into a chain of single-argument functions:
 
@@ -262,6 +272,8 @@ addTen(5)(3); // 18
 
 ## 9. Iterator / Generator Pattern (Without Generators)
 
+Before native generators existed (and as a complement to them today), closures were used to implement stateful iterators. Each call to `next()` advances the iterator's internal cursor — a variable in the closure — and returns the next value in the sequence. The iterator implements the JavaScript iterator protocol by returning `{ value, done }` objects, making it compatible with `for...of`, spread, and destructuring.
+
 ```javascript
 function createRange(start, end, step = 1) {
   let current = start;
@@ -288,6 +300,8 @@ for (const n of range) {
 ---
 
 ## 10. Async Operation with Retry Logic
+
+The retry wrapper pattern uses a closure to bind the target function and its configuration (max attempts, backoff strategy) into a single reusable decorator. Every call to the returned async function has access to those captured settings via the closure, without needing to pass them as arguments each time. Exponential backoff — where each successive delay doubles — is the standard strategy because it reduces thundering-herd pressure on a service that is already struggling.
 
 ```javascript
 function withRetry(fn, maxRetries = 3, baseDelay = 1000) {
@@ -318,6 +332,8 @@ const data = await fetchWithRetry('/api/data');
 ---
 
 ## 11. Event Bus / Pub-Sub
+
+A pub-sub event bus decouples event emitters from event listeners: neither side needs to know about the other. The closure over `listeners` (the internal registry Map) is what makes the entire bus work — all three methods (`on`, `emit`, `off`) share access to the same Map, so registering a listener in `on` makes it immediately visible to `emit`. This is also a good pattern for returning an unsubscribe function directly from `on`, rather than requiring a separate `off` call.
 
 ```javascript
 function createEventBus() {

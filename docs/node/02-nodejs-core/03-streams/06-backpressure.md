@@ -16,7 +16,7 @@ Readable (100MB/s) ───────────────────→ 
 
 ## How Node.js Handles Backpressure
 
-When a Writable's internal buffer exceeds `highWaterMark`, `.write()` returns `false`:
+Node.js signals backpressure through the return value of `writable.write()`. When the Writable's internal buffer grows beyond `highWaterMark`, `write()` returns `false` — this is the signal to the producer to pause. When the buffer drains below `highWaterMark`, the Writable emits `'drain'` — this is the signal to resume. The pattern is purely advisory: the stream will not throw or block if you ignore `false`, it will simply buffer indefinitely. Respecting this contract prevents OOM crashes when a slow consumer is paired with a fast producer.
 
 ```javascript
 const writable = fs.createWriteStream('output.txt');
@@ -69,7 +69,7 @@ readable.on('error', (err) => {
 
 ## stream.pipeline() — The Right Way
 
-`stream.pipeline()` correctly handles errors and cleanup:
+`stream.pipeline()` is the correct, modern replacement for manual `pipe()` chains. It solves two critical shortcomings of `.pipe()`: error propagation and cleanup. With raw `.pipe()`, if any stream in the chain errors, the others are not automatically destroyed — you get resource leaks (open file descriptors, lingering network connections). `stream.pipeline()` listens for errors on every stream in the chain and calls `destroy()` on all of them when any one fails. It also calls the completion callback with the error, giving you a single place to handle failure for the entire pipeline.
 
 ```javascript
 const { pipeline } = require('stream');
@@ -88,6 +88,8 @@ await pipelineAsync(
 ---
 
 ## Demonstrating Backpressure Problem
+
+The backpressure problem is easy to miss in development because it only manifests under load, when the writable cannot keep up with the readable. In a local test with a fast disk, both streams run at similar speeds and no buffer ever grows large. In production — reading from a fast SSD and writing over a slow network connection, or piping to a database that becomes loaded — the readable outpaces the writable and memory usage climbs until the process is OOM-killed.
 
 ```javascript
 // ❌ Ignoring backpressure — memory explosion

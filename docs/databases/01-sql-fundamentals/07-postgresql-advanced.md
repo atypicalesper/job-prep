@@ -17,6 +17,8 @@ LIMIT 10;
 
 ### Reading the output
 
+The plan is displayed as a tree of nodes, indented to show parent-child relationships. Each node represents an operation (scan, join, sort, aggregate). The planner estimates cost in abstract units — the absolute values are less important than relative comparisons between plan variants. The most useful diagnostic is when estimated rows diverge dramatically from actual rows: this means the planner is making decisions based on stale statistics, which you fix by running `ANALYZE`.
+
 ```
 Limit (cost=842.32..842.35 rows=10) (actual time=12.4..12.5 rows=10)
   -> Sort (cost=842.32..854.82 rows=5000) (actual time=12.3..12.4 rows=10)
@@ -41,6 +43,8 @@ Limit (cost=842.32..842.35 rows=10) (actual time=12.4..12.5 rows=10)
 
 ### What to look for
 
+Focus on the nodes with the highest actual time and the widest gap between estimated and actual row counts. A `Seq Scan` on a large table is a red flag — it usually means a missing or unused index. A sort operation spilling to disk means `work_mem` is too low for the query. Nested loops with high iteration counts (visible in the `loops=N` field) signal a cartesian product risk or a missing join index.
+
 ```sql
 -- WARNING signs:
 Seq Scan on large_table  -- full table scan, may need index
@@ -50,6 +54,8 @@ Sort (disk: 8192kB)  -- sort spilling to disk, increase work_mem
 ```
 
 ### EXPLAIN options
+
+The `BUFFERS` option reveals cache efficiency: `shared hit` means data was served from PostgreSQL's buffer cache (fast), while `read` means a disk I/O was needed (slow). A high `read` count on a query that runs frequently indicates a cache miss problem — either the working set exceeds available memory or the query is not selective enough to benefit from caching. The JSON output format is useful when integrating with external plan analysis tools.
 
 ```sql
 EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) SELECT ...;
@@ -82,7 +88,7 @@ CREATE INDEX idx_orders_user_status ON orders(user_id, status);
 
 ### Partial index
 
-Index only a subset of rows. Much smaller, faster for selective queries.
+A partial index stores only the rows matching a `WHERE` condition, making it significantly smaller than a full index and faster to scan. The key constraint: the query must include a predicate that logically implies the index condition for the index to be used. This is ideal when queries always filter on a low-cardinality column alongside a high-cardinality one — index only the common case.
 
 ```sql
 -- Only index active users (99% of queries filter for is_active = true)
@@ -100,6 +106,8 @@ EXPLAIN SELECT email FROM users WHERE email = 'x@y.com';
 
 ### Index on expression
 
+An expression index stores the result of a function or expression on the column, not the raw column value. This allows index use when the query's `WHERE` clause wraps the column in the same expression. The tradeoff: the expression is evaluated for every row on insert/update, adding write overhead. Use expression indexes when you cannot change the query pattern (e.g., third-party code) or when case-insensitive searches are a core requirement.
+
 ```sql
 CREATE INDEX idx_users_lower_email ON users(LOWER(email));
 
@@ -109,6 +117,8 @@ SELECT * FROM users WHERE email = 'alice@example.com'; -- does NOT ✗
 ```
 
 ### GIN index (for full-text, arrays, JSONB)
+
+GIN (Generalized Inverted Index) is designed for values that contain multiple keys — like an array of tags, a JSONB document, or a full-text search vector. It builds an inverted index mapping each element/key to the documents that contain it. GIN indexes are ideal when you query containment (`@>`, `?`, `@@`) rather than equality or range. They are slower to build and update than B-Tree indexes, so they are best on columns that are read far more than written.
 
 ```sql
 -- Full-text search
@@ -122,7 +132,7 @@ SELECT * FROM events WHERE data @> '{"type": "login"}'; -- uses GIN ✓
 
 ### BRIN index (for naturally ordered data)
 
-Very small, good for large append-only tables with correlated physical order (timestamps, IDs).
+BRIN (Block Range Index) stores only the minimum and maximum value of a column per disk block range. It is extremely compact — orders of magnitude smaller than a B-Tree — but only effective when the column's values are physically correlated with their disk location (i.e., new rows are always appended in order, as with timestamps or auto-increment IDs). Queries use the index to skip entire block ranges that cannot contain matching rows. Do not use BRIN when data is inserted in random order relative to the indexed column.
 
 ```sql
 CREATE INDEX idx_logs_created ON logs USING BRIN(created_at);
@@ -134,6 +144,8 @@ CREATE INDEX idx_logs_created ON logs USING BRIN(created_at);
 ## 3. CTEs vs Subqueries
 
 ### CTE basics
+
+A CTE (`WITH` clause) names a subquery so it can be referenced by name in the main query. In PostgreSQL 12+, CTEs are inlined by default — the optimizer treats them like regular subqueries and can push predicates into them. The key readability benefit is that complex multi-step queries can be decomposed into named intermediate results that read like sequential steps rather than nested subqueries.
 
 ```sql
 -- Named temporary result set
@@ -156,6 +168,8 @@ ORDER BY month;
 ```
 
 ### Recursive CTE
+
+A recursive CTE defines a query in two parts separated by `UNION ALL`: the base case (anchor member, which runs once and produces the starting rows) and the recursive case (which references the CTE name and runs repeatedly until it produces no new rows). This is the SQL way to traverse trees and graphs — org charts, category hierarchies, file systems, bill-of-materials structures. The recursion stops automatically when the recursive part returns an empty result.
 
 ```sql
 -- Traverse org hierarchy
@@ -212,6 +226,8 @@ SELECT * FROM orders WHERE user_id IN (SELECT id FROM cheap_subquery);
 
 ### The N+1 in SQL
 
+The N+1 problem occurs when you fetch a list of N items and then issue a separate query for related data on each item — resulting in N+1 total queries. The solution is always to fetch the related data in a single query using a `JOIN` or a `WHERE id IN (...)` with the collected IDs. In SQL contexts, N+1 usually happens in ORM usage, but understanding it at the SQL level helps you recognize and fix it regardless of the abstraction layer.
+
 ```sql
 -- BAD: N+1 — fetch users then loop and fetch orders
 -- (equivalent of what ORMs do without eager loading)
@@ -228,6 +244,8 @@ WHERE u.active = true;
 
 ### Avoid `SELECT *`
 
+`SELECT *` fetches every column from the table heap, even columns you do not use. Beyond wasting bandwidth, it prevents PostgreSQL from using an "Index Only Scan" — where all needed data is served directly from the index without touching the table at all. By selecting only the columns you need, and creating a covering index that includes those columns, you can eliminate heap access entirely for hot query paths.
+
 ```sql
 -- BAD: fetches all columns, can't use index-only scan
 SELECT * FROM users WHERE email = 'alice@example.com';
@@ -240,6 +258,8 @@ SELECT id, name FROM users WHERE email = 'alice@example.com';
 
 ### UPSERT
 
+An upsert is an atomic operation: insert a row if it does not exist, or update the existing row if it does — all in a single statement that is safe under concurrency. Without `ON CONFLICT`, two concurrent inserts for the same unique key would cause one to fail with a constraint violation. `EXCLUDED` refers to the values from the attempted insert, letting you reference the new data in the update expression.
+
 ```sql
 -- Insert or update atomically
 INSERT INTO user_stats (user_id, login_count, last_login)
@@ -250,6 +270,8 @@ ON CONFLICT (user_id) DO UPDATE SET
 ```
 
 ### Batch operations
+
+Inserting rows one at a time in a loop has high overhead: each statement requires a round-trip to the database and a separate transaction (unless batched). Sending a single statement with multiple rows — either as a multi-row `VALUES` list or via `unnest` to expand arrays — dramatically reduces round-trips and transaction overhead. For bulk inserts of thousands of rows, `COPY` is even faster as it bypasses the SQL parser entirely.
 
 ```sql
 -- BAD: individual inserts in a loop
@@ -272,7 +294,7 @@ INSERT INTO events (type, data) VALUES
 
 ## 5. Table Partitioning
 
-For very large tables (100M+ rows), split by a partition key.
+Table partitioning divides a logically single large table into multiple physical sub-tables (partitions) based on a partition key. The database routes reads and writes to the correct partition transparently. The main benefit is "partition pruning": a query with a predicate on the partition key only scans the relevant partition(s), ignoring the rest entirely. This turns what would be an O(n) scan on 100M rows into an O(n/k) scan on one of k partitions. Partitioning also makes maintenance operations (deleting old data, vacuuming) much cheaper — drop an old partition instead of `DELETE`ing millions of rows.
 
 ```sql
 -- Range partitioning by month

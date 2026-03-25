@@ -21,6 +21,8 @@ console.log('This runs BEFORE the file is read');
 
 ## Error-First Callbacks (Node.js Convention)
 
+The error-first convention was established by Node.js core to create a uniform, predictable signature across all asynchronous APIs. Without a convention, different libraries might put the error in different positions or use different mechanisms (return codes, exceptions, multiple callbacks). By always reserving the first argument for the error, any callback can be handled with the same pattern: check the first argument first, then proceed with the result. This convention is now universal in the Node.js ecosystem.
+
 Node.js standardized the callback signature: **first arg is error, second is result**.
 
 ```javascript
@@ -94,7 +96,11 @@ getUser(userId, (err, user) => {
 
 ## Problems with Callbacks
 
+The callback pattern has fundamental structural problems that become acute in real applications. These are not just stylistic issues — they affect correctness, error handling, and composability. Promises were designed specifically to address all of them.
+
 ### 1. Inversion of Control
+
+Inversion of control is the core trust problem of callbacks. When you pass your function to an external library, you give up all control over when, how many times, with what arguments, synchronously or asynchronously, your code runs. The library becomes responsible for your program's correctness. Promises solve this by providing a standardized, sealed contract: a promise either resolves exactly once or rejects exactly once, always asynchronously, with a single value.
 
 You hand control of your code to someone else:
 
@@ -158,7 +164,11 @@ function a(cb) {
 
 ## Escaping Callback Hell
 
+Each of these strategies addresses the readability problem of callback nesting, but only promisification and the modern `fs/promises` API also solve the structural problems (inversion of control, error propagation, composition). Named functions improve readability without fixing the underlying trust or error-handling issues.
+
 ### Strategy 1: Named Functions (flatten the pyramid)
+
+Named functions flatten the indentation by breaking each callback into a separate top-level function. The logic is the same — each function still receives an error-first callback signature and must manually check for errors — but the visual nesting is eliminated. This is the quickest fix for legacy codebases that cannot adopt Promises.
 
 ```javascript
 // ❌ Nested anonymous:
@@ -181,6 +191,8 @@ getUser(id, onUser);
 ```
 
 ### Strategy 2: Promisify
+
+Promisification wraps a callback-based function in a Promise, converting it to the modern async model. The `resolve`/`reject` pair replaces the error-first callback: `reject(err)` maps to a non-null first argument, and `resolve(data)` maps to a successful result. Once promisified, the function can be used with `async/await`, chained with `.then()`, and composed with `Promise.all` — gaining all the structural benefits of Promises.
 
 Convert callback-based functions to Promise-based:
 
@@ -209,6 +221,8 @@ async function main() {
 
 ### Strategy 3: Use fs/promises (modern Node.js)
 
+Since Node.js 10+, all built-in async APIs have official Promise-based variants available under sub-paths like `fs/promises`, `dns/promises`, and `timers/promises`. These are the first-class modern APIs and should be preferred over manual promisification or the callback versions in all new code.
+
 ```javascript
 const fs = require('fs/promises'); // promise-based API built in
 // Or: import { readFile } from 'fs/promises';
@@ -222,6 +236,8 @@ async function readConfig() {
 ---
 
 ## util.promisify — Deep Dive
+
+`util.promisify` is Node.js's built-in utility for converting error-first callback functions to Promise-returning functions. It works on any function that follows the `(err, result)` convention. For functions that return multiple result values (non-standard), or for complete control over the Promise logic, you can attach a custom implementation via `fn[util.promisify.custom]` — this property is checked first when `promisify` is called.
 
 ```javascript
 const util = require('util');

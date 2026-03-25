@@ -28,6 +28,8 @@ libuv is the C library that provides Node.js with:
 
 ## Two Types of Async Operations
 
+Not all async operations are created equal in libuv. Some OS primitives — primarily network sockets — expose a truly non-blocking API where the OS notifies the application when data is ready (via epoll/kqueue/IOCP). Others, particularly file system operations and some crypto primitives, only have blocking syscall interfaces on most platforms. libuv handles these two categories with entirely different mechanisms. Understanding which category an operation falls into explains why `http.get` is free while `crypto.pbkdf2` can saturate a thread pool.
+
 ### Type 1: OS-Level Async (no thread pool needed)
 
 For I/O with proper OS async support, libuv registers file descriptors and gets notified via OS mechanisms:
@@ -79,7 +81,7 @@ Operations using the thread pool:
 
 ## Thread Pool Size
 
-Default: **4 threads**. Configurable via `UV_THREADPOOL_SIZE` env var (max 1024).
+The thread pool has a default size of 4 because that was historically a reasonable match for the number of cores on a server. It is configurable up to 1024 via the `UV_THREADPOOL_SIZE` environment variable. The right size depends on your workload: if your server does many concurrent password hashes or file reads, a larger pool reduces queuing time; if threads spend most of their time blocked on I/O, more threads help; if they are CPU-bound, more threads than cores can hurt due to context switching overhead.
 
 ```javascript
 // Check thread pool usage:
@@ -107,6 +109,8 @@ const times = await Promise.all(promises);
 
 ### Increasing Thread Pool Size
 
+The environment variable must be set before Node.js starts initializing libuv — setting it after the process has started (e.g., inside application code after the first async operation) has no effect. The safest approach is to set it at process launch via the shell environment.
+
 ```bash
 UV_THREADPOOL_SIZE=8 node app.js
 ```
@@ -126,7 +130,7 @@ process.env.UV_THREADPOOL_SIZE = '8';
 
 ## Thread Pool Exhaustion
 
-If all pool threads are busy and more work arrives, it queues and waits:
+Thread pool exhaustion is a silent performance killer. When all 4 (or however many) threads are busy, new thread-pool work queues behind them. Because the thread pool is shared across all categories of work — crypto, file I/O, and `dns.lookup` all compete for the same threads — a burst of password hashing can indirectly slow down file reads for other in-flight requests. This is different from event loop blocking: the event loop itself stays free, but thread-pool callbacks pile up and are delivered late.
 
 ```javascript
 // Pool exhaustion example — blocks all threads with crypto:
@@ -191,6 +195,8 @@ dns.resolve('google.com', callback);       // ❌ no thread pool (uses c-ares as
 
 ## dns.lookup vs dns.resolve — Critical Difference!
 
+`dns.lookup` and `dns.resolve` both resolve hostnames, but they use completely different internal mechanisms. `dns.lookup` delegates to the OS `getaddrinfo` syscall, which is blocking and therefore runs on a libuv thread pool worker. `dns.resolve*` uses c-ares, a fully async DNS library that operates without any thread pool threads. In a server that makes many concurrent outbound HTTP requests (each of which calls `dns.lookup` internally), the thread pool can become the bottleneck even though no file I/O is happening. Use `dns.resolve4` / `dns.resolve6` or force `http.request` to use a custom lookup based on c-ares for high-concurrency outbound request scenarios.
+
 ```javascript
 const dns = require('dns');
 
@@ -213,7 +219,7 @@ If your server does many concurrent `dns.lookup()` calls (e.g., via `http.get()`
 
 ## libuv File I/O Implementation
 
-On most platforms, file I/O goes through the thread pool because most OS file operations are blocking:
+Despite what the name "async" suggests, most file system operations on Linux and macOS do not have a truly non-blocking kernel API the way network sockets do. POSIX `aio_read` exists but has severe limitations in practice. libuv therefore handles file I/O by running the blocking `open()`/`read()`/`close()` syscalls on thread pool workers. The main event loop thread stays free, but the work is genuinely blocking on the worker thread. On Windows, libuv uses the native IOCP (I/O Completion Ports) API which does provide true async file I/O at the OS level.
 
 ```
 fs.readFile('file.txt', callback):

@@ -4,6 +4,8 @@
 
 ## What is a Buffer?
 
+A Buffer is a fixed-size region of raw memory allocated outside the V8 heap, managed directly by Node.js via libuv and C++. Because JavaScript strings are UTF-16 and the heap is garbage-collected, they are a poor fit for binary I/O: file reads, network packets, and cryptographic operations all produce raw bytes. Buffers exist to hold that binary data efficiently without encoding overhead or GC pressure. The key mental model is that a Buffer is essentially a `Uint8Array` with extra Node.js-specific convenience methods — every byte is an integer from 0–255. Use `Buffer.alloc` when safety matters and `Buffer.allocUnsafe` only when you are immediately overwriting every byte yourself for maximum performance.
+
 ```javascript
 // Buffer = fixed-size chunk of binary data (raw bytes)
 // Lives OUTSIDE V8 heap — managed by libuv/C++
@@ -24,6 +26,8 @@ console.log(b3.toString('base64')); // 'aGVsbG8='
 ---
 
 ## Encodings
+
+An encoding is a mapping between raw bytes and a human-readable character representation. Node.js needs to know the encoding when converting between a Buffer and a string — using the wrong encoding corrupts data. The most important choices in practice are `utf8` (the safe default for text), `base64` / `base64url` (for sending binary through text channels such as JWT headers or data URIs), and `hex` (for debugging or cryptographic output). The `base64url` variant replaces `+`, `/`, and `=` padding with URL-safe characters, making it directly embeddable in query strings and HTTP headers.
 
 ```javascript
 // Supported encodings:
@@ -51,6 +55,8 @@ console.log(buf2.readUInt32LE(4)); // 1000
 
 ## Buffer vs TypedArray
 
+Node.js `Buffer` is a subclass of `Uint8Array`, which means every Buffer is also a valid TypedArray and shares the same underlying `ArrayBuffer`. This matters because the Web Platform APIs (WebCrypto, `fetch`, `ReadableStream`) speak `Uint8Array`, while Node.js I/O APIs (fs, net, http) speak `Buffer`. Understanding the shared-memory relationship prevents unnecessary copies: a slice or subarray view points into the same bytes without allocation. Prefer `Buffer` in pure Node.js code for its extra methods (`toString`, `readInt32BE`, `indexOf`), and use `Uint8Array` when writing isomorphic code that must also run in browsers or Deno.
+
 ```javascript
 // Buffer extends Uint8Array — fully compatible
 const buf = Buffer.from([1, 2, 3]);
@@ -69,6 +75,8 @@ buf.includes(0x65);        // includes byte value
 ---
 
 ## Common Buffer Operations
+
+These are the day-to-day operations for assembling, slicing, and comparing binary data. The most critical gotcha is that `slice` and `subarray` return a *view* — they share the underlying memory with the original buffer, so mutating one mutates the other. When you need an independent copy, wrap the slice in `Buffer.from(...)`. `Buffer.concat` is the correct way to assemble multiple chunks (e.g., from a stream) into a single buffer; avoid repeated string concatenation, which creates unnecessary intermediate allocations.
 
 ```javascript
 // Concatenate:
@@ -96,6 +104,8 @@ console.log(buf.toString()); // 'AAAAAAAAAA'
 ---
 
 ## Streams and Buffers
+
+Node.js streams emit data as `Buffer` chunks rather than whole files, which means large files or HTTP request bodies never fully occupy memory at once. The pattern is to collect chunks in an array and call `Buffer.concat` only at the end, or better yet, use `pipe`/`pipeline` to avoid manual assembly entirely. Understanding this connection is essential for writing correct upload handlers, streaming JSON parsers, or any code that processes data incrementally.
 
 ```javascript
 // Streams emit/consume Buffers:
@@ -129,6 +139,8 @@ app.post('/upload', (req, res) => {
 ---
 
 ## Security: Buffer Timing Attack Prevention
+
+Comparing secret values with the `===` operator is a security vulnerability. JavaScript string and buffer equality short-circuits on the first mismatched byte, so an attacker who can measure response time can infer correct characters one by one. This class of attack is called a timing side-channel. `crypto.timingSafeEqual` runs in constant time regardless of where the mismatch occurs, eliminating the signal. Always use it when comparing API keys, tokens, HMAC digests, or any value derived from a secret. The function requires both buffers to be the same length — check that first separately (with a fixed non-leaking response).
 
 ```javascript
 // ❌ String comparison — timing attack vulnerable:

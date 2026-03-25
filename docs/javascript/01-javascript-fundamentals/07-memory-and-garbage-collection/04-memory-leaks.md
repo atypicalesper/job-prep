@@ -70,6 +70,8 @@ emitter.once('data', handler); // auto-removes after firing
 
 ### Node.js Warning About Max Listeners
 
+Node.js tracks the number of listeners registered per event per emitter and emits a process warning when the count exceeds a threshold (default 10). This threshold exists specifically as an early warning for listener leaks — if you legitimately need more than 10 listeners for a single event you should raise it explicitly, but the warning is almost always a signal that a new listener is being added on each request, render cycle, or iteration without a corresponding removal.
+
 ```javascript
 const emitter = new EventEmitter();
 // Default max: 10 listeners per event before warning
@@ -238,6 +240,8 @@ savedRef = null; // allow GC
 
 ### 1. process.memoryUsage()
 
+`process.memoryUsage()` returns a breakdown of the process's memory footprint sampled at the moment of the call. `heapUsed` is the most actionable metric — it reflects how much of the V8 heap is currently occupied by live objects. A monotonically increasing `heapUsed` over time (after GC cycles have had a chance to run) is the clearest programmatic signal of a leak. `rss` (Resident Set Size) includes the heap, native code, and stack; it can grow independently of `heapUsed` if native addons or Buffers are leaking.
+
 ```javascript
 setInterval(() => {
   const { heapUsed, heapTotal, rss } = process.memoryUsage();
@@ -252,6 +256,8 @@ setInterval(() => {
 
 ### 2. Heap Snapshot with --inspect
 
+A heap snapshot captures the entire object graph at a moment in time — every object, its type, its size, and what references it. The most effective leak-detection workflow is to take two snapshots (one before a suspected leak scenario, one after) and compare them using Chrome DevTools' "Objects allocated between snapshots" filter. The objects that appear in the second snapshot but not the first, and are still retained (not garbage-collected), are the leak candidates. Look at their retaining paths to find what is holding them alive.
+
 ```bash
 node --inspect app.js
 # Open Chrome → chrome://inspect
@@ -260,6 +266,8 @@ node --inspect app.js
 ```
 
 ### 3. Programmatic Heap Snapshot
+
+The `v8.writeHeapSnapshot()` API allows snapshots to be triggered from within the application itself — useful for automating leak detection in CI pipelines, capturing state on a specific signal (`SIGUSR2`), or snapshotting from a health-check endpoint in a staging environment. The resulting `.heapsnapshot` file uses the same format as Chrome DevTools and can be loaded and compared in the Memory tab.
 
 ```javascript
 const v8 = require('v8');
@@ -282,6 +290,8 @@ takeSnapshot('snapshot2.heapsnapshot');
 ## WeakMap and WeakRef — Solutions
 
 ### WeakMap for Private Data (No Leak)
+
+`WeakMap` solves the pattern of attaching per-object metadata without leaking memory when those objects are discarded. The keys are held weakly — when the key object becomes unreachable from everywhere else, the GC collects it and the `WeakMap` entry disappears automatically. This is the correct tool when the metadata lifetime should be tied to the object's lifetime, not managed manually. Before ES2022 private class fields (`#`), `WeakMap` was the standard pattern for truly private instance state.
 
 ```javascript
 // WeakMap keys are weakly held — if key object is GC'd, entry is removed
@@ -306,6 +316,8 @@ class Component {
 ```
 
 ### WeakRef for Optional References
+
+`WeakRef` is appropriate when you want to cache something for performance but are willing to recompute it if memory pressure causes the GC to collect it. Unlike `WeakMap` (where the key drives lifetime), `WeakRef` wraps any value and lets you check whether it is still alive on each access. The cache gracefully degrades under memory pressure rather than holding data in memory indefinitely. Always handle the `undefined` case from `.deref()` — treating it as guaranteed non-null is a common mistake.
 
 ```javascript
 // WeakRef allows GC to collect the object even while referenced

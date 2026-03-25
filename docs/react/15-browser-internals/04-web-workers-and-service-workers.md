@@ -55,6 +55,8 @@ worker.terminate();
 
 ### Transferable objects (zero-copy)
 
+By default, `postMessage` serializes data using the structured clone algorithm — a deep copy that takes O(n) time and memory. For large payloads like image pixel buffers or audio data, this copy is prohibitively expensive. Transferable objects solve this by transferring *ownership* of the underlying memory buffer to the recipient instead of copying it. After transfer, the sender's reference is neutered (zeroed out) — the same memory now belongs to the worker, with zero bytes copied.
+
 ```js
 // Transferring ownership — no memory copy (huge for large ArrayBuffers)
 const buffer = new ArrayBuffer(1024 * 1024); // 1MB
@@ -63,6 +65,8 @@ worker.postMessage({ buffer }, [buffer]); // second arg = transferable list
 ```
 
 ### Shared memory (SharedArrayBuffer + Atomics)
+
+`SharedArrayBuffer` takes parallelism further than transferables: instead of moving memory, it creates memory that is *simultaneously accessible* from both the main thread and worker threads. Because multiple threads reading and writing the same memory can cause race conditions, `Atomics` provides lock-free synchronization primitives (compare-and-swap, wait/notify). This is the lowest-level, highest-performance path for parallel computation in the browser — analogous to shared memory in native multi-threaded code. The COOP/COEP security headers are required to prevent Spectre-class attacks.
 
 ```js
 // REQUIRES: COOP + COEP headers on the server
@@ -86,12 +90,16 @@ self.onmessage = (e) => {
 
 ### Module Worker (modern)
 
+Classic workers load scripts in a global scope similar to a `<script>` tag — no `import` or `export`. Passing `{ type: 'module' }` enables the ES module system inside the worker, allowing `import` statements, top-level `await`, and proper module caching. Module workers are the recommended approach for any non-trivial worker code because they integrate with the same module graph as the main thread.
+
 ```js
 const worker = new Worker('/worker.js', { type: 'module' });
 // worker.js can now use import/export
 ```
 
 ### Worker Pool pattern
+
+A single worker can only execute one task at a time. For workloads that generate many parallel tasks (processing thousands of images, running simulations), a pool of workers distributes work across all available CPU cores. `navigator.hardwareConcurrency` returns the number of logical processors, making it the right default pool size. The pool maintains an idle queue and a task queue; when a worker finishes it picks up the next queued task automatically.
 
 ```js
 class WorkerPool {
@@ -142,6 +150,8 @@ Browser Request ──▶ Service Worker ──▶ Network
 
 ### Lifecycle
 
+A Service Worker goes through a deterministic lifecycle before it can control pages. The `install` event fires once when the browser first detects a new or updated SW file — this is where you pre-cache static assets. After installation, the new SW enters a `waiting` state if an older SW is still controlling open tabs; it only `activates` once all old-version tabs are closed (or `skipWaiting()` is called). On `activate`, the SW cleans up stale caches and calls `clients.claim()` to take control of existing tabs immediately rather than waiting for a reload.
+
 ```
 Download → Install → Waiting → Activate → Controlling pages
 ```
@@ -171,6 +181,8 @@ self.addEventListener('activate', (e) => {
 ```
 
 ### Fetch strategies
+
+The SW `fetch` event intercepts every network request made by pages it controls. How you respond — from cache, from network, or both — defines the caching strategy. The right strategy depends on the resource type: static assets that rarely change benefit from cache-first (fast, offline-safe); API data that must be fresh benefits from network-first; resources where you want instant response but eventual freshness use stale-while-revalidate.
 
 ```js
 // 1. Cache First (good for static assets — fonts, images, JS)
@@ -211,6 +223,8 @@ self.addEventListener('fetch', (e) => {
 
 ### Registration
 
+Service Workers must be registered by main-thread JavaScript before the browser will install them. The `scope` option limits which URL paths the SW controls — a SW at `/sw.js` with `scope: '/'` controls the entire origin, while `scope: '/app/'` controls only URLs under `/app/`. Registering inside `window.addEventListener('load', ...)` delays registration until after the page's critical resources have loaded, avoiding the SW installation from competing with initial page load bandwidth.
+
 ```js
 // main.js — register in app entry point
 if ('serviceWorker' in navigator) {
@@ -226,6 +240,8 @@ if ('serviceWorker' in navigator) {
 ```
 
 ### Background Sync
+
+Background Sync solves the offline write problem: if a user submits a form or sends a message while offline, the action should complete automatically when connectivity is restored — even if the browser tab is closed in the meantime. The pattern is: save the pending action to IndexedDB immediately, register a sync tag, and let the browser call the `sync` event handler when it has network access. The browser may delay the sync event and retry it with exponential backoff if it fails.
 
 ```js
 // SW — sync queued requests when connectivity restores
@@ -249,6 +265,8 @@ async function sendMessage(data) {
 ```
 
 ### Push Notifications
+
+The Push API lets servers send messages to a browser even when the user's tab is closed. The browser maintains a persistent connection to a push service (Google FCM, etc.); your server sends an encrypted payload to that service, which relays it to the browser, which wakes the Service Worker via the `push` event. VAPID keys authenticate your server to the push service. Users must grant notification permission explicitly, and the push event handler must display a notification (browsers enforce this to prevent silent background tracking).
 
 ```js
 // Main — subscribe
@@ -295,6 +313,8 @@ self.addEventListener('notificationclick', (e) => {
 ---
 
 ## SharedWorker
+
+A `SharedWorker` is a Web Worker variant that maintains a single instance shared across all tabs and iframes on the same origin. While a regular Web Worker is created fresh per page, a SharedWorker persists as long as at least one page has a connection to it. Communication uses `MessagePort` objects; each connecting page gets a port via the `connect` event. The canonical use case is consolidating expensive resources — one WebSocket or SSE connection for the whole browser session instead of one per tab.
 
 A single worker **shared across all tabs** on the same origin:
 

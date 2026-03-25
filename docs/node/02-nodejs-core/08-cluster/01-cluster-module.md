@@ -4,6 +4,8 @@
 
 ## Why Cluster?
 
+A single Node.js process is bound to one CPU core, no matter how many cores the host machine has. For I/O-bound services this is often fine because the event loop spends most of its time waiting for network and disk; but under high request volume, even I/O-bound servers hit CPU limits from request parsing, middleware, and JSON serialization. The Cluster module addresses this by forking N identical worker processes that all share the same TCP port. The operating system's network stack distributes incoming connections across the workers, turning a single-core bottleneck into a full multi-core server without any changes to the HTTP request handling code.
+
 ```
 Node.js is single-threaded → uses only 1 CPU core.
 A server with 8 cores runs Node.js at 12.5% CPU capacity.
@@ -16,6 +18,8 @@ Each worker is an independent Node.js process with its own memory.
 ---
 
 ## Basic Cluster Setup
+
+The Cluster module lets a single Node.js application use all available CPU cores by forking N worker processes that all bind to the same port. The primary process manages the workers and the OS (or Node's built-in round-robin scheduler) distributes incoming TCP connections across them. Each worker is a fully independent Node.js process with its own heap and event loop — they share no in-memory state by default. The `cluster.isPrimary` / `cluster.isWorker` flag is how both roles are encoded in the same file: the primary forks workers, each worker runs the HTTP server. Restarting crashed workers in the `'exit'` handler is the minimum viable production cluster.
 
 ```javascript
 const cluster = require('cluster');
@@ -56,6 +60,8 @@ if (cluster.isPrimary) {
 ---
 
 ## Production-Ready Cluster with Express
+
+A production cluster needs more than basic forking: it needs zero-downtime restarts so deploys don't drop connections, graceful shutdown so in-flight requests finish before the process exits, and signal handling for orchestration tools. The rolling-restart pattern (fork new worker → wait for it to start listening → kill old worker) achieves zero downtime because at least one worker is always available. Responding to `SIGUSR2` is a common convention for triggering a rolling restart from a deployment script or signal sent by a CI pipeline.
 
 ```javascript
 const cluster = require('cluster');
@@ -149,6 +155,8 @@ if (cluster.isPrimary) {
 
 ## IPC Between Primary and Workers
 
+The primary process and each worker can exchange JSON messages over an IPC channel using `worker.send()` (primary → worker) and `process.send()` (worker → primary). This is useful for aggregating metrics from all workers in one place, broadcasting configuration updates without restarting, or coordinating which worker holds a particular lock. Because each worker is an independent process, there is no direct worker-to-worker communication — messages must route through the primary. For high-frequency event data, prefer a shared external store (Redis) rather than IPC to avoid the primary becoming a bottleneck.
+
 ```javascript
 // Primary can communicate with workers:
 
@@ -225,6 +233,8 @@ Recommendation:
 ---
 
 ## Shared State in Cluster
+
+Because each cluster worker is a separate OS process, module-level variables (in-memory Maps, arrays, counters) are entirely private to that worker. A request handled by worker 1 cannot read state written by worker 2. This is the most common cluster gotcha: session data, user caches, or WebSocket connection maps stored in a plain JavaScript object will silently work on single-core machines and silently break in production under cluster. The solution is to move shared state to an external service that all workers can reach — Redis for sessions, caches, and pub/sub; a relational database for durable state.
 
 ```javascript
 // ❌ Problem: each worker has its own memory — can't share state

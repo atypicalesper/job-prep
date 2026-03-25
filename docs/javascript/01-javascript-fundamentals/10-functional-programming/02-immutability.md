@@ -135,6 +135,8 @@ Object.isFrozen(obj);     // true (freeze implies seal implies non-extensible)
 
 ### Objects
 
+The spread operator (`{...obj}`) is the idiomatic way to produce a modified copy of an object in JavaScript. It creates a **shallow** clone — nested objects are still shared by reference and must be spread again if they need to change. The pattern for a nested update is to spread every level of the path from the root down to the changed leaf. This is verbose for deeply nested trees, which is why Immer exists. For simple top-level updates, spread is zero-dependency and immediately readable.
+
 ```js
 const user = { id: 1, name: 'Alice', age: 30, role: 'user' };
 
@@ -162,6 +164,8 @@ const merged = { ...defaults, ...prefs }; // { theme: 'light', lang: 'en', fontS
 
 ### Nested Objects
 
+Every level in the path to a changed value must be explicitly spread to produce new references for those ancestor nodes. Unchanged sibling subtrees are reused as-is (structural sharing), so the operation is efficient even for large state trees — only the nodes along the mutation path are newly allocated. This depth-proportional verbosity is the main motivation for adopting Immer on projects with deeply nested state.
+
 ```js
 // ❌ Mutation
 state.user.address.city = 'NYC';
@@ -182,6 +186,8 @@ const newState = {
 ```
 
 ### Arrays
+
+All of JavaScript's mutable array methods (`push`, `pop`, `splice`, `sort`, `reverse`, `fill`, `copyWithin`) have non-mutating equivalents using spread, `filter`, `map`, and `slice`. The key habit is: never call a mutating method on an array you didn't just create. When you need `sort` or `reverse` (which mutate in place), spread first to create a copy. For arrays of objects, updating one item by id with `.map()` is the standard pattern — it is O(n) but correct; for large arrays where performance matters, consider a normalized `Map` keyed by id instead.
 
 ```js
 const items = [1, 2, 3, 4, 5];
@@ -265,6 +271,8 @@ console.log(state.count === nextState.count);  // false
 
 ### Curried Producer (reusable updater)
 
+When `produce` is called with only a recipe and no base state, it returns a **curried producer** — a reusable function that accepts a base state as its first argument and optional extra arguments after. This is the preferred pattern for defining named state-update operations: each operation is a pure function (base state in, next state out) that can be composed, tested in isolation, and used anywhere — in reducers, event handlers, or as `Array.prototype.reduce` accumulator functions.
+
 ```js
 import { produce } from 'immer';
 
@@ -290,6 +298,8 @@ const state3 = toggleDone(state2, 2);
 ```
 
 ### Immer with useReducer
+
+Wrapping a `useReducer` reducer with `produce` eliminates all the spread syntax from every case in the switch. You write mutations against the `draft` and Immer handles producing the immutable next state. This pattern is also used by Redux Toolkit's `createSlice`, which wraps every case reducer with Immer automatically. The `draft` is only valid inside the recipe — do not store references to `draft` or its sub-properties outside the `produce` call.
 
 ```js
 import { produce } from 'immer';
@@ -319,6 +329,8 @@ const [state, dispatch] = useReducer(reducer, { count: 0, todos: [] });
 
 ### Immer with Maps and Sets
 
+By default Immer only instruments plain objects and arrays. Calling `enableMapSet()` once at application startup extends this support to `Map` and `Set`, allowing you to call `draft.myMap.set(key, value)` or `draft.mySet.add(item)` inside a recipe. Without `enableMapSet()`, mutations on `Map` or `Set` values inside a draft will silently bypass Immer's tracking and produce corrupted results.
+
 ```js
 import { produce, enableMapSet } from 'immer';
 enableMapSet();
@@ -332,6 +344,8 @@ const next = produce(state, draft => {
 ```
 
 ### Immer Gotchas
+
+Immer's draft is a `Proxy` that intercepts mutations and records them. Three common mistakes break this contract: (1) both mutating the draft and returning a new value — Immer can only apply one approach per recipe; (2) storing a reference to the draft or any draft sub-object outside the `produce` call — the proxy is revoked after `produce` completes and any access will throw; (3) using an `async` recipe — Immer recipes must be synchronous because the proxy revocation happens immediately after the recipe returns.
 
 ```js
 // ❌ Don't return AND mutate the draft

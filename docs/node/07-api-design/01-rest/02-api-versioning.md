@@ -20,6 +20,8 @@ Breaking changes are inevitable as products evolve. Versioning lets you evolve t
 
 ## Strategy 1: URL Path Versioning
 
+URL path versioning is the most widely adopted strategy because it is explicit, easy to test in a browser or `curl`, and trivial to route at the infrastructure level (nginx, API gateways) based on the path prefix. The downside is a theoretical violation of REST purity: the version is not a property of the resource, but of the representation of the resource — ideally captured in content negotiation headers. In practice, developer ergonomics win and URL versioning is the de facto standard for public APIs.
+
 ```
 GET /api/v1/users
 GET /api/v2/users
@@ -68,6 +70,8 @@ app.use('/api/v2', v2);
 ---
 
 ## Strategy 2: Header Versioning
+
+Header versioning keeps URLs stable and clean — the same URL always refers to the same logical resource, and the version is metadata about the representation. This is more correct from a REST perspective and avoids baking a version into every client's hardcoded URL. The practical challenge is that headers are invisible in a browser address bar and require tools like Postman or curl flags to test. Caching is also more complex: CDNs must be configured with a `Vary: API-Version` directive to cache different versions of the same URL separately.
 
 ```
 GET /api/users
@@ -196,6 +200,8 @@ app.get('/api/users', (req, res) => {
 ---
 
 ## Versioning Architecture Patterns
+
+The naive approach to versioning — duplicating route handlers for each version — quickly becomes unmaintainable as the number of versions and endpoints grows. Two architectural patterns address this: the transformation layer (adapter pattern) keeps a single canonical business logic implementation and transforms inputs/outputs per version at the boundary; and sunset headers allow you to communicate deprecation timelines to clients without removing endpoints immediately. Both patterns reduce the long-term cost of maintaining multiple API versions.
 
 ### Transformation layer (adapter pattern)
 

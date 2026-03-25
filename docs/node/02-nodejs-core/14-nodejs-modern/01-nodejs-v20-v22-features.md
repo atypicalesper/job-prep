@@ -2,6 +2,8 @@
 
 ## Node.js Release Schedule
 
+Node.js follows a predictable release cadence: a new major version is published every October, alternating between Long Term Support (LTS) and Current releases. Even-numbered versions (18, 20, 22) become LTS and receive security and bug-fix maintenance for three years, making them the only versions appropriate for production systems. Odd-numbered versions (19, 21, 23) are short-lived Current releases that exist to ship new features and receive active development for only six months — they are for early adopters and experimentation, not production workloads. Always pin to an LTS version in `package.json` engines and deployment configurations.
+
 ```
 v20 (LTS) — Oct 2023 → Active LTS until Apr 2026
 v21       — Oct 2023 → Current (short-term, EOL Apr 2024)
@@ -15,7 +17,7 @@ Always target an LTS version for production.
 
 ## 1. Built-in Test Runner (`node:test`) — v18+ stable, v20 improved
 
-No more Jest/Mocha required for simple tests:
+`node:test` is Node.js's built-in test framework, providing `describe`/`it`/`test` structure, async test support, mocking, and (from v22) code coverage — all with zero dependencies. It removes the need to add Jest or Mocha for unit tests in simple projects, library packages, or CI pipelines where a lightweight runner is preferable. The `node --test` CLI integrates with the standard test reporter format. Use a full framework like Jest when you need snapshot testing, extensive mocking ecosystem, or team familiarity outweighs the dependency cost; use `node:test` for new projects where minimising dependencies is a priority.
 
 ```js
 // test/math.test.js
@@ -66,6 +68,8 @@ node --test --experimental-test-coverage test/**/*.test.js
 
 ## 2. Native `.env` File Loading — v20.6+
 
+Node.js v20.6 added the `--env-file` flag, which reads a `.env` file and populates `process.env` before your application code runs — the same behaviour as the popular `dotenv` package. This eliminates `dotenv` as a runtime dependency for the common case of loading environment variables from a file. Multiple `--env-file` flags can be chained, with later files overriding earlier ones, enabling the `--env-file=.env --env-file=.env.local` pattern for local overrides. Use `dotenv` when you need programmatic loading at a specific point in execution, or when targeting older Node.js versions.
+
 ```bash
 # .env
 DATABASE_URL=postgres://localhost:5432/mydb
@@ -90,6 +94,8 @@ console.log(process.env.PORT);         // '3000'
 ---
 
 ## 3. `fetch` — Stable in v21, Unflagged v18+
+
+Node.js v18 unflagged the built-in `fetch` API, which is powered by the `undici` HTTP client under the hood. This provides a browser-compatible `fetch` globally available without any package import, enabling isomorphic code that runs both in Node.js and browsers without conditional imports. `AbortSignal.timeout(ms)` (v17.3+) is the idiomatic way to add request timeouts. The native `fetch` is suitable for most HTTP client needs; use `undici` directly or `axios` when you need advanced features like interceptors, automatic retries, or custom connection pooling beyond what `fetch` exposes.
 
 ```js
 // No node-fetch needed in Node.js v18+
@@ -122,6 +128,8 @@ while (true) {
 
 ## 4. `AbortController` / `AbortSignal` — v15+, enhanced v20+
 
+`AbortController` / `AbortSignal` is the standard Web Platform API for cancelling async operations. A signal can be passed to `fetch`, stream `pipeline`, `fs.readFile`, and other Node.js APIs to cancel them in flight when the signal fires. `AbortSignal.timeout(ms)` creates a signal that auto-aborts after the specified duration without needing a `setTimeout` + `clearTimeout` pair. `AbortSignal.any([...signals])` (v20+) combines multiple signals and fires when the first one aborts — useful for composing a user-cancellation signal with a timeout signal. Prefer signals over raw timeouts for all async work that should be cancellable.
+
 ```js
 // Cancel async operations
 const controller = new AbortController();
@@ -153,6 +161,8 @@ setTimeout(() => controller.abort(new Error('User cancelled')), 1000);
 
 ## 5. `--watch` Mode — v18.11+
 
+`node --watch` restarts the process whenever a required file changes, providing the core functionality of `nodemon` without an additional package. It watches only files that were actually `require`d or `import`ed, avoiding spurious restarts from changes in unrelated directories. Use it for development servers and scripts where you want instant feedback on changes. For more control over watch paths, debouncing, or complex restart logic, `nodemon` or a task runner like `tsx --watch` remains preferable.
+
 ```bash
 # Restart server on file changes (no nodemon needed!)
 node --watch src/server.js
@@ -164,6 +174,8 @@ node --watch-path=src --watch-path=config src/server.js
 ---
 
 ## 6. Web Crypto API — v19+ (stable)
+
+The Web Crypto API (`crypto.webcrypto`) is the browser-standard cryptography interface, providing hashing, symmetric encryption (AES-GCM), asymmetric operations (ECDSA, RSA-OAEP), and key derivation (PBKDF2, HKDF) through a Promise-based API. Using `webcrypto` instead of the legacy `crypto` module produces isomorphic code that runs in Node.js, browsers, Cloudflare Workers, and Deno without modification. The underlying implementation is the same native OpenSSL code as the `crypto` module — the API surface is just standardised. Prefer `webcrypto` for new code; use `crypto` directly for legacy APIs like `crypto.createHash` that have no WebCrypto equivalent.
 
 ```js
 const { subtle, getRandomValues } = require('node:crypto').webcrypto;
@@ -195,6 +207,8 @@ console.log(Buffer.from(decrypted).toString()); // 'secret message'
 
 ## 7. `node:sqlite` — v22.5+ (experimental)
 
+Node.js v22.5 added a built-in synchronous SQLite driver (`node:sqlite`), eliminating the need for `better-sqlite3` or `sqlite3` native addons for lightweight embedded database use cases. It exposes a synchronous API (like `better-sqlite3`) rather than async, which is appropriate for SQLite's single-writer model and avoids event loop overhead for the typically fast in-process operations. Being built-in means no native build step and no version compatibility issues with Node.js upgrades. It is experimental as of v22 — use `better-sqlite3` for production until it stabilises.
+
 Built-in SQLite without `better-sqlite3`:
 
 ```js
@@ -217,6 +231,8 @@ db.close();
 
 ## 8. Explicit Resource Management — v22+ (with `--harmony-explicit-resource-management`)
 
+Explicit Resource Management (`using` / `await using`) is a TC39 proposal that brings deterministic cleanup to JavaScript, similar to `using` in C#, `with` in Python, or RAII in C++. Any object that implements `Symbol.dispose` (sync) or `Symbol.asyncDispose` (async) is automatically cleaned up when the `using`-declared variable leaves scope — even if an exception is thrown. This solves the perennial problem of resource leaks in early-return or error paths where `finally` blocks can be forgotten. Database connections, file handles, timers, and network connections are all natural candidates.
+
 The `using` / `await using` keywords from TC39:
 
 ```js
@@ -237,6 +253,8 @@ async function processOrders() {
 ---
 
 ## 9. `node:diagnostics_channel` — v15+, stable v19+
+
+`diagnostics_channel` provides a lightweight pub/sub bus for publishing structured diagnostic events within a Node.js process, without coupling the publisher to any specific monitoring library. Publishers create named channels and emit data objects; subscribers (typically monitoring/instrumentation layers) listen to those channels and extract metrics or traces. This is the mechanism OpenTelemetry's auto-instrumentation uses to hook into Node.js built-ins like `http`, `undici`, and `pg` without modifying their source. Use it to expose internal application events (slow queries, cache hits, background job completions) that observability tooling can subscribe to without application code changes.
 
 Publish/subscribe diagnostic events within Node.js (used by OTel instrumentation):
 
@@ -263,6 +281,8 @@ async function makeRequest(url) {
 ---
 
 ## 10. `node:path` / `node:url` Improvements
+
+ESM modules do not have `__dirname` or `__filename` because they are injected by the CommonJS module wrapper, which does not apply to ESM. The `import.meta.url` property provides the current module's URL as a `file://` string, which must be converted to a filesystem path using `fileURLToPath`. Node.js v21.2+ added `import.meta.dirname` and `import.meta.filename` as direct equivalents that eliminate the `fileURLToPath` / `dirname` boilerplate in modern codebases. Prefer `import.meta.dirname` in new code targeting Node 22+ and use the `fileURLToPath` pattern for compatibility with Node 18/20.
 
 ```js
 // URL path operations with import.meta (ESM)

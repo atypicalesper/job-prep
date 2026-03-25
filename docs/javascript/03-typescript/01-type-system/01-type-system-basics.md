@@ -22,6 +22,8 @@ plot(point3D); // ✅ works! Extra property z is allowed
 
 ## type vs interface — Key Differences
 
+Both `type` and `interface` can describe the shape of an object, but they differ in capabilities and intent. `interface` is open — it can be extended by other interfaces and merged by re-declaration, making it well-suited for public APIs and library types. `type` is a true alias — it can represent any type expression including unions, intersections, tuples, and primitives, not just object shapes. In practice, choose `interface` for object types that represent entities (especially when others may extend them), and `type` for computed or composed types. When in doubt, `interface` is the conventional default for object shapes in most codebases.
+
 ```typescript
 // interface:
 interface User {
@@ -72,6 +74,8 @@ type EventHandlers = {
 
 ## any vs unknown vs never
 
+These three special types occupy opposite ends of TypeScript's type hierarchy. `any` is an escape hatch that disables the type checker entirely — useful when migrating JavaScript, but it silently spreads through code and eliminates safety. `unknown` is the type-safe counterpart: it accepts any value but forces you to narrow the type before using it, keeping the type checker engaged. `never` is the "bottom type" — it represents a value that can never exist, which TypeScript uses to flag unreachable code paths and to enforce exhaustive checks over unions.
+
 ```typescript
 // any — opt out of type checking completely
 let x: any = 5;
@@ -113,6 +117,8 @@ function area(shape: Shape): number {
 
 ## Union and Intersection Types
 
+A union type (`A | B`) means a value is one of several possible types — it expands the set of accepted values. An intersection type (`A & B`) means a value must satisfy all types simultaneously — it narrows by combining requirements. Think of unions as "OR" and intersections as "AND". Unions are most useful for modeling values that can be in different states (e.g., a result that is either a success or an error). Intersections are most useful for composition — building a richer type by merging two existing ones.
+
 ```typescript
 // Union — one OR the other
 type StringOrNumber = string | number;
@@ -136,6 +142,8 @@ function process(result: Result) {
 ---
 
 ## Literal Types
+
+A literal type is an exact, specific value promoted to a type — `'north'` is a type that only accepts the string `'north'`, not any string. Literal types are the foundation of discriminated unions and give TypeScript the ability to exhaustively check switch statements. They arise naturally from `const` declarations (since a `const` can never be reassigned, its type is the literal value) and can be explicitly written in union form to define a fixed vocabulary of allowed values. Template literal types (TS 4.1+) extend this to generate string types by combining patterns.
 
 ```typescript
 // String literals:

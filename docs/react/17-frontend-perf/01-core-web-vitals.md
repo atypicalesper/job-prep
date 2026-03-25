@@ -37,6 +37,8 @@ The render time of the largest image or text block visible in the viewport.
 
 ### LCP Fixes
 
+LCP optimization is primarily about eliminating anything that delays the browser discovering and loading the largest visible element. The browser's preload scanner runs ahead of the HTML parser, but it only finds resources explicitly referenced in HTML — it cannot discover images set via JavaScript or CSS. Every fix below targets one of the four root causes: server response time, render-blocking resources, resource load time, or client-side rendering latency.
+
 **1. Preload the LCP image:**
 ```html
 <!-- Tell browser to fetch this early, before CSS/JS is processed -->
@@ -108,6 +110,8 @@ Any task >50ms is a "long task" and contributes to TBT/INP.
 ```
 
 ### INP Fixes
+
+INP measures end-to-end interaction latency: from user input to the next painted frame. The browser cannot paint a frame while JavaScript is running, so any long synchronous task during an interaction directly inflates INP. The fixes below all share one theme: get off the main thread faster, either by breaking up work into smaller pieces, delegating to a Worker, or using React's concurrent model to defer non-urgent renders.
 
 **1. Break up long tasks with `scheduler.yield()`:**
 ```js
@@ -197,6 +201,8 @@ Measures unexpected layout shifts. Score = sum of (impact fraction × distance f
 
 ### CLS Fixes
 
+CLS is caused by the browser not knowing the size of a resource before it loads, so it allocates no space for it, then shifts content when the resource arrives. Every fix below amounts to the same principle: reserve the exact space a resource will occupy before it loads, so the layout does not change when the content appears.
+
 **1. Always set image dimensions:**
 ```html
 <!-- Set width + height — browser reserves space before load -->
@@ -241,6 +247,8 @@ document.getElementById('banner-slot').appendChild(banner);
 ---
 
 ## Bundle Optimization
+
+Large JavaScript bundles are one of the most impactful sources of poor Core Web Vitals scores. The browser must download, parse, and execute all JS before it can render interactive content. The techniques below reduce both the amount of JS shipped to the client and the amount needed on first load.
 
 ### Code Splitting
 
@@ -351,6 +359,8 @@ export default {
 
 ## Image Optimization
 
+Images are typically the largest assets on a page by byte count. Modern formats (WebP, AVIF) deliver equivalent visual quality at 25–50% smaller file sizes compared to JPEG/PNG. Responsive images ensure the browser downloads only the resolution appropriate for the display size — no point sending a 2400px image to a 375px phone screen. These two techniques combined often provide the largest single reduction in page weight.
+
 ### Modern Formats
 ```
 Format   | Compression | Browser Support | Use When
@@ -396,6 +406,8 @@ import Image from 'next/image';
 
 ## Resource Hints
 
+Resource hints are declarative HTML instructions that let you steer the browser's network scheduler. The browser's default behavior is to discover resources as it parses HTML — which means fonts referenced in CSS, or images in dynamically loaded components, are discovered late. Resource hints move that discovery earlier in the pipeline without blocking rendering. The four hints form a spectrum from cheap (DNS resolution only) to expensive (full request with content in cache).
+
 ```html
 <!-- dns-prefetch: resolve DNS early -->
 <link rel="dns-prefetch" href="//api.example.com">
@@ -419,6 +431,8 @@ import Image from 'next/image';
 ---
 
 ## Performance Measurement in Code
+
+Lab tools (Lighthouse, WebPageTest) measure performance in controlled conditions; Real User Monitoring (RUM) measures it on actual user devices and connections, which is what Google uses for CWV ranking. The Performance API provides the primitives for both: `performance.now()` for fine-grained timing, the User Timing API for custom instrumentation, `PerformanceObserver` for observing CWV entries in real time. The `web-vitals` library abstracts the observer setup and handles edge cases in CWV measurement that are easy to get wrong from scratch.
 
 ```js
 // Performance API

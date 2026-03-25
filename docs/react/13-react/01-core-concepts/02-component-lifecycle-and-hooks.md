@@ -2,6 +2,8 @@
 
 ## Class Lifecycle vs Hooks — The Mapping
 
+React class components have named lifecycle methods tied to specific moments in a component's existence. Function components with hooks achieve the same effects but through a different mental model: instead of subscribing to lifecycle events, hooks let you declare a side effect and optionally its cleanup — React decides when to run them based on the dependency array. The mapping below is approximate; hooks are more composable and can express patterns that have no clean class lifecycle equivalent (like subscribing/unsubscribing to the same thing at mount and update with a single `useEffect` call).
+
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                    Class Lifecycle                                │
@@ -28,6 +30,8 @@
 ---
 
 ## useState — State in Function Components
+
+`useState` is the hook that gives function components memory. It returns the current state value and a setter function. When the setter is called, React schedules a re-render and the component function runs again with the new state value. The key mental model: state is per-component-instance and persists across renders, but is reset when the component unmounts and remounts (a different `key` triggers this). State updates are asynchronous and batched — the new value is not available synchronously after calling the setter.
 
 ```jsx
 function Counter() {
@@ -100,6 +104,8 @@ function Form() {
 ---
 
 ## useEffect — Side Effects
+
+`useEffect` is the hook for synchronizing a component with an external system — a network connection, a browser API, a third-party library, or a subscription. It runs after the browser has painted, which means it does not block the visual update. The dependency array controls when it re-runs: no array means every render, empty array means once on mount, and a populated array means whenever any listed value changes. The cleanup function (the optional return value) is React's mechanism for tearing down the effect before re-running it — critical for avoiding memory leaks and stale callbacks from subscriptions, timers, and event listeners.
 
 ```jsx
 useEffect(
@@ -181,6 +187,8 @@ function Tooltip({ targetRef }) {
 
 ## useRef — Mutable References
 
+`useRef` returns a plain object `{ current: value }` that persists across renders. Unlike state, mutating `ref.current` does not trigger a re-render — it is a stable mutable box. This makes it suitable for two distinct use cases: holding a reference to a DOM node (set via the `ref` prop), and storing mutable values that the component needs to remember but that should not cause re-renders when they change (animation frame IDs, interval handles, previous values). Think of `useRef` as the function component equivalent of an instance variable in a class component.
+
 Two primary uses: **DOM access** and **mutable values that don't trigger re-renders**.
 
 ```jsx
@@ -243,6 +251,8 @@ function RenderCounter() {
 
 ## useMemo — Memoize Computed Values
 
+`useMemo` caches the result of a computation between renders, recomputing only when specified dependencies change. It solves two related problems: expensive recalculations that would run on every render (e.g., filtering 10,000 items), and unstable object/array references that would cause downstream hooks or memoized children to re-run unnecessarily. The key constraint: `useMemo` is a performance hint, not a semantic guarantee — React may discard cached values in future concurrent rendering scenarios. Never use it to control side effects or as a substitute for `useEffect`.
+
 ```jsx
 function FilteredList({ items, filter }) {
   // Without useMemo: filters on EVERY render (even if items/filter unchanged)
@@ -271,6 +281,8 @@ const doubled = useMemo(() => count * 2, [count]);
 ---
 
 ## useCallback — Memoize Functions
+
+`useCallback` memoizes a function reference so that the same function object is returned across renders as long as its dependencies do not change. A new function is created on every render in JavaScript — without `useCallback`, this means any prop that receives an inline function always has a new reference, breaking `React.memo` optimization on children. The correct mental model: `useCallback(fn, deps)` is equivalent to `useMemo(() => fn, deps)`. Only use it when the function is passed to a `React.memo`-wrapped child or listed in a `useEffect` dependency array — otherwise the overhead of dependency comparison is not justified.
 
 ```jsx
 function Parent() {
@@ -307,6 +319,8 @@ const handleClick = useMemo(() => () => { doThing(); }, [dep]);
 ---
 
 ## useReducer — Complex State Logic
+
+`useReducer` is an alternative to `useState` for state that involves multiple related values or complex transition logic. It adopts the Redux pattern at the component level: you dispatch named actions, and a pure reducer function determines the next state based on the current state and the action. This makes state transitions explicit and testable in isolation (the reducer is just a pure function). The `dispatch` function has a stable identity across renders (unlike setter closures), which makes it safe to pass deeply into a component tree without causing unnecessary re-renders.
 
 ```jsx
 const initialState = { count: 0, step: 1 };
@@ -351,6 +365,8 @@ function Counter() {
 ---
 
 ## useContext — Sharing Values Across the Tree
+
+`useContext` reads the nearest matching `Context.Provider` value above the consuming component in the tree, without requiring explicit prop passing through intermediate components. It is the solution to prop drilling for values that are conceptually global within a subtree — theme, authenticated user, locale, feature flags. The key limitation: every component that calls `useContext` re-renders whenever the context value reference changes, regardless of which property of the value the component actually uses. Splitting a large context into smaller, more focused contexts is the primary optimization technique.
 
 ```jsx
 const ThemeContext = React.createContext('light');
@@ -406,6 +422,8 @@ const ThemeContext = React.createContext();
 
 ## Rules of Hooks — And Why
 
+The Rules of Hooks are not arbitrary — they exist because React relies on the stable call order of hooks within a component to associate each hook call with its corresponding state slot in the component's fiber. React does not use hook names or keys to identify hooks; it uses their position in the call order. If a hook is conditionally called, the number of hook calls can differ between renders, causing React to read the wrong state for every hook that comes after the conditional one. The ESLint plugin `react-hooks/rules-of-hooks` statically enforces these rules at development time.
+
 ### Rule 1: Only Call Hooks at the Top Level
 
 ```jsx
@@ -447,6 +465,8 @@ function useUser() {
 ---
 
 ## Custom Hooks — Reusable Logic
+
+A custom hook is any function whose name starts with `use` and that calls other React hooks. They are the primary mechanism for extracting and sharing stateful logic between components without changing the component hierarchy. Before hooks, this required higher-order components or render props — patterns that added nesting and made component trees harder to follow. Custom hooks give you the same reuse capability with a clean function-call API. Each component that calls a custom hook gets its own independent copy of the hook's state.
 
 ### Pattern: Extracting Shared Logic
 

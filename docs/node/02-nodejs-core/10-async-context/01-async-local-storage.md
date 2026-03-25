@@ -4,6 +4,8 @@
 
 ## The Problem
 
+In multi-threaded languages, thread-local storage lets each thread carry its own implicit context (a request ID, a transaction handle) without passing it as a function argument. Node.js is single-threaded but serves many concurrent requests via the event loop — there is no equivalent of a "thread" to hang context on. The naive solution is to pass the context (traceId, userId) as an extra argument to every function that might need it, which pollutes every function signature in the codebase. `AsyncLocalStorage` solves this by associating a context store with an *async execution context* rather than a thread, so every async operation spawned within a request automatically inherits the request's context.
+
 ```javascript
 // Without AsyncLocalStorage: pass context everywhere (prop drilling)
 async function handleRequest(req, res) {
@@ -28,6 +30,8 @@ async function handleRequest(req, res) {
 ---
 
 ## Basic Usage
+
+`AsyncLocalStorage.run(store, fn)` creates a *context scope*: every async operation spawned inside `fn` (Promises, timers, callbacks, streams) inherits that store. Calling `als.getStore()` from anywhere within those async descendants returns the same store object without it being passed as a function argument. The middleware pattern — calling `als.run(ctx, next)` once per request — is the idiomatic setup: all downstream handlers, database calls, and logging utilities automatically have access to the request context. The store value is typically a plain object; keep it small (a few string IDs) rather than storing entire request/response objects to avoid memory leaks.
 
 ```javascript
 const { AsyncLocalStorage } = require('async_hooks');
@@ -103,6 +107,8 @@ This is why context persists across:
 ---
 
 ## Production Pattern: Logger with Automatic Context
+
+The most valuable application of `AsyncLocalStorage` in production is building a logger that automatically includes the `traceId`, `spanId`, and `userId` from the current request on every log line — no argument threading required. This pattern keeps function signatures clean and ensures that log correlation works even through deeply nested call chains, third-party library callbacks, and asynchronous retries. Every log line written during a request automatically carries the same `traceId`, making it trivial to filter logs for a single request in Splunk, Datadog, or Elastic.
 
 ```typescript
 import { AsyncLocalStorage } from 'async_hooks';
@@ -184,6 +190,8 @@ async function chargePayment(orderId: string, amount: number) {
 
 ## Multiple Stores
 
+You can create as many independent `AsyncLocalStorage` instances as you need, each with its own type and lifecycle. A common pattern is one store for request metadata (traceId, userId) and a separate one for database transaction context. Each store is fully independent: a nested `run()` on store B creates a new scope for store B while store A's value remains unchanged. When the nested `run()` completes, store B reverts to its outer value (or `undefined`). This composability enables middleware layers to each own their slice of context without interfering.
+
 ```typescript
 // You can have multiple independent stores:
 const requestStore = new AsyncLocalStorage<{ traceId: string }>();
@@ -210,6 +218,8 @@ requestStore.run({ traceId: 'abc' }, async () => {
 ---
 
 ## Database Transaction Pattern
+
+Propagating a database transaction client through every function that performs a query is one of the most tedious patterns in backend development. `AsyncLocalStorage` provides a clean solution: wrap the transaction in `txStore.run({ client }, fn)`, and any database utility that calls `txStore.getStore()` will automatically use the transactional client if one is active, or fall back to the connection pool otherwise. This means `INSERT`, `UPDATE`, and `SELECT` helpers written without transaction awareness participate in transactions transparently when called from within a `withTransaction` block.
 
 ```typescript
 // Elegant transaction propagation without passing `client` everywhere:
@@ -252,6 +262,8 @@ await withTransaction(async () => {
 ---
 
 ## Performance Considerations
+
+`AsyncLocalStorage` is not free — it hooks into Node.js's async tracking infrastructure (`async_hooks`) which adds a small overhead to every async operation creation. In Node.js v16+ the implementation was significantly optimised (switching from full async_hooks to a lighter mechanism), reducing overhead to roughly 2–5% in real applications. The most common performance mistake is calling `getStore()` inside a tight loop; call it once at the top of a function and reuse the reference. For synchronous CPU-intensive sections that never spawn async work, you can skip `getStore()` calls entirely by caching the value before entering the loop.
 
 ```javascript
 // AsyncLocalStorage has overhead — benchmark before heavy use:

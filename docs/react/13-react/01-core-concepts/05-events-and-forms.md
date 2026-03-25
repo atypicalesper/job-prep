@@ -23,6 +23,8 @@ function Form() {
 
 ## Controlled vs Uncontrolled
 
+Controlled and uncontrolled describe who is the source of truth for an input's value. In a controlled input, React state is the single source of truth — every keystroke triggers an `onChange` that updates state, which flows back into the `value` prop. This gives React full visibility into the input's value at all times, enabling real-time validation and conditional UI. In an uncontrolled input, the DOM owns the state; you read the value imperatively via a ref only when you need it (e.g., on form submit). Uncontrolled inputs have less re-render overhead and are simpler for basic forms, but they cannot support real-time derived behavior like character counters or format-as-you-type.
+
 ### Controlled (React owns state)
 ```jsx
 function ControlledInput() {
@@ -56,6 +58,8 @@ function UncontrolledInput() {
 
 ## Form with Multiple Fields
 
+Managing multiple form fields with individual `useState` calls creates boilerplate and makes reset logic verbose. The common pattern is to use a single state object and a generic `handleChange` handler that uses the input's `name` attribute as a computed property key to update the correct field. This approach scales to any number of fields without adding new state variables and integrates cleanly with HTML `name` attributes that match API field names.
+
 ```jsx
 function MultiForm() {
   const [form, setForm] = React.useState({ name: '', email: '' });
@@ -84,6 +88,8 @@ function MultiForm() {
 
 ## Select, Checkbox, Radio
 
+Different HTML input types expose their current value through different properties: text inputs and selects use `e.target.value`, checkboxes use `e.target.checked`, and multi-selects require iterating over `e.target.selectedOptions`. React normalizes these into the same controlled pattern but the property you read from the event differs by input type. Radio groups are handled by giving each radio the same `name` and `checked` computed from the current state value.
+
 ```jsx
 // Select
 <select value={selected} onChange={e => setSelected(e.target.value)}>
@@ -107,6 +113,8 @@ function MultiForm() {
 ---
 
 ## Validation Pattern
+
+Client-side validation provides immediate feedback to users without a network round-trip. The simplest approach is to validate in the `onChange` handler and store any error message in state alongside the field value. The error is shown only when non-empty. For accessibility, associate the error message with the input via `aria-describedby` so screen readers announce it when the input is focused. More complex forms (multi-step, cross-field validation, async checks) benefit from dedicated form libraries like React Hook Form or Zod schemas.
 
 ```jsx
 function ValidatedForm() {
@@ -153,6 +161,8 @@ function ValidatedForm() {
 
 ## Custom Input Component Pattern
 
+Building a reusable controlled input component encapsulates the label, input, and error message into a single composable unit. The component accepts `value` and `onChange` from the parent — maintaining the controlled pattern — while handling its own accessibility concerns (label association via `useId`) and error display internally. This is the pattern used by most design systems to ensure every form field in an application has consistent markup, accessibility attributes, and visual behavior.
+
 ```jsx
 // Fully reusable controlled input
 function TextField({ label, value, onChange, error }) {
@@ -170,6 +180,8 @@ function TextField({ label, value, onChange, error }) {
 ---
 
 ## Debouncing Input
+
+Debouncing defers an action until a user has stopped typing for a specified delay. Without debouncing, a search-as-you-type feature would fire an API request on every single keystroke — potentially dozens of concurrent requests for a 10-character query. The `useDebounce` hook wraps the debounce logic: it maintains a separate `debouncedValue` that only updates after the user pauses for `delay` milliseconds. The `useEffect` that fires the search API call depends on `debouncedValue`, not the raw `query`, so it only runs when the user has stopped typing.
 
 ```jsx
 function SearchBox() {

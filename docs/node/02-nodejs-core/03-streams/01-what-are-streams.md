@@ -24,6 +24,8 @@ fs.createReadStream('bigfile.csv')
 
 ## 4 Types of Streams
 
+These four stream types form a composable system. A Transform is the most powerful: it is both a Readable and a Writable simultaneously, allowing it to sit in the middle of a pipeline and convert data as it flows through. Duplex is similar but the read and write sides are independent (they don't process each other's data). Real pipelines are built by connecting these types: `Readable.pipe(Transform).pipe(Transform).pipe(Writable)`.
+
 ```
 Readable  — source of data     (fs.createReadStream, http req, process.stdin)
 Writable  — destination        (fs.createWriteStream, http res, process.stdout)
@@ -34,6 +36,8 @@ Transform — duplex that modifies data (zlib.createGzip, crypto streams)
 ---
 
 ## Stream Events
+
+Stream events are the low-level API for interacting with streams. Each stream type emits a specific set of events at key lifecycle moments. Most application code uses `pipe()` or `pipeline()` which handle these events automatically — but knowing the events is essential when implementing custom streams, debugging stream pipelines, or handling errors correctly at each stage.
 
 ```javascript
 // Readable events:
@@ -55,6 +59,8 @@ writable.on('unpipe', src => { });
 ---
 
 ## Flowing vs Paused Mode
+
+A Readable stream has two operating modes that determine whether it pushes data to your code automatically or waits to be pulled. The mode exists because different consumers want different control: event-driven code typically uses flowing mode (data arrives as events), while manual iteration or backpressure-aware consumers use paused mode. Mixing both modes in the same stream is a common source of bugs — attach a `data` listener and the stream switches to flowing; call `readable.pause()` to switch back; use `async for-of` (the modern approach) which manages the mode automatically.
 
 Readable streams start in **paused mode**. They switch to **flowing** when:
 - You add a `data` event handler
@@ -87,7 +93,7 @@ for await (const chunk of readable) {
 
 ## highWaterMark — Buffer Size
 
-Controls how much data is buffered before backpressure kicks in:
+`highWaterMark` is the threshold that governs when a stream "pauses" its source and when a writable signals that it can accept more data. It is not a hard limit — data can accumulate beyond it — but crossing it triggers backpressure signals (`write()` returning `false`, the Readable pausing). Setting it too low wastes I/O efficiency with frequent start-stop cycles; too high and you risk large memory spikes when the consumer is slow. The default 64KB is a reasonable balance for file and network I/O.
 
 ```javascript
 // Default: 64KB for byte streams, 16 objects for object mode
@@ -103,6 +109,8 @@ const writable = fs.createWriteStream('output.txt', {
 ---
 
 ## Creating Custom Streams
+
+Custom streams are created by extending the built-in `Readable`, `Writable`, or `Transform` classes and implementing the corresponding internal method (`_read`, `_write`, or `_transform`). Node.js calls these internal methods when the stream needs more data or needs to flush data — your job is to implement the logic and signal completion via `callback()` or `this.push(null)`. The `objectMode` option switches the stream from Buffer/string chunks to arbitrary JavaScript objects, which is useful for in-memory data processing pipelines.
 
 ```javascript
 const { Readable, Writable, Transform } = require('stream');

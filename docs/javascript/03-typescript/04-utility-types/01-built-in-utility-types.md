@@ -6,6 +6,8 @@ TypeScript ships with a library of generic utility types that transform existing
 
 ## Object Transformation
 
+TypeScript's object transformation utilities let you derive new types from existing ones without repeating property definitions. They all operate on an existing interface or type alias and produce a new type — so when your base type changes, all derived types update automatically. This is the key advantage over manually rewriting similar types: a single source of truth. The most common pattern is deriving `Create`, `Update`, and `Read` payload types from a single canonical entity type.
+
 ```typescript
 interface User {
   id: string;
@@ -54,6 +56,8 @@ type DayCount = Record<'mon' | 'tue' | 'wed' | 'thu' | 'fri', number>;
 
 ## Union Manipulation
 
+These utilities operate on union types rather than object types. They let you surgically remove or extract members from a union, which is essential when you need to derive a restricted union from a larger one. `Exclude` and `Extract` are opposites and are themselves implemented as distributive conditional types — understanding that they work member-by-member helps explain their behavior with complex unions.
+
 ```typescript
 type A = 'a' | 'b' | 'c';
 type B = 'b' | 'c' | 'd';
@@ -75,6 +79,8 @@ type T2 = NonNullable<number | null>;              // number
 ---
 
 ## Function Types
+
+These utilities let you extract type information from functions and classes without duplicating their signatures. The practical benefit is keeping type definitions in sync automatically: if you change the function's signature, any type derived with `Parameters` or `ReturnType` updates for free. `Awaited` is especially important for async functions — it unwraps nested Promise chains so you get the final resolved value type rather than the intermediate `Promise<T>`.
 
 ```typescript
 function fetchUser(id: string, include: 'posts' | 'comments'): Promise<User> {
@@ -112,6 +118,8 @@ type DBParams = ConstructorParameters<typeof Database>;
 
 ## String Utilities (TS 4.1+)
 
+TypeScript 4.1 introduced intrinsic string manipulation types that operate on string literal types at the type level — the same transformations as JavaScript's `String.prototype` methods, but applied to type-level strings. Their primary purpose is to transform property name keys in mapped types, enabling patterns like automatically generating camelCase getter names from a set of lowercase property names. They only operate on string literal types; applying them to `string` (the widened type) just returns `string`.
+
 ```typescript
 type Name = 'hello world';
 
@@ -148,6 +156,8 @@ type Getters = {
 ---
 
 ## Combining Utility Types
+
+Utility types compose naturally — the output of one is a valid input for another. This allows you to express complex type transformations concisely by chaining utilities rather than writing a mapped type from scratch. The key to reading composed types is to work from the inside out: resolve the innermost utility first, then apply each outer wrapper in turn. When built-in utilities do not compose deeply enough (e.g., `Partial` is only one level deep), you can implement a recursive custom utility that mirrors the pattern.
 
 ```typescript
 // Real-world patterns:

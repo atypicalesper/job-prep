@@ -17,6 +17,8 @@ In concurrent mode React can:
 
 ## createRoot (React 18)
 
+`createRoot` is the opt-in entry point to React 18's concurrent renderer. All React 18 features — automatic batching, `useTransition`, `useDeferredValue`, Suspense for data — require the concurrent renderer and are only available after opting in via `createRoot`. The legacy `ReactDOM.render` still works in React 18 but uses the synchronous renderer and does not enable concurrent features. Migrating is a one-line change in your app entry point.
+
 ```jsx
 // React 17 (legacy)
 import ReactDOM from 'react-dom';
@@ -32,6 +34,8 @@ Opting into `createRoot` enables concurrent features and automatic batching.
 ---
 
 ## Automatic Batching
+
+Batching is React's mechanism for grouping multiple state updates from the same synchronous block into a single re-render. In React 17, this only worked inside React-managed event handlers (like `onClick`). Updates in `setTimeout`, `Promise.then`, or native event listeners each triggered separate re-renders. React 18's automatic batching extends this to all contexts, reducing render count and preventing intermediate renders where the UI would briefly show partially-updated state.
 
 React 18 batches **all** state updates by default — even those inside setTimeout, Promises, and native event handlers.
 
@@ -186,6 +190,8 @@ Without `startTransition`, navigating would immediately show the `<PageSkeleton>
 
 ## useSyncExternalStore
 
+`useSyncExternalStore` is the React 18 hook for safely subscribing to external mutable stores. The "tearing" problem it solves: in concurrent mode, React can pause and resume a render across multiple frames. If an external store (not React state) changes value between two render passes of the same tree, different components can read different snapshots of the store — producing a visually inconsistent ("torn") UI. `useSyncExternalStore` prevents this by taking a snapshot of the store at the start of each render and using that consistent snapshot throughout. Every state management library (Zustand, Redux) that supports React 18 uses this hook internally.
+
 Safely subscribes to external mutable stores (Redux, Zustand, browser APIs) without tearing.
 
 ```jsx
@@ -235,6 +241,8 @@ export function LikeButton({ postId }) {
 ---
 
 ## Streaming SSR
+
+Traditional SSR blocks: the server must complete all data fetching and render the entire page to a string before sending any HTML to the browser. Streaming SSR (React 18 + Node.js HTTP streaming) allows the server to send the initial shell — headers, navigation, static layout — immediately, then stream in content sections as their data resolves, each wrapped in a `<Suspense>` boundary. The browser can start parsing and displaying the shell before the full page arrives, significantly improving Time to First Byte (TTFB) and Largest Contentful Paint (LCP) metrics on data-heavy pages.
 
 React 18 can stream HTML from the server, sending pieces of the page as they become ready rather than waiting for everything.
 

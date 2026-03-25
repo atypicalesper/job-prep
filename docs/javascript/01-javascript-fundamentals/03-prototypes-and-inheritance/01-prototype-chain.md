@@ -37,6 +37,8 @@ This is the most confused concept in JavaScript. They are DIFFERENT things:
 
 `__proto__` is the **actual prototype of an object instance**. Every object has it.
 
+`__proto__` is the live chain link — the internal `[[Prototype]]` slot exposed as a property. When you access a property that doesn't exist on an object, the engine follows `__proto__` to the next object in the chain. It is non-standard (standardized only for web compatibility in ES2015) and should not be used in production code; use `Object.getPrototypeOf()` and `Object.setPrototypeOf()` instead.
+
 ```javascript
 const obj = {};
 obj.__proto__ === Object.prototype; // true
@@ -46,6 +48,8 @@ obj.__proto__ === Object.prototype; // true
 ### `.prototype` — The Blueprint for Future Instances
 
 `.prototype` exists only on **functions** (constructors). It becomes the `__proto__` of objects created with `new`.
+
+`.prototype` is not the prototype of the function itself — it is the object that will become the `__proto__` of any instance created with `new FunctionName()`. Adding methods to `Constructor.prototype` means all current and future instances share those methods without each one having its own copy, which is why prototype-based method sharing is memory-efficient.
 
 ```javascript
 function Dog(name) {
@@ -85,6 +89,8 @@ fido (instance)  ────────┘
 
 ## How Property Lookup Works
 
+Property lookup in JavaScript follows a two-step algorithm: first, check the object's own properties (the ones directly set on that instance); second, if not found, walk up the prototype chain one link at a time until the property is found or the chain terminates at `null`. Own properties always shadow prototype properties with the same name. This is why methods defined on `Constructor.prototype` are accessible on all instances without being listed in the instance's own property set.
+
 ```javascript
 function Animal(name) {
   this.name = name; // own property
@@ -112,6 +118,8 @@ cat.blah;   // Not found anywhere → undefined
 
 ## Object.getPrototypeOf vs __proto__
 
+`Object.getPrototypeOf` is the standardized, stable API for reading the prototype of any object. It is always preferred over the `__proto__` accessor in production code because `__proto__` is a legacy feature that may not exist on objects created with `Object.create(null)`. Similarly, `Object.setPrototypeOf` is the standard way to change an object's prototype, though changing the prototype of an existing object mid-execution is a very slow operation in all JS engines and should be avoided.
+
 ```javascript
 const obj = {};
 
@@ -132,6 +140,8 @@ Object.setPrototypeOf(child, proto); // changes existing object's proto
 ---
 
 ## hasOwnProperty
+
+`hasOwnProperty` is the standard way to distinguish between an object's own properties and those inherited from its prototype chain. It is essential when iterating over an object's properties with `for...in`, which walks the entire prototype chain and includes inherited enumerable properties. In modern code, prefer the static `Object.hasOwn(obj, key)` (ES2022) over `obj.hasOwnProperty(key)` because it works correctly even on objects that override `hasOwnProperty` or that have `Object.create(null)` as their prototype.
 
 Checks if a property is on the object ITSELF, not inherited:
 
@@ -163,6 +173,8 @@ Object.hasOwn(alice, 'name'); // true (ES2022)
 
 ## Prototype Chain Performance
 
+Every prototype lookup that doesn't find the property on the object itself adds one more pointer dereference. Modern JS engines (V8, SpiderMonkey) use hidden classes and inline caches to optimize common lookup patterns, but these optimizations work best when the prototype chain is short and stable. Chains deeper than 3–4 levels are unusual in practice and should be a design signal. Mutating prototypes at runtime (with `Object.setPrototypeOf`) invalidates the engine's inline caches and causes significant, hard-to-profile slowdowns.
+
 Property access performance degrades with chain length:
 
 ```javascript
@@ -184,6 +196,8 @@ speak.call(cat); // avoids prototype lookup on each call
 ---
 
 ## Prototype Pollution
+
+Prototype pollution is a class of security vulnerabilities unique to JavaScript's prototype-based inheritance. Because all plain objects inherit from `Object.prototype`, any code that adds a property to `Object.prototype` — even indirectly through a naive recursive merge — instantly affects every object in the runtime. Attackers exploit this by crafting input data that contains keys like `__proto__` or `constructor`, turning a data-merging operation into a global state mutation. This can lead to authentication bypasses, privilege escalation, or denial of service.
 
 A security vulnerability where an attacker modifies `Object.prototype`:
 
@@ -231,6 +245,8 @@ Object.freeze(Object.prototype);
 ---
 
 ## Walking the Full Chain
+
+Programmatically walking the prototype chain is a useful debugging and introspection technique. It reveals the full inheritance hierarchy of any value, showing every prototype object from the instance up to `Object.prototype`. Functions have an interesting chain: they are instances of `Function`, so their chain is `fn → Function.prototype → Object.prototype → null`.
 
 ```javascript
 function getFullChain(obj) {

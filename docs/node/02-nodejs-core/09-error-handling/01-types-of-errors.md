@@ -6,7 +6,7 @@ This is the most important distinction in Node.js error handling.
 
 ### Operational Errors — Expected Failures
 
-Runtime problems that are expected in a correctly-written program. NOT bugs.
+Operational errors are runtime failures that a correctly-written program must anticipate and handle. They are not bugs — they are the normal consequence of interacting with external systems that can fail: networks go down, files get deleted, users submit bad data. The appropriate response to an operational error is a controlled action: retry with backoff, return a 4xx/5xx response, log the event, fall back to a default. The system remains in a known, consistent state after handling them.
 
 ```
 Examples:
@@ -23,7 +23,7 @@ Examples:
 
 ### Programmer Errors — Bugs
 
-Mistakes in code. Should NOT be caught and swallowed — they indicate unknown state.
+Programmer errors are defects in the code itself — incorrect assumptions about types, null dereferences, algorithm bugs. Unlike operational errors, catching and silently continuing from a programmer error is dangerous: the system is now in an unknown state, and further operations on corrupt data can cause subtle downstream failures that are much harder to diagnose than the original crash. The correct response is to let the process terminate (so the process manager restarts it in a clean state) and fix the defect.
 
 ```
 Examples:
@@ -39,6 +39,8 @@ Examples:
 ---
 
 ## Error Class Hierarchy
+
+JavaScript has a built-in `Error` class hierarchy where each subtype represents a distinct category of mistake. Node.js extends this with *system errors* — objects that have an additional `code` property (e.g., `ENOENT`, `ECONNREFUSED`) corresponding to the underlying OS error code. Understanding the hierarchy lets you write `instanceof` checks that target the right level of specificity: catching a `TypeError` means you want to handle type mistakes; catching only `ENOENT` means you specifically want to handle missing files and let other errors propagate.
 
 ```
 Error
@@ -63,6 +65,8 @@ Node.js System Errors:
 ---
 
 ## System Error Codes
+
+When a Node.js I/O operation fails, the error object carries OS-level metadata beyond the message string: `code` (the symbolic error constant like `ENOENT`), `errno` (the numeric code), `syscall` (which OS call failed), and sometimes `path` or `address`. Checking `err.code` rather than parsing `err.message` strings is the correct and stable way to handle specific I/O failures programmatically. For example, `ENOENT` means "create the file", `EADDRINUSE` means "try a different port", and `ECONNRESET` means "the remote peer disconnected mid-request and you should retry".
 
 ```javascript
 const fs = require('fs');
@@ -94,6 +98,8 @@ const errorCodes = {
 ---
 
 ## Custom Error Classes
+
+Built-in `Error` types carry only a message and a stack trace, which is insufficient for an application that needs to distinguish a 404 from a 422 or attach structured validation details. Custom error classes solve this by subclassing `Error` and adding domain-specific properties like `statusCode`, `code`, and `details`. The key discipline is calling `Error.captureStackTrace(this, this.constructor)` to exclude the constructor from the stack trace, and setting `this.name` so logs and stack traces identify the subclass rather than just "Error". A shared `isOperational` flag lets the global error handler decide whether to return a structured response (operational) or crash and restart (programmer error).
 
 ```javascript
 // Base application error
@@ -177,6 +183,8 @@ async function createUser(data) {
 ---
 
 ## Error Handling Middleware in Express
+
+Express distinguishes error-handling middleware from regular middleware solely by function arity: a handler with exactly four parameters `(err, req, res, next)` is treated as an error handler and is only invoked when an error is passed to `next(err)`. This central error handler is the right place to: log every error, map `isOperational` errors to structured HTTP responses, and either return a generic 500 or crash the process for programmer errors. Placing all error-formatting logic here keeps route handlers clean and ensures consistent API error shapes across the whole application.
 
 ```javascript
 // Error handler (must have 4 params):

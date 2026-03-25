@@ -4,6 +4,8 @@
 
 ## Service-to-Service Communication Patterns
 
+In a microservices architecture, services are independent processes that must collaborate to fulfill business operations. Unlike a monolith where a function call is in-process, cross-service communication traverses a network — which is unreliable, adds latency, and can fail partially. The fundamental choice is between synchronous communication (the caller waits for a result) and asynchronous communication (the caller fires a message and continues). Synchronous calls are simpler to reason about for sequential workflows and operations where the result is immediately needed; asynchronous messaging decouples service lifecycles, enables fan-out, and improves resilience at the cost of eventual consistency and more complex error handling. Choosing the right model for each interaction is one of the most consequential design decisions in a distributed system.
+
 ```
 Synchronous (Request-Response):
   REST over HTTP    — simple, universal, human-readable
@@ -24,6 +26,8 @@ When to choose:
 ---
 
 ## Service Discovery
+
+In microservices, services are not static. Instances are created and destroyed constantly as the system scales up and down, crashes and recovers, and rolls out new versions. Hardcoding service locations as fixed IP addresses or hostnames breaks immediately once any instance is replaced. Service discovery is the mechanism by which services locate each other dynamically: each instance registers its address with a registry at startup and deregisters on shutdown, and callers query the registry at runtime to find healthy instances. There are two broad approaches — client-side discovery (the caller resolves the address and load-balances itself) and server-side discovery (a load balancer or platform like Kubernetes handles routing transparently). DNS-based discovery, which Kubernetes uses natively, is the simplest model for most teams.
 
 ```
 Problem: in microservices, service instances come and go (scaling, restarts,
@@ -116,6 +120,8 @@ class ServiceClient {
 
 ## API Gateway
 
+Without an API Gateway, every client must know the address of every microservice, and every service must independently implement auth, rate limiting, SSL termination, and logging — duplicating infrastructure concerns across dozens of teams. An API Gateway is a single entry point that sits in front of all services and handles these cross-cutting concerns centrally. This gives you one place to enforce authentication, one place to see all inbound traffic, and one place to manage routing rules. The tradeoff is that the gateway becomes a potential single point of failure (mitigated with redundancy) and a bottleneck (mitigated with horizontal scaling). Managed options like AWS API Gateway or Kong are common at scale; Nginx or Traefik are popular for self-hosted setups.
+
 ```
 Single entry point for all client requests.
 Handles cross-cutting concerns so microservices don't have to.
@@ -146,6 +152,8 @@ Examples: AWS API Gateway, Kong, Nginx, Envoy, Traefik
 ---
 
 ## BFF — Backend for Frontend
+
+A single generic API that serves all clients equally tends to produce either over-fetching (clients receive more fields than they need) or multiple round trips (clients make several calls to assemble one screen). The Backend for Frontend pattern addresses this by creating a dedicated aggregation layer for each client type — mobile, web, partner API — that speaks the client's natural language and returns exactly the shape of data that client needs. BFFs are owned by the frontend team rather than a shared backend team, which removes the coordination overhead of cross-team API negotiation. BFFs are complementary to an API Gateway: the gateway handles platform-level concerns (auth, routing, rate limiting), while the BFF handles product-level concerns (data aggregation, response shaping, client-specific business rules).
 
 ```
 Problem: mobile app, web app, and partner API all have different data needs.
@@ -204,6 +212,8 @@ app.get('/profile/:userId', authenticate, async (req, res) => {
 ---
 
 ## Circuit Breaker — Preventing Cascade Failures
+
+In synchronous microservice communication, a slow or failing downstream service is more dangerous than a completely dead one. A dead service fails fast; a slow service holds connections open, consumes thread-pool slots, and causes the calling service to accumulate pending requests until it runs out of resources itself — a cascade failure. The Circuit Breaker pattern prevents this by tracking recent failure rates and "tripping" to an open state when failures exceed a threshold, at which point all requests to the failing service are rejected immediately without even attempting a network call. This fast-fail behavior protects the caller's resources and gives the downstream service time to recover. The pattern mirrors a physical electrical circuit breaker: it opens under overload, can be tested cautiously (half-open state), and closes again when the fault clears.
 
 ```
 Problem:
@@ -313,6 +323,8 @@ async function callPaymentService(order: Order) {
 
 ## Service Mesh
 
+As a microservices system grows, the same infrastructure concerns — retries, timeouts, mutual TLS, circuit breaking, tracing — get reimplemented in every service, sometimes inconsistently. A Service Mesh removes this duplication by extracting network concerns into the infrastructure layer itself: a sidecar proxy (typically Envoy) is injected alongside every service pod and transparently intercepts all inbound and outbound traffic. A control plane (Istio, Linkerd) manages the configuration of all sidecars centrally. From the service's perspective it communicates over plain localhost; the mesh handles encryption, observability, and resilience invisibly. The key trade-off is significant operational complexity — service meshes require understanding a new control plane, sidecar overhead, and extensive YAML configuration. They are worth it at large scale or when zero-trust networking is a requirement.
+
 ```
 Problem: every service needs to implement its own:
   - Retries, timeouts
@@ -352,6 +364,8 @@ Tradeoff:
 ---
 
 ## Distributed Tracing
+
+In a microservices system, a single user request may fan out through a dozen services before a response is returned. When something goes wrong — high latency, an error, a timeout — traditional per-service logs are insufficient because they show you each service's isolated view, not the causal chain across the whole request. Distributed tracing assigns a unique `traceId` to each request at its entry point and propagates it through every downstream call via HTTP headers. Each service records a `span` — a timed unit of work — and tags it with the trace ID and its parent span ID. A tracing backend (Jaeger, Tempo, Zipkin) then assembles all spans sharing a trace ID into a flame-graph-style waterfall, revealing exactly which service introduced latency or produced an error. OpenTelemetry is the vendor-neutral standard for instrumentation.
 
 ```javascript
 // OpenTelemetry — instrument once, export to any backend (Jaeger, Tempo, etc.)
@@ -409,6 +423,8 @@ async function processOrder(orderId: string) {
 ---
 
 ## Retry Patterns — Preventing Thundering Herd
+
+Retrying a failed request is the simplest form of resilience, but naive retries can make an overloaded downstream service worse. If a service goes down and recovers, all clients that were waiting with a fixed retry interval will storm it simultaneously — the "thundering herd" — potentially overwhelming it again the moment it comes back up. Exponential backoff solves the first problem by increasing the wait between retries, reducing pressure on the recovering service. Jitter (randomizing the delay) solves the thundering herd: if 1000 clients all compute `2^attempt * 100ms` they still retry at the same times; adding `Math.random()` spreads them across the backoff window. The critical constraint is to only retry idempotent operations — retrying a non-idempotent write (like charging a card) without deduplication causes duplicate side effects.
 
 ```typescript
 // Exponential backoff with jitter:

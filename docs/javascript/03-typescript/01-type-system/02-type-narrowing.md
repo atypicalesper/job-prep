@@ -6,6 +6,8 @@ Narrowing = TypeScript refining a broad type (e.g., `string | number`) to a spec
 
 ## typeof Guard
 
+`typeof` is a JavaScript runtime operator that returns a string describing a value's primitive type. TypeScript understands `typeof` checks inside conditionals and uses them to narrow the type within that branch — this is one of the most common narrowing mechanisms. It works reliably for the seven primitive types but has a well-known quirk: `typeof null === 'object'`, so a null check must be handled separately when narrowing nullable types.
+
 ```typescript
 function process(val: string | number | boolean) {
   if (typeof val === 'string') {
@@ -25,6 +27,8 @@ function process(val: string | number | boolean) {
 ---
 
 ## instanceof Guard
+
+`instanceof` checks whether an object was created by a specific constructor function by walking the prototype chain. TypeScript narrows the type to that class in the truthy branch, giving you access to all of its methods and properties. It is the idiomatic way to distinguish between class instances in a union — use it when your union members are actual class instances rather than plain objects.
 
 ```typescript
 function formatDate(val: Date | string): string {
@@ -51,6 +55,8 @@ function makeSound(animal: Dog | Cat) {
 
 ## in Operator Guard
 
+The `in` operator checks whether a property exists on an object. TypeScript uses this to narrow union types by treating the presence of a unique property as a discriminator. It is most useful when your union is composed of plain object types (not class instances) that each have a distinctive property — for example, `'radius' in shape` tells TypeScript the shape must be a `Circle`. Use `in` when you cannot add a literal discriminant tag and want structural discrimination instead.
+
 ```typescript
 interface Circle { kind: 'circle'; radius: number; }
 interface Square { kind: 'square'; side: number; }
@@ -73,6 +79,8 @@ function area(shape: Shape): number {
 ---
 
 ## Discriminated Unions (Tagged Unions) — Most Powerful Pattern
+
+A discriminated union is a union of object types that all share a common property with distinct literal types — the "tag" or "discriminant". TypeScript narrows the entire union to the correct member just by checking the tag, making `switch`/`case` statements fully type-safe and exhaustive. This is the preferred pattern for modeling state machines, async states, action types (Redux), and API responses. The key benefit over plain unions is that adding a new variant automatically causes compile errors in every switch that does not handle it — the compiler enforces completeness.
 
 ```typescript
 type Result<T> =
@@ -115,6 +123,8 @@ function reducer(state: number, action: Action): number {
 ---
 
 ## Type Predicates (User-Defined Type Guards)
+
+When narrowing logic is too complex to express inline (e.g., checking a deeply nested property or calling external validation), you can encapsulate it in a function with a return type of `paramName is Type`. This is called a type predicate. TypeScript trusts the predicate and narrows the type in the `if` block where the function returns `true`. Without a predicate, a function that returns `boolean` carries no narrowing information — TypeScript sees only `boolean`, not what the boolean means about the argument's type.
 
 ```typescript
 // Syntax: paramName is Type
@@ -166,6 +176,8 @@ const goodFiltered = maybeUsers.filter(isUser); // { name: string }[] ✅
 
 ## Assertion Functions
 
+An assertion function has a return type of `asserts val is Type` — it never returns normally if the condition is false (it throws instead). Unlike a type predicate which narrows inside an `if` block, an assertion function narrows the type for all code after the call site. This makes them ideal for fail-fast validation at the start of a function or module boundary: call the assertion once, and the entire rest of the function benefits from the narrowed type without any branching.
+
 ```typescript
 // assert functions never return normally (throw if assertion fails)
 function assertIsString(val: unknown): asserts val is string {
@@ -189,6 +201,8 @@ assertIsString((config as any).host); // throws if not string
 ---
 
 ## Truthiness Narrowing
+
+JavaScript's truthy/falsy coercion also serves as a narrowing mechanism. When you write `if (val)`, TypeScript removes `null`, `undefined`, `false`, `0`, `NaN`, and `''` from the type inside the block. This is a common shorthand for null/undefined guards but introduces a subtle hazard: `0` and `''` are valid, meaningful values that get falsely excluded. Prefer `!== null` and `!== undefined` (or the nullish coalescing `?? `) over truthiness checks when dealing with numbers or strings that may legitimately be zero or empty.
 
 ```typescript
 // Truthy/falsy narrows away null | undefined | 0 | '' | false | NaN
@@ -221,6 +235,8 @@ function goodProcess(val: number | null) {
 ---
 
 ## Equality Narrowing
+
+Strict equality (`===`) narrows both operands to the literal value they're compared against. Loose equality (`==`) has an additional useful property: `null == undefined` is `true`, so `x == null` is a concise way to check for both `null` and `undefined` simultaneously. TypeScript understands both forms and applies the appropriate narrowing in each branch.
 
 ```typescript
 // == checks (null == undefined → true):

@@ -4,6 +4,8 @@
 
 ## REST Constraints (Roy Fielding's Dissertation)
 
+REST (Representational State Transfer) is an architectural style described by Roy Fielding in his 2000 doctoral dissertation. It is not a protocol or a standard — it is a set of constraints that, when applied to a distributed system, produce desirable properties like scalability, independent evolvability, and cacheability. Most "RESTful" APIs in practice implement only a subset of these constraints — particularly the stateless and uniform interface ones — but understanding all six explains why the rules exist and what you lose when you violate them.
+
 ```
 1. Client-Server      — separation of concerns, independent evolution
 2. Stateless          — each request has all info needed, no server session
@@ -16,6 +18,8 @@
 ---
 
 ## Resource Design
+
+The central idea of REST is that your API exposes *resources* — nouns like users, orders, or products — and clients interact with them using the HTTP methods that already carry semantic meaning (GET to read, POST to create, PUT/PATCH to update, DELETE to remove). This is in contrast to RPC-style APIs where you expose *actions* as endpoints. The resource-based approach allows infrastructure like caches, proxies, and gateways to understand what your API is doing and optimize accordingly — a GET request to `/users/123` is universally understood to be a safe, cacheable read, whereas `POST /getUser` is opaque to any intermediary.
 
 ```
 Resources are nouns, not verbs. URLs identify resources, methods indicate actions.
@@ -48,6 +52,8 @@ But avoid deep nesting (max 2-3 levels):
 
 ## HTTP Methods and Idempotency
 
+Idempotency is a critical property for reliable distributed systems. If a client sends a PUT or DELETE request and the network drops the response, the client can safely retry — making the same call again produces the same outcome as making it once. POST is not idempotent, so retrying can create duplicate resources; this is why idempotency keys (client-generated UUIDs sent as request headers) are used for POST operations in payment APIs and other sensitive contexts. "Safe" methods (GET, HEAD, OPTIONS) guarantee no server-side state change, which is the guarantee that browsers, CDNs, and proxies rely on to cache, prefetch, and replay GET requests.
+
 ```
 Method    Idempotent?   Safe?    Body?  Meaning
 GET       ✅ Yes        ✅ Yes   No     Retrieve resource
@@ -67,6 +73,8 @@ Safe: no side effects (read-only)
 ---
 
 ## HTTP Status Codes
+
+HTTP status codes communicate the outcome of a request at the protocol level, allowing clients and intermediaries to react appropriately without parsing the body. The status class (2xx, 4xx, 5xx) is more important than the exact code — clients that don't recognize a specific code fall back to the class semantics. The most common mistakes are using 200 for all responses (including errors), confusing 401 and 403, and using 500 when a 400-series code is more appropriate (a client sending bad input is a 4xx problem, not a 5xx one).
 
 ```
 2xx Success:
@@ -101,6 +109,8 @@ Safe: no side effects (read-only)
 ---
 
 ## Request/Response Design
+
+Consistent request and response envelopes are as important as correct status codes. Clients should never need to guess whether a successful response contains `data`, `result`, `payload`, or a bare object — pick a convention and apply it everywhere. Error responses are especially important to standardize: a machine-readable error `code` (like `VALIDATION_ERROR`) lets clients react programmatically, while a human-readable `message` helps developers debug. The `details` array is the standard pattern for validation errors that involve multiple fields simultaneously.
 
 ```json
 // ✅ Good: consistent error format
@@ -138,6 +148,8 @@ Safe: no side effects (read-only)
 ---
 
 ## Pagination Strategies
+
+Pagination is necessary whenever a collection can grow large enough to make returning all records in one response impractical — both for performance (large payloads, slow queries) and for clients (they can't render infinite results at once). The choice of strategy has significant implications for consistency and performance at scale. Offset-based pagination is simple to implement and supports random access to any page, but it can return duplicate or missing items when the underlying data changes between requests, and SQL `OFFSET` scans become expensive on large tables. Cursor-based pagination avoids both problems but gives up random access.
 
 ```
 1. Offset/Limit — simple but has problems at scale
@@ -197,6 +209,8 @@ Recommendation: URL versioning for public APIs (clear, discoverable)
 
 ## HATEOAS (Hypermedia as the Engine of Application State)
 
+HATEOAS is the most advanced of the REST uniform interface constraints. The idea is that responses include links to related actions, making the API self-documenting and allowing clients to navigate it without hardcoding URLs. A client following HATEOAS can discover what operations are available on a given resource from the response itself — much like a web browser that follows `href` attributes. In practice, very few production APIs implement HATEOAS because it adds significant complexity; clients typically know their API contract from documentation rather than runtime discovery. It is worth knowing for interviews and understanding the theoretical completeness of REST.
+
 ```json
 // Self-describing responses with links — APIs discoverable without docs
 {
@@ -216,6 +230,8 @@ Recommendation: URL versioning for public APIs (clear, discoverable)
 ---
 
 ## Headers Best Practices
+
+HTTP headers carry metadata about a request or response that complements the body. Using the right headers enables important behaviors: `Cache-Control` and `ETag` let CDNs and browsers avoid redundant requests; `Authorization` is the standard location for auth tokens so middleware can intercept without reading the body; `X-Request-ID` (or `Trace-ID`) enables distributed tracing across services. Custom `X-` headers are convention for non-standard application metadata, though RFC 6648 (2012) deprecated the `X-` prefix convention for new standardized headers.
 
 ```
 Request:

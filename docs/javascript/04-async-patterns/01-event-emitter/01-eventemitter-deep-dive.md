@@ -174,6 +174,8 @@ afterEach(() => {
 
 ## Typed EventEmitter (TypeScript)
 
+Node's built-in `EventEmitter` accepts any string event name and any arguments, providing no compile-time safety. A typed wrapper constrains both the event names and their argument signatures using TypeScript generics, turning a typo in an event name or a wrong argument shape into a compile error rather than a silent runtime bug. This is especially valuable in larger codebases where the emitter and its listeners live in different files or modules. The pattern wraps the built-in `EventEmitter` rather than reimplementing it, so all the battle-tested runtime behavior is preserved.
+
 ```typescript
 import { EventEmitter } from 'events';
 
@@ -215,6 +217,8 @@ stream.emit('data', Buffer.from('hello'));                // ✓
 
 ## EventEmitter as a Pub/Sub Bus
 
+A singleton `EventEmitter` used as an application-wide event bus decouples modules entirely — the `UserService` that emits `user:created` has zero knowledge of the `EmailService` or `AnalyticsService` that react to it. This eliminates circular import chains that arise when services depend on each other directly. The trade-off is that the flow of events becomes implicit and harder to trace statically; disciplined event naming (namespaced like `user:created`, `order:fulfilled`) and a central events type definition help maintain discoverability. For complex, persisted event flows consider a proper message queue; for in-process coordination an event bus is lightweight and sufficient.
+
 ```typescript
 // Application-wide event bus — decouple modules without direct imports
 class EventBus extends EventEmitter {
@@ -247,6 +251,8 @@ bus.on('user:created', (user) => {
 ---
 
 ## Promisifying EventEmitter (events.once)
+
+`events.once()` bridges the callback-based `EventEmitter` model into the Promise/async-await world. It returns a Promise that resolves with the arguments of the first emission of the specified event and rejects if an `error` event fires first. This is invaluable for sequential async setup steps — waiting for a server to start listening, a connection to be established, or a stream to open — without adding a persistent listener. The optional `AbortSignal` support allows adding a timeout or cancellation to any event wait without wrapping manually.
 
 ```typescript
 import { once } from 'events';

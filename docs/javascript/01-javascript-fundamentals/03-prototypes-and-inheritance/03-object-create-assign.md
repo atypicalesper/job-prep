@@ -2,6 +2,8 @@
 
 ## Object.create(proto)
 
+`Object.create` creates a new object and directly sets its `[[Prototype]]` to the provided argument, without calling any constructor function. It is the most explicit, low-level tool for prototype-based inheritance — you can set up an arbitrary prototype chain without the constructor-calling side effects of `new`. It also accepts an optional second argument of property descriptors, making it possible to create an object with a specific prototype and non-enumerable properties in one call.
+
 Creates a new object with a specified prototype. The most explicit way to set up prototype chains.
 
 ```javascript
@@ -23,6 +25,8 @@ Object.getPrototypeOf(dog) === animal; // true
 
 ### Object.create(null) — Prototype-less Object
 
+`Object.create(null)` creates an object with no prototype at all — not even `Object.prototype`. This means the object has no inherited methods (`toString`, `hasOwnProperty`, `valueOf`, etc.) and is immune to prototype pollution attacks. It is the correct data structure for pure dictionaries and lookup tables where arbitrary user-provided strings will be used as keys, because those strings can never accidentally shadow a method name. The trade-off is that you cannot use it with APIs that expect `Object.prototype` methods to be present.
+
 ```javascript
 const dict = Object.create(null); // NO prototype at all!
 
@@ -42,6 +46,8 @@ for (const key in dict) {
 ```
 
 ### Inheritance with Object.create
+
+Before ES6 classes, `Object.create` was the standard way to set up prototype-based inheritance in JavaScript. The key subtlety is the `Dog.prototype = Object.create(Animal.prototype)` line — you must use `Object.create` rather than directly assigning `Animal.prototype`, because direct assignment would make `Dog` and `Animal` share the same prototype object (meaning methods added to `Dog.prototype` would also appear on `Animal` instances). You must also restore `Dog.prototype.constructor = Dog` because `Object.create` produces an object whose `constructor` points to `Animal`.
 
 ```javascript
 // Pre-ES6 inheritance pattern:
@@ -75,6 +81,8 @@ rex instanceof Dog;    // true
 ---
 
 ## Object.assign(target, ...sources)
+
+`Object.assign` is the standard tool for merging objects and creating shallow copies. It iterates over each source's own enumerable properties and copies them onto the target, overwriting any existing values. Sources are applied left to right, so later sources override earlier ones — this makes it useful for applying defaults (put the defaults first, user overrides last). The critical limitation is that it is a shallow copy: nested objects are copied by reference, not recursively cloned.
 
 Copies **own enumerable** properties from one or more source objects into a target. **Shallow copy only.**
 
@@ -146,6 +154,8 @@ copy2.hidden; // undefined — non-enumerable not copied
 
 ## Spread Operator — Shallow Copy
 
+Object spread (`{...obj}`) is syntactic sugar introduced in ES2018 that produces the same result as `Object.assign({}, obj)` for plain objects. It is generally preferred in modern code for its conciseness, but the key behavioral characteristic is the same: it is a shallow copy, meaning nested reference types are shared between the original and the copy.
+
 The spread operator `{...obj}` is equivalent to `Object.assign({}, obj)`:
 
 ```javascript
@@ -163,7 +173,11 @@ const c3 = { ...a, z: 0 };  // a's props then z: { x: 1, y: 2, z: 0 }
 
 ## Deep Copy Strategies
 
+Deep copying creates a fully independent clone where nested objects and arrays are recursively copied rather than shared by reference. This is necessary whenever you need to mutate a copy without affecting the original, or when passing data across asynchronous boundaries where the original might change. Each strategy has different capabilities and limitations, so choosing the right one depends on the types in your data.
+
 ### 1. structuredClone (Modern — ES2022, Node.js 17+)
+
+`structuredClone` uses the HTML Structured Clone Algorithm — the same mechanism used to transfer data between Web Workers and across `postMessage`. It handles circular references, Date, Map, Set, ArrayBuffer, and most built-in types correctly. It is the right default for deep cloning in modern runtimes. Its main limitations are that it cannot clone functions and it does not preserve class instances' prototype chains.
 
 ```javascript
 const original = {
@@ -191,6 +205,8 @@ original.address.city; // 'NYC' — unaffected!
 
 ### 2. JSON Round-trip (Common but Limited)
 
+The JSON round-trip is the oldest and most widely known deep copy approach. It works by serializing the object to a JSON string (losing anything JSON cannot represent) and then parsing the string back into a new object. It is perfectly fine for plain data objects containing only JSON-compatible types, but it silently corrupts or loses many common JavaScript values. In new code, prefer `structuredClone`.
+
 ```javascript
 const deep = JSON.parse(JSON.stringify(original));
 
@@ -209,6 +225,8 @@ const configCopy = JSON.parse(JSON.stringify(config)); // fine
 ```
 
 ### 3. Manual Deep Clone
+
+A manual deep clone is necessary when you need full control over what gets cloned and how — for example, preserving prototype chains, handling custom class instances, or cloning Symbol-keyed properties. The `seen` WeakMap is essential for correctly handling circular references: without it, a circular structure would recurse infinitely and overflow the call stack. `Reflect.ownKeys` (rather than `Object.keys`) is used to include Symbol-keyed properties in the clone.
 
 ```javascript
 function deepClone(obj, seen = new WeakMap()) {
@@ -244,6 +262,8 @@ function deepClone(obj, seen = new WeakMap()) {
 ---
 
 ## Object.keys / values / entries / fromEntries
+
+These four methods form a complete toolkit for transforming plain objects. `Object.keys`, `Object.values`, and `Object.entries` all return arrays of an object's own enumerable string-keyed properties (they skip inherited properties and Symbol keys). `Object.fromEntries` is the inverse: it converts an array of `[key, value]` pairs (or any iterable of those) back into an object. The canonical pattern for transforming object values — filtering, mapping, or remapping keys — is `Object.fromEntries(Object.entries(obj).map(...))`.
 
 ```javascript
 const person = { name: 'Alice', age: 30, city: 'NYC' };

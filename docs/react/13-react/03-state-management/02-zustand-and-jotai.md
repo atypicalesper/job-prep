@@ -6,6 +6,8 @@ Lightweight alternatives to Redux — minimal API, no providers required (Zustan
 
 ## Zustand
 
+Zustand is a minimal global state library built around a single concept: a `create` function that returns a hook. It has no Provider, no action types, no reducers, and no context boilerplate — the entire API fits in a few dozen lines. Internally it uses a subscription model similar to React's `useSyncExternalStore`: components subscribe to the store and re-render only when the slice they select changes. At ~3KB gzipped, Zustand has negligible bundle impact compared to Redux Toolkit.
+
 ```bash
 npm install zustand
 ```
@@ -13,6 +15,8 @@ npm install zustand
 Zustand uses a single hook based on a store creator. No Provider, no boilerplate.
 
 ### Basic Store
+
+The `create` function accepts a callback that receives `set` (for updating state) and returns an object defining both state values and actions. Actions are just regular functions that call `set` — there is no separation between action creators and reducers. The result is a custom hook that any component can call directly without any wrapping provider.
 
 ```ts
 import { create } from 'zustand';
@@ -48,6 +52,8 @@ function Counter() {
 
 ### Selectors — Prevent Unnecessary Re-renders
 
+When you call `useCounterStore()` with no arguments, the component re-renders any time *any* field in the store changes — even fields it never reads. Passing a selector function tells Zustand to only notify that component when the selected slice changes. For objects (multiple values at once), Zustand's `shallow` comparator does a one-level equality check so you don't get unnecessary re-renders from new object references.
+
 ```ts
 // ❌ Subscribes to entire store — re-renders on any change
 const store = useCounterStore();
@@ -65,6 +71,8 @@ const { count, increment } = useCounterStore(
 ```
 
 ### Async Actions
+
+Unlike Redux, Zustand has no special construct for async operations — you write ordinary `async` functions directly inside the store creator. The function calls `set` before the await (to show a loading state) and again after (to store the result or error). There is no `createAsyncThunk` boilerplate; the store itself is the canonical place to encapsulate both the async logic and the state it affects.
 
 ```ts
 interface UserStore {
@@ -93,6 +101,8 @@ export const useUserStore = create<UserStore>((set) => ({
 
 ### Middleware: Persist to localStorage
 
+Zustand's `persist` middleware automatically serializes the store to a storage backend (localStorage by default) on every state change and rehydrates it on page load. You can restrict which fields are saved using `partialize` — useful when some state (like loading flags or large caches) should not survive a page refresh. This gives you localStorage persistence with zero manual read/write code.
+
 ```ts
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
@@ -115,6 +125,8 @@ export const useSettingsStore = create(
 
 ### Middleware: DevTools
 
+Wrapping a Zustand store with the `devtools` middleware connects it to the Redux DevTools browser extension. This lets you inspect every `set` call as a labeled action, time-travel through state changes, and diff before/after state — the same tooling as Redux without the boilerplate. The `name` option labels the store in the DevTools panel when you have multiple stores.
+
 ```ts
 import { devtools } from 'zustand/middleware';
 
@@ -127,6 +139,8 @@ export const useStore = create(
 ```
 
 ### Combining Middleware
+
+Zustand middleware composes by nesting — each middleware wraps the next, innermost first. The `immer` middleware (from `zustand/middleware/immer`) lets you write mutating-style reducers as Immer handles the immutable copy, just like RTK. The order of wrapping matters: `devtools` should be outermost so it sees all mutations; `persist` should wrap `immer` so it serializes the final produced state.
 
 ```ts
 export const useStore = create(
@@ -143,6 +157,8 @@ export const useStore = create(
 ```
 
 ### Slices Pattern (for large stores)
+
+As a Zustand store grows, keeping all state and actions in one `create` call becomes unwieldy. The slices pattern breaks domain concerns into separate creator functions that each accept `set` and `get` as arguments, then spreads them into a single store. This mirrors the mental model of Redux slices without any of the Redux infrastructure — you still get one store, one hook, and no Provider.
 
 ```ts
 // Compose multiple slices into one store
@@ -165,6 +181,8 @@ export const useStore = create((set, get) => ({
 ```
 
 ### Reading State Outside Components
+
+React hooks only work inside components, but sometimes you need store state in utility functions, HTTP interceptors, or event handlers that live outside the React tree. Zustand exposes `.getState()` directly on the store object for synchronous reads and `.subscribe()` for reactive external listeners — no hook required. This is a key ergonomic advantage over Redux, which requires importing the `store` directly and is considered an anti-pattern there.
 
 ```ts
 // Access store state in non-React code (utils, services)
@@ -194,6 +212,8 @@ const unsub = useUserStore.subscribe(
 
 ## Jotai
 
+Jotai is inspired by Recoil (Facebook's experimental state library) and takes a fundamentally different approach from Zustand or Redux: instead of one central store, state is split into individual atoms that can be composed and derived from each other. There is no global store object — atoms are module-level constants, and Jotai manages their values in a `Provider`-scoped store (or a default global store if no Provider is used). The atomic model excels when different parts of the UI need overlapping but not identical subsets of state, or when state has complex async derivation chains.
+
 ```bash
 npm install jotai
 ```
@@ -201,6 +221,8 @@ npm install jotai
 Jotai takes an **atomic** approach — state is split into small atoms. Components subscribe to only the atoms they need.
 
 ### Basic Atoms
+
+An atom is the smallest unit of state in Jotai — a single, independently subscribable value. Components read atoms with `useAtomValue` and write them with `useSetAtom`; using both together is `useAtom`. Derived atoms automatically track their dependencies: when `countAtom` changes, any component subscribed to `doubleCountAtom` re-renders automatically. This fine-grained subscription model means a component that reads only one atom never re-renders when an unrelated atom changes.
 
 ```ts
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
@@ -235,6 +257,8 @@ function Counter() {
 
 ### Async Atoms
 
+Jotai atoms can be async: if the read function returns a Promise, the atom integrates natively with React Suspense. The component suspends while the promise is pending and renders once it resolves — no explicit `isLoading` state needed. Because async atoms participate in the same dependency graph as synchronous ones, changing `selectedIdAtom` automatically re-fetches `userAtom`. This is Jotai's strongest differentiator: async data and derived state unify into a single reactive graph.
+
 ```ts
 // Async read atom — Suspense compatible
 const userAtom = atom(async (get) => {
@@ -260,6 +284,8 @@ function App() {
 
 ### atomWithStorage (Persist)
 
+`atomWithStorage` from `jotai/utils` creates an atom that is automatically persisted to and rehydrated from a storage backend (localStorage by default). It has the same API as a regular atom — you use `useAtom` exactly as you would for in-memory state. This is the simplest persistence primitive in the Jotai ecosystem: one line replaces any custom read/write/hydration code.
+
 ```ts
 import { atomWithStorage } from 'jotai/utils';
 
@@ -276,6 +302,8 @@ function ThemeToggle() {
 ```
 
 ### atomFamily (Dynamic atoms)
+
+`atomFamily` is a factory that creates one distinct atom per parameter value. It solves the problem of needing per-entity state — for example, a separate loading or data atom for each post ID — without manually managing a map of atoms. Calling `postAtomFamily(id)` always returns the same atom instance for that ID, so subscriptions are stable and memory is not wasted on duplicates.
 
 ```ts
 import { atomFamily } from 'jotai/utils';
@@ -295,6 +323,8 @@ function Post({ id }: { id: string }) {
 ```
 
 ### Jotai DevTools
+
+Because Jotai's state lives in atoms scattered across the module graph rather than in a single store, standard Redux DevTools can't see it directly. The `jotai-devtools` package bridges this gap by registering all atoms with the DevTools extension, letting you inspect their current values and track changes over time.
 
 ```tsx
 import { useAtomsDevtools } from 'jotai-devtools';

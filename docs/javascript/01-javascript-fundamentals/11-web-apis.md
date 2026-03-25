@@ -130,6 +130,8 @@ self.onmessage = ({ data }) => {
 
 ### Inline Workers (no separate file)
 
+When a separate worker file is inconvenient — such as in bundler-free environments, quick scripts, or testing contexts — a worker can be created by constructing a `Blob` from an inline string and generating a temporary object URL. This avoids the need for a dedicated file but loses the benefits of static analysis, TypeScript checking, and bundler code-splitting for the worker code. Use inline workers for simple, short-lived operations; use file-based workers for anything that benefits from normal tooling.
+
 ```javascript
 const workerCode = `
   self.onmessage = ({ data }) => {
@@ -143,6 +145,8 @@ const worker = new Worker(URL.createObjectURL(blob));
 ```
 
 ### SharedArrayBuffer + Atomics (shared memory)
+
+`SharedArrayBuffer` is the only mechanism for true shared memory between the main thread and workers in the browser — all other `postMessage` communication copies data. It allocates a fixed-size memory buffer that multiple threads can read and write simultaneously. Because concurrent writes to the same memory location produce data races, `Atomics` provides a set of lock-free, thread-safe operations (load, store, add, compareExchange, wait, notify) that guarantee visibility and ordering across threads. `SharedArrayBuffer` requires cross-origin isolation headers because it was temporarily disabled after Spectre vulnerabilities.
 
 ```javascript
 // main.js
@@ -221,6 +225,8 @@ self.addEventListener('fetch', (e) => {
 
 ### Caching Strategies
 
+The caching strategy you choose for a given request type determines the trade-off between freshness and speed. **Cache-first** serves from cache immediately and is ideal for static assets that change infrequently — it minimizes network usage but risks staleness. **Network-first** always tries the network and falls back to cache on failure — right for API calls where freshness matters more than speed. **Stale-while-revalidate** returns a cached response instantly for responsiveness while simultaneously fetching an update in the background — the best option when you want fast loads and eventual consistency without waiting for the network.
+
 ```javascript
 // Network-first (API calls — fresh data, fallback to cache)
 async function networkFirst(request) {
@@ -249,6 +255,8 @@ async function staleWhileRevalidate(request) {
 ```
 
 ### Push Notifications
+
+Browser push notifications work through a three-party flow: the browser generates a push subscription (containing a public endpoint and encryption keys), your app sends that subscription to your server, and your server uses it to push messages via the Web Push Protocol — even when the user's tab is closed. The service worker wakes up to receive the push event and display the notification. VAPID keys authenticate your server to the push service and prevent unauthorized parties from sending notifications through your subscription endpoint.
 
 ```javascript
 // Get push subscription
@@ -342,12 +350,18 @@ const user = await db.getFromIndex('users', 'email', 'user@example.com');
 ## Other Useful APIs
 
 ### Clipboard API
+
+The Clipboard API provides asynchronous read/write access to the system clipboard. Write access (`writeText`, `write`) is permitted in user-gesture event handlers without a permission prompt. Read access (`readText`, `read`) requires the user to grant the `clipboard-read` permission. Use this API instead of the deprecated `document.execCommand('copy')` pattern — it is Promise-based, doesn't require a selected DOM node, and handles both text and rich content.
+
 ```javascript
 await navigator.clipboard.writeText('copied!');
 const text = await navigator.clipboard.readText(); // requires permission
 ```
 
 ### File System Access API
+
+The File System Access API lets web apps read and write files on the user's local filesystem through a permission-gated picker dialog — no server round-trip required. Unlike the older `<input type="file">` approach, it provides writable file handles so you can save changes back to the original file. This makes it suitable for local-first web apps (code editors, image tools, document editors). It is currently supported in Chromium-based browsers only; for cross-browser needs, fall back to download-link patterns for writes and `<input>` for reads.
+
 ```javascript
 // Pick a file
 const [handle] = await window.showOpenFilePicker({ types: [{ accept: { 'text/*': ['.txt', '.md'] } }] });
@@ -362,6 +376,9 @@ await writable.close();
 ```
 
 ### Web Streams API
+
+The Web Streams API provides a standardized, browser-native way to process data incrementally — reading, transforming, and writing chunks without loading the entire payload into memory. `ReadableStream` models a source (a `fetch` response body is one), `WritableStream` models a sink, and `TransformStream` sits in between to modify chunks as they flow through. Streams are composable via `.pipeThrough()` and `.pipeTo()` which handle backpressure automatically: if the sink is slower than the source, the pipeline pauses the source rather than buffering unboundedly.
+
 ```javascript
 // ReadableStream — process large file without loading into memory
 const response = await fetch('/large-file.csv');
@@ -382,6 +399,9 @@ const { readable, writable } = new TransformStream({
 ```
 
 ### Broadcast Channel
+
+`BroadcastChannel` enables message passing between any browsing contexts (tabs, iframes, workers) on the same origin, without needing a shared service worker or localStorage polling. It is a simple publish-subscribe bus scoped to a named channel: any context that creates a `BroadcastChannel` with the same name can post and receive messages. Use it for cross-tab state synchronization — logout propagation, theme changes, shopping cart updates — where you want all tabs to reflect the same state instantly.
+
 ```javascript
 // Communicate between tabs/workers on same origin
 const bc = new BroadcastChannel('app-updates');
@@ -392,6 +412,9 @@ bc.onmessage = ({ data }) => {
 ```
 
 ### Performance API
+
+The Performance API provides high-resolution timing and structured measurement primitives that are far more accurate and ergonomic than `Date.now()` differences. `performance.mark()` stamps a named point in time; `performance.measure()` records the duration between two marks as a named entry in the performance timeline. `PerformanceObserver` lets you subscribe to categories of entries (long tasks, navigation timing, resource timing, layout shifts) asynchronously without polling. Long task monitoring — any task over 50ms — is essential for diagnosing main-thread jank that hurts interactivity scores.
+
 ```javascript
 performance.mark('start-operation');
 await doSomething();

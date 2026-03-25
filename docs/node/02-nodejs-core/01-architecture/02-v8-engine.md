@@ -17,6 +17,8 @@ Source Code → Parser → AST → Ignition (bytecode) → TurboFan (machine cod
 
 ## The Two-Tier Compiler
 
+V8 does not interpret JavaScript directly, nor does it compile everything upfront. Instead it uses a two-tier strategy that balances startup speed against peak performance. Cold code is executed immediately via a fast interpreter (Ignition) with no compilation delay. Code that turns out to be "hot" — called many times — is then compiled to optimized native machine code by TurboFan. This tiered approach means small scripts start instantly while long-running processes reach near-native speeds on their critical paths.
+
 ### Ignition — The Interpreter
 
 - Generates **bytecode** from the AST
@@ -84,7 +86,7 @@ point.y = 2; // transition from {x} to {x,y}
 
 ## Inline Caches (ICs)
 
-V8 caches property access information at call sites:
+An inline cache (IC) is a per-call-site optimization where V8 records the hidden class and property offset it observed last time a property access ran. On the next call, if the object has the same hidden class, V8 can skip the property lookup entirely and read from the cached offset directly. ICs degrade from monomorphic (one observed shape — fastest) to polymorphic (2–4 shapes) to megamorphic (5+ shapes — generic slow path) as more object shapes pass through the same call site. Writing functions that always receive objects of the same shape is the most impactful V8 performance technique available to application developers.
 
 ```javascript
 function getX(obj) {
@@ -107,6 +109,8 @@ getX({ x: 1, y: 2, z: 3 }); // polymorphic (3 shapes)
 ---
 
 ## Writing V8-Friendly Code
+
+V8 optimizes code based on observations it makes at runtime. Because it uses speculative optimization, any pattern that violates its assumptions causes a "deoptimization" — V8 discards the compiled code and falls back to the interpreter until it can re-profile. The practical rules are: give objects a consistent shape by always initializing the same properties in the same order; avoid deleting properties (set to `undefined` instead); keep function argument types consistent; and prefer rest parameters over the `arguments` object in performance-critical functions.
 
 ```javascript
 // ✅ Initialize all properties in constructor
@@ -153,7 +157,7 @@ function sum(...nums) { return nums.reduce((a, b) => a + b, 0); }
 
 ## Deoptimization
 
-When V8's assumptions are violated, it "bails out" and falls back to interpreted code:
+Deoptimization is the process by which V8 discards previously compiled machine code for a function and reverts it to interpreted bytecode. This happens when a runtime observation contradicts an assumption TurboFan made during compilation — for example, a function that was always called with numbers suddenly receives a string. The deoptimization itself is cheap, but the subsequent re-profiling cycle (running in the slower interpreter, then re-optimizing) costs time. Deoptimizations in hot loops are the most damaging and should be avoided.
 
 ```javascript
 function add(a, b) {
@@ -179,7 +183,7 @@ add(1, 2); // now unoptimized again — must re-profile
 
 ## Garbage Collection in V8
 
-V8 uses **generational GC**:
+V8 uses a generational garbage collector based on the observation that most objects die young — they are allocated, used briefly, and then become unreachable. The heap is split into a small Young Generation (where new objects are created) and a large Old Generation (for long-lived objects). Minor GC (Scavenge) runs frequently and cheaply on the Young Generation; Major GC (Mark-Sweep-Compact) runs less often on the full heap. Modern V8 performs most GC work concurrently on background threads to minimize "stop-the-world" pauses visible to the application.
 
 ```
 V8 Heap:
@@ -203,6 +207,8 @@ V8 Heap:
 ---
 
 ## V8 Flags for Node.js
+
+Node.js exposes V8's internal diagnostic flags through the command line, allowing you to observe GC activity, JIT compilation decisions, and deoptimization events. These flags are invaluable when profiling performance issues in production or understanding why a particular function is not being optimized. They have no effect on production behaviour other than adding log output — disable them before deploying.
 
 ```bash
 # Show GC activity
