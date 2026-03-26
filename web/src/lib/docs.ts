@@ -212,6 +212,21 @@ export function extractHeadings(markdown: string): Heading[] {
   return headings;
 }
 
+/** Extract a plain-text excerpt from markdown (first non-empty paragraph, truncated) */
+export function extractExcerpt(markdown: string, maxLength = 155): string {
+  const plain = markdown
+    .replace(/^#{1,6}\s+.+$/gm, '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`[^`]+`/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/[*_~>#|\\-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return plain.length > maxLength
+    ? plain.slice(0, maxLength).replace(/\s+\S*$/, '') + '…'
+    : plain;
+}
+
 /** Build a flat search index of all docs for client-side search */
 export function buildSearchIndex(): SearchItem[] {
   const slugs = getAllDocSlugs();

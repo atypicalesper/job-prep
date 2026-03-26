@@ -1,7 +1,7 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getDocContent, getDirInfo, getPrevNext, getAllDocSlugs, getAllDirSlugs, extractHeadings, humanize } from '@/lib/docs';
+import { getDocContent, getDirInfo, getPrevNext, getAllDocSlugs, getAllDirSlugs, extractHeadings, extractExcerpt, humanize } from '@/lib/docs';
 import type { NavItem } from '@/lib/docs';
 import MarkdownContent from '@/components/MarkdownContent';
 import TableOfContents from '@/components/TableOfContents';
@@ -35,9 +35,25 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps) {
   const doc = getDocContent(params.slug);
-  if (doc) return { title: `${doc.title} — dev atlas` };
+  if (doc) {
+    const description = extractExcerpt(doc.content);
+    return {
+      title: doc.title,
+      description,
+      openGraph: { title: `${doc.title} — dev atlas`, description },
+      twitter:   { title: `${doc.title} — dev atlas`, description },
+    };
+  }
   const dir = getDirInfo(params.slug);
-  if (dir) return { title: `${dir.title} — dev atlas` };
+  if (dir) {
+    const description = `${dir.title} — ${dir.children.length} sections in the dev atlas developer knowledge base.`;
+    return {
+      title: dir.title,
+      description,
+      openGraph: { title: `${dir.title} — dev atlas`, description },
+      twitter:   { title: `${dir.title} — dev atlas`, description },
+    };
+  }
   return { title: 'Not Found' };
 }
 
