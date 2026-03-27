@@ -8,6 +8,10 @@ marked.setOptions({ gfm: true, breaks: false });
 
 const renderer = new marked.Renderer();
 
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 renderer.code = function (code: string, infostring: string | undefined) {
   const lang = infostring ?? '';
   const language = lang && hljs.getLanguage(lang) ? lang : 'plaintext';
@@ -17,7 +21,7 @@ renderer.code = function (code: string, infostring: string | undefined) {
   } catch {
     highlighted = hljs.highlightAuto(code).value;
   }
-  const langLabel = lang ? `<span class="code-lang">${lang}</span>` : '';
+  const langLabel = lang ? `<span class="code-lang">${escapeHtml(lang)}</span>` : '';
   return `<pre>${langLabel}<code class="hljs language-${language}">${highlighted}</code></pre>`;
 };
 

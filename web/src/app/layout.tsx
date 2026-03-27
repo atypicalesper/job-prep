@@ -9,7 +9,20 @@ const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID || '';
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
+const clarityScriptSrc = CLARITY_ID ? ' https://www.clarity.ms' : '';
+const clarityConnectSrc = CLARITY_ID ? ' https://www.clarity.ms https://c.bing.com' : '';
+const CSP = `default-src 'none'; script-src 'self' 'unsafe-inline'${clarityScriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'${clarityConnectSrc}; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'`;
+
 const SITE_URL = 'https://atypicalesper.github.io/dev-atlas';
+
+const websiteJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'dev atlas',
+  url: SITE_URL,
+  description: 'The complete developer knowledge base. JavaScript, TypeScript, React, Node.js, Python, AI/ML, system design, DSA, databases, cloud, and more.',
+  author: { '@type': 'Person', name: 'Tarun Singh', url: 'https://atypicalesper.github.io' },
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -48,6 +61,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" translate="no" suppressHydrationWarning>
       <head suppressHydrationWarning>
+        <meta httpEquiv="Content-Security-Policy" content={CSP} />
+        <meta name="referrer" content="strict-origin-when-cross-origin" />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
         {CLARITY_ID && (
           <script
             dangerouslySetInnerHTML={{

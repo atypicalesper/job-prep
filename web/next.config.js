@@ -6,6 +6,8 @@ const basePath = isProd ? `/${repoName}` : '';
 const nextConfig = {
   output: 'export',
   trailingSlash: true,
+  reactStrictMode: true,
+  poweredByHeader: false,
   basePath,
   assetPrefix: isProd ? `/${repoName}/` : '',
   // Expose basePath to client/server components — unoptimized mode bypasses

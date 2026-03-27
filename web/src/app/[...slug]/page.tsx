@@ -33,14 +33,18 @@ export async function generateStaticParams() {
   return [...fileSlugs, ...dirSlugs].map(slug => ({ slug }));
 }
 
+const SITE_URL = 'https://atypicalesper.github.io/dev-atlas';
+
 export async function generateMetadata({ params }: PageProps) {
+  const canonical = `${SITE_URL}/${params.slug.join('/')}/`;
   const doc = getDocContent(params.slug);
   if (doc) {
     const description = extractExcerpt(doc.content);
     return {
       title: doc.title,
       description,
-      openGraph: { title: `${doc.title} — dev atlas`, description },
+      alternates: { canonical },
+      openGraph: { title: `${doc.title} — dev atlas`, description, url: canonical },
       twitter:   { title: `${doc.title} — dev atlas`, description },
     };
   }
@@ -50,7 +54,8 @@ export async function generateMetadata({ params }: PageProps) {
     return {
       title: dir.title,
       description,
-      openGraph: { title: `${dir.title} — dev atlas`, description },
+      alternates: { canonical },
+      openGraph: { title: `${dir.title} — dev atlas`, description, url: canonical },
       twitter:   { title: `${dir.title} — dev atlas`, description },
     };
   }
@@ -169,8 +174,37 @@ export default function DocPage({ params }: PageProps) {
   const prevHref = prev ? '/' + prev.slug.join('/') : undefined;
   const nextHref = next ? '/' + next.slug.join('/') : undefined;
 
+  const pageUrl = `${SITE_URL}/${params.slug.join('/')}/`;
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/` },
+      ...params.slug.map((segment, i) => ({
+        '@type': 'ListItem',
+        position: i + 2,
+        name: humanize(segment),
+        item: `${SITE_URL}/${params.slug.slice(0, i + 1).join('/')}/`,
+      })),
+    ],
+  };
+  const articleJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: doc.title,
+    description: extractExcerpt(doc.content),
+    url: pageUrl,
+    publisher: {
+      '@type': 'Organization',
+      name: 'dev atlas',
+      url: SITE_URL,
+    },
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
       <ReadingProgress />
       <DocPageClient
         slug={params.slug}
