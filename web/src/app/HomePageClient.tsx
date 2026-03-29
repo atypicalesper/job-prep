@@ -69,9 +69,10 @@ const SECTIONS: { icon: string; title: string; slug: string; desc: string; badge
 
 interface Props {
   pageCounts: Record<string, number>;
+  validSlugs: string[];
 }
 
-export default function HomePageClient({ pageCounts }: Props) {
+export default function HomePageClient({ pageCounts, validSlugs }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
 
@@ -84,7 +85,8 @@ export default function HomePageClient({ pageCounts }: Props) {
       counts[s.slug] = getVisitedCountBySection(s.slug);
     }
     setVisitedCounts(counts);
-    setRecentPages(getRecent().slice(0, 4));
+    const valid = new Set(validSlugs);
+    setRecentPages(getRecent().filter(p => valid.has(p.slug)).slice(0, 4));
   }, []);
 
   useGSAP(() => {
