@@ -13,23 +13,22 @@ export default function TableOfContents({ headings }: Props) {
   useEffect(() => {
     if (headings.length === 0) return;
 
-    const observer = new IntersectionObserver(
-      entries => {
-        // Pick the topmost visible heading
-        const visible = entries
-          .filter(e => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible.length > 0) setActive(visible[0].target.id);
-      },
-      { rootMargin: '0px 0px -70% 0px', threshold: 0 },
-    );
+    const OFFSET = 100; // px from viewport top — heading is "passed" once it crosses this line
 
-    headings.forEach(h => {
-      const el = document.getElementById(h.id);
-      if (el) observer.observe(el);
-    });
+    const onScroll = () => {
+      let current = headings[0].id;
+      for (const h of headings) {
+        const el = document.getElementById(h.id);
+        if (el && el.getBoundingClientRect().top <= OFFSET) {
+          current = h.id;
+        }
+      }
+      setActive(current);
+    };
 
-    return () => observer.disconnect();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll(); // set correct active on mount / section change
+    return () => window.removeEventListener('scroll', onScroll);
   }, [headings]);
 
   if (headings.length < 3) return null;
