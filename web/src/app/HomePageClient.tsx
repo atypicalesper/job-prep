@@ -5,8 +5,7 @@ import Image from 'next/image';
 import { useRef, useState, useLayoutEffect } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { BookOpen, ArrowRight, Clock } from 'lucide-react';
-import { getVisitedCountBySection, getRecent, type RecentPage } from '@/lib/progress';
+import { getVisitedCountBySection } from '@/lib/progress';
 import { useNotebook } from '@/lib/notebook';
 import RoughBorder from '@/components/RoughBorder';
 
@@ -79,12 +78,11 @@ interface Props {
   validSlugs: string[];
 }
 
-export default function HomePageClient({ pageCounts, validSlugs }: Props) {
+export default function HomePageClient({ pageCounts }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
 
   const [visitedCounts, setVisitedCounts] = useState<Record<string, number>>({});
-  const [recentPages, setRecentPages] = useState<RecentPage[]>([]);
 
   useLayoutEffect(() => {
     const counts: Record<string, number> = {};
@@ -92,8 +90,6 @@ export default function HomePageClient({ pageCounts, validSlugs }: Props) {
       counts[s.slug] = getVisitedCountBySection(s.slug);
     }
     setVisitedCounts(counts);
-    const valid = new Set(validSlugs);
-    setRecentPages(getRecent().filter(p => valid.has(p.slug)).slice(0, 2));
   }, []);
 
   useGSAP(() => {
@@ -166,29 +162,6 @@ export default function HomePageClient({ pageCounts, validSlugs }: Props) {
           </Link>
         </div>
 
-        {/* ── Continue learning — compact strip inside hero ── */}
-        {recentPages.length > 0 && (
-          <div className="mt-5 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
-            <p className="text-[10px] font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'var(--muted)' }}>
-              <Clock size={10} /> Continue learning
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {recentPages.map(p => (
-                <Link
-                  key={p.slug}
-                  href={'/' + p.slug}
-                  className="recent-card group flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs transition-all duration-150 hover:border-[var(--accent)] hover:-translate-y-px"
-                  style={{ position: 'relative', backgroundColor: 'var(--card-bg)', borderColor: notebook ? 'transparent' : 'var(--card-border)', color: 'var(--fg)' }}
-                >
-                  <BookOpen size={11} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                  <span className="truncate max-w-[160px]">{p.title}</span>
-                  <ArrowRight size={10} style={{ color: 'var(--muted)', flexShrink: 0 }} className="transition-transform duration-150 group-hover:translate-x-0.5" />
-                  {notebook && <RoughBorder />}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
       </div>{/* end hero */}
 
       {/* ── Section grid ─────────────────────────────────────── */}
