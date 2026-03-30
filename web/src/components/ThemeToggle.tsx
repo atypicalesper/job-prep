@@ -25,13 +25,10 @@ const ACCENT: Record<string, string> = {
 };
 
 export default function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => setMounted(true), []);
 
   // Close on outside click
   useEffect(() => {
@@ -46,9 +43,10 @@ export default function ThemeToggle() {
     return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
 
-  if (!mounted) return <div className="theme-toggle-btn" aria-hidden />;
+  // resolvedTheme is undefined until client-side JS runs
+  if (!resolvedTheme) return <div className="theme-toggle-btn" aria-hidden />;
 
-  const current = THEMES.find(t => t.id === theme) ?? THEMES[1];
+  const current = THEMES.find(t => t.id === resolvedTheme) ?? THEMES[1];
 
   return (
     <div style={{ position: 'relative' }}>
@@ -93,7 +91,7 @@ export default function ThemeToggle() {
           }}
         >
           {THEMES.map(t => {
-            const isActive = theme === t.id;
+            const isActive = resolvedTheme === t.id;
             return (
               <button
                 key={t.id}

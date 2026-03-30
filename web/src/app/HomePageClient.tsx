@@ -165,50 +165,31 @@ export default function HomePageClient({ pageCounts, validSlugs }: Props) {
             🧠 Start Learning
           </Link>
         </div>
-      </div>
 
-      {/* ── Continue learning (only when visited pages exist) ── */}
-      {recentPages.length > 0 && (
-        <div className="mb-8">
-          <p
-            className="text-[11px] font-semibold uppercase tracking-wider mb-3 flex items-center gap-2"
-            style={{ color: 'var(--muted)' }}
-          >
-            <Clock size={12} />
-            Continue learning
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {recentPages.map(p => {
-              const section = p.slug.split('/')[0];
-              return (
+        {/* ── Continue learning — compact strip inside hero ── */}
+        {recentPages.length > 0 && (
+          <div className="mt-5 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+            <p className="text-[10px] font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'var(--muted)' }}>
+              <Clock size={10} /> Continue learning
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {recentPages.map(p => (
                 <Link
                   key={p.slug}
                   href={'/' + p.slug}
-                  className="recent-card group flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-                  style={{ position: 'relative', backgroundColor: 'var(--card-bg)', borderColor: notebook ? 'transparent' : 'var(--card-border)' }}
+                  className="recent-card group flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs transition-all duration-150 hover:border-[var(--accent)] hover:-translate-y-px"
+                  style={{ position: 'relative', backgroundColor: 'var(--card-bg)', borderColor: notebook ? 'transparent' : 'var(--card-border)', color: 'var(--fg)' }}
                 >
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ background: 'var(--sidebar-active)' }}
-                  >
-                    <BookOpen size={14} style={{ color: 'var(--accent)' }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-medium uppercase tracking-wide mb-0.5" style={{ color: 'var(--muted)' }}>
-                      {section}
-                    </p>
-                    <p className="text-sm font-medium leading-snug" style={{ color: 'var(--fg)' }}>
-                      {p.title}
-                    </p>
-                  </div>
-                  <ArrowRight size={14} style={{ color: 'var(--muted)' }} className="shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
+                  <BookOpen size={11} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                  <span className="truncate max-w-[160px]">{p.title}</span>
+                  <ArrowRight size={10} style={{ color: 'var(--muted)', flexShrink: 0 }} className="transition-transform duration-150 group-hover:translate-x-0.5" />
                   {notebook && <RoughBorder />}
                 </Link>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>{/* end hero */}
 
       {/* ── Section grid ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

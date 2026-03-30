@@ -13,20 +13,26 @@ function escapeHtml(str: string): string {
 }
 
 renderer.code = function (code: string, infostring: string | undefined) {
-  const lang = infostring ?? '';
-  const language = lang && hljs.getLanguage(lang) ? lang : 'plaintext';
+  const lang = (infostring ?? '').trim();
+  if (!lang) {
+    // No language — plain text / ASCII diagram, skip hljs to preserve alignment
+    return `<pre><code class="hljs">${escapeHtml(code)}</code></pre>`;
+  }
+  const language = hljs.getLanguage(lang) ? lang : 'plaintext';
   let highlighted: string;
   try {
     highlighted = hljs.highlight(code, { language }).value;
   } catch {
     highlighted = hljs.highlightAuto(code).value;
   }
-  const langLabel = lang ? `<span class="code-lang">${escapeHtml(lang)}</span>` : '';
-  return `<pre>${langLabel}<code class="hljs language-${language}">${highlighted}</code></pre>`;
+  return `<pre><span class="code-lang">${escapeHtml(lang)}</span><code class="hljs language-${language}">${highlighted}</code></pre>`;
 };
 
 renderer.heading = function (text: string, depth: number) {
-  const id = text
+  // text may contain rendered HTML (e.g. <code>foo</code>) — strip tags before building the ID
+  // so it matches the IDs generated server-side by extractHeadings() in docs.ts
+  const plain = text.replace(/<[^>]+>/g, '');
+  const id = plain
     .toLowerCase()
     .replace(/[^\w\s-]/g, '')
     .replace(/\s+/g, '-')
