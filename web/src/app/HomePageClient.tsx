@@ -93,7 +93,7 @@ export default function HomePageClient({ pageCounts, validSlugs }: Props) {
     }
     setVisitedCounts(counts);
     const valid = new Set(validSlugs);
-    setRecentPages(getRecent().filter(p => valid.has(p.slug)).slice(0, 4));
+    setRecentPages(getRecent().filter(p => valid.has(p.slug)).slice(0, 2));
   }, []);
 
   useGSAP(() => {
