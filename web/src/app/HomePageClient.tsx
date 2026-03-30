@@ -65,6 +65,13 @@ const SECTIONS: { icon: string; title: string; slug: string; desc: string; badge
     slug: 'networks',
     desc: 'OSI & TCP/IP models, IP addressing, subnetting, CIDR, TCP/UDP, DNS, HTTP/2/3, TLS handshake, routing, NAT, firewalls, VPC, security groups, load balancers, CDN, troubleshooting',
   },
+  {
+    icon: '📋',
+    title: 'Cheatsheets',
+    slug: 'cheatsheets',
+    desc: 'All quick-reference cheatsheets in one place — JavaScript, React, Frontend, Backend, DSA patterns, System Design. Optimised for last-minute interview revision.',
+    badge: 'NEW',
+  },
 ];
 
 interface Props {

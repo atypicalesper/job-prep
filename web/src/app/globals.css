@@ -51,6 +51,111 @@ html {
   --success: #4ade80;
 }
 
+/* ── Midnight — deep navy/lavender, Atom One Dark-inspired ─────────────────── */
+.midnight {
+  --bg: #1e1e2e;
+  --fg: #cdd6f4;
+  --sidebar-bg: #181825;
+  --sidebar-border: #313244;
+  --sidebar-hover: #1e1e2e;
+  --sidebar-active: #313244;
+  --sidebar-active-text: #cba6f7;
+  --code-bg: #11111b;
+  --accent: #cba6f7;
+  --accent-hover: #b4befe;
+  --accent-glow: rgba(203, 166, 247, 0.12);
+  --accent-rgb: 203, 166, 247;
+  --muted: #a6adc8;
+  --border: #313244;
+  --card-bg: #24273a;
+  --card-border: #363a4f;
+  --success: #a6e3a1;
+}
+
+/* ── Ocean — dark blue-grey, IntelliJ Darcula-inspired ─────────────────────── */
+.ocean {
+  --bg: #1c2333;
+  --fg: #ccd6f6;
+  --sidebar-bg: #14192a;
+  --sidebar-border: #2a3552;
+  --sidebar-hover: #1e2a42;
+  --sidebar-active: #1e2a42;
+  --sidebar-active-text: #64b5f6;
+  --code-bg: #0d1117;
+  --accent: #64b5f6;
+  --accent-hover: #42a5f5;
+  --accent-glow: rgba(100, 181, 246, 0.12);
+  --accent-rgb: 100, 181, 246;
+  --muted: #8892b0;
+  --border: #253050;
+  --card-bg: #1c2a40;
+  --card-border: #2a3552;
+  --success: #69f0ae;
+}
+
+/* ── Forest — warm dark, Gruvbox-inspired ──────────────────────────────────── */
+.forest {
+  --bg: #1d2021;
+  --fg: #ebdbb2;
+  --sidebar-bg: #161819;
+  --sidebar-border: #3c3836;
+  --sidebar-hover: #282828;
+  --sidebar-active: #282828;
+  --sidebar-active-text: #8ec07c;
+  --code-bg: #141617;
+  --accent: #8ec07c;
+  --accent-hover: #b8bb26;
+  --accent-glow: rgba(142, 192, 124, 0.12);
+  --accent-rgb: 142, 192, 124;
+  --muted: #a89984;
+  --border: #3c3836;
+  --card-bg: #282828;
+  --card-border: #3c3836;
+  --success: #b8bb26;
+}
+
+/* ── Dawn — warm off-white, amber accent ───────────────────────────────────── */
+.dawn {
+  --bg: #fdf6e3;
+  --fg: #3b2d1e;
+  --sidebar-bg: #f5ede0;
+  --sidebar-border: #e8d8c4;
+  --sidebar-hover: #ede3d4;
+  --sidebar-active: #e8d8c4;
+  --sidebar-active-text: #c4621f;
+  --code-bg: #2a1f14;
+  --accent: #c4621f;
+  --accent-hover: #a84d14;
+  --accent-glow: rgba(196, 98, 31, 0.1);
+  --accent-rgb: 196, 98, 31;
+  --muted: #7a6652;
+  --border: #e0d0bc;
+  --card-bg: #f5ede0;
+  --card-border: #e8d8c4;
+  --success: #4e9a4e;
+}
+
+/* ── Slate — neutral grey, VS Code-inspired ────────────────────────────────── */
+.slate {
+  --bg: #1e1e1e;
+  --fg: #d4d4d4;
+  --sidebar-bg: #252526;
+  --sidebar-border: #3e3e42;
+  --sidebar-hover: #2a2d2e;
+  --sidebar-active: #37373d;
+  --sidebar-active-text: #569cd6;
+  --code-bg: #1e1e1e;
+  --accent: #569cd6;
+  --accent-hover: #4fc1ff;
+  --accent-glow: rgba(86, 156, 214, 0.12);
+  --accent-rgb: 86, 156, 214;
+  --muted: #858585;
+  --border: #3e3e42;
+  --card-bg: #2d2d2d;
+  --card-border: #3e3e42;
+  --success: #4ec9b0;
+}
+
 body {
   background-color: var(--bg);
   color: var(--fg);
@@ -339,12 +444,16 @@ body {
   color: var(--fg);
 }
 
-/* ── Logo image (invert in dark mode so black strokes become white) ──────────── */
+/* ── Logo image (invert on dark-bg themes so black strokes become white) ─────── */
 .logo-img {
   filter: none;
   transition: filter 0.3s ease;
 }
-.dark .logo-img {
+.dark .logo-img,
+.midnight .logo-img,
+.ocean .logo-img,
+.forest .logo-img,
+.slate .logo-img {
   filter: invert(1);
 }
 

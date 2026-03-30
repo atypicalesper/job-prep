@@ -20,6 +20,7 @@ const SECTION_ICONS: Record<string, string> = {
   'python': '🐍',
   'ai': '🤖',
   'networks': '📡',
+  'cheatsheets': '📋',
 };
 
 interface Props {
