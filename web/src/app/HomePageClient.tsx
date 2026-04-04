@@ -75,7 +75,6 @@ const SECTIONS: { icon: string; title: string; slug: string; desc: string; badge
 
 interface Props {
   pageCounts: Record<string, number>;
-  validSlugs: string[];
 }
 
 export default function HomePageClient({ pageCounts }: Props) {

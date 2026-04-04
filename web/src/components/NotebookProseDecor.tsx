@@ -18,7 +18,7 @@ export default function NotebookProseDecor() {
     cleanup();
     if (!notebook) return;
 
-    const stroke = resolvedTheme === 'dark' ? '#818cf8' : '#4f46e5';
+    const stroke = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
 
     document.querySelectorAll('.prose h2, .prose h3').forEach(heading => {
       const { width } = heading.getBoundingClientRect();

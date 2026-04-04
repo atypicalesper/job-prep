@@ -22,7 +22,7 @@ export default function RoughBorder({ roughness = 1.8, strokeWidth = 1.5 }: Prop
       const { width: w, height: h } = svg.getBoundingClientRect();
       if (!w || !h) return;
 
-      const stroke = resolvedTheme === 'dark' ? '#818cf8' : '#4f46e5';
+      const stroke = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
       const rc = rough.svg(svg);
       svg.appendChild(
         rc.rectangle(3, 3, w - 6, h - 6, { roughness, strokeWidth, stroke, fill: 'none' }),

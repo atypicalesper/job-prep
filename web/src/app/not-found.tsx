@@ -36,7 +36,7 @@ export default function NotFound() {
           ← Back to home
         </Link>
         <Link
-          href="/12-interview-practice/00-cheat-sheet/01-last-day-reference"
+          href="/engineering/12-interview-practice/00-cheat-sheet/01-last-day-reference"
           className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105 active:scale-95 border"
           style={{ color: 'var(--fg)', borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
         >

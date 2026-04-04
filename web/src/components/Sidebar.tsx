@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import gsap from 'gsap';
 import Image from 'next/image';
-import { ChevronRight, Search, ArrowLeft } from 'lucide-react';
+import { ChevronRight, Search, ArrowLeft, Map } from 'lucide-react';
 import type { NavItem } from '@/lib/docs';
 import ThemeToggle from './ThemeToggle';
 import NotebookToggle from './NotebookToggle';
@@ -78,6 +78,20 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
         <span className="flex-1 text-left">Search…</span>
         <span className="text-[10px] opacity-50">⌘K</span>
       </button>
+
+      {/* Pathway link — always visible */}
+      <Link
+        href="/pathway"
+        className="mx-2.5 mt-1.5 flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-all hover:bg-[var(--sidebar-hover)]"
+        style={{
+          color: pathname === '/pathway' ? 'var(--sidebar-active-text)' : 'var(--muted)',
+          backgroundColor: pathname === '/pathway' ? 'var(--sidebar-active)' : 'transparent',
+          border: '1px solid var(--sidebar-border)',
+        }}
+      >
+        <Map size={12} />
+        <span className="flex-1 text-left">My Pathways</span>
+      </Link>
 
       {activeSection ? (
         /* ── Section view: only current section's tree ── */
