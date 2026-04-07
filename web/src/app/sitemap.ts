@@ -1,3 +1,5 @@
+export const dynamic = 'force-static';
+
 import { getAllDocSlugs, getAllDirSlugs } from '@/lib/docs';
 
 const BASE = 'https://atypicalesper.github.io/dev-atlas';

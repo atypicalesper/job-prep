@@ -1,3 +1,5 @@
+export const dynamic = 'force-static';
+
 import { MetadataRoute } from 'next';
 
 const BASE = 'https://atypicalesper.github.io/dev-atlas';

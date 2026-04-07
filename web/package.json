@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "next dev --port 3333",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "check": "tsc --noEmit && next build"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
@@ -13,7 +16,7 @@
     "highlight.js": "^11.11.1",
     "lucide-react": "^0.511.0",
     "marked": "^15.0.12",
-    "next": "^15.3.1",
+    "next": "15.3.3",
     "next-themes": "^0.4.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
