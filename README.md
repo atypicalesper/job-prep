@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🗺️ dev atlas
+# dev atlas
 
 [![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black)](docs/javascript/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)](docs/javascript/03-typescript/)
@@ -9,21 +9,26 @@
 [![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white)](docs/node/)
 [![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)](docs/python/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=flat&logo=postgresql&logoColor=white)](docs/databases/)
-[![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white)](docs/databases/03-redis/)
 [![AWS](https://img.shields.io/badge/AWS-232F3E?style=flat&logo=amazon-aws&logoColor=white)](docs/cloud/)
-[![AI](https://img.shields.io/badge/AI%20%2F%20ML-FF6F00?style=flat&logo=openai&logoColor=white)](docs/ai/)
+[![AI / ML](https://img.shields.io/badge/AI%20%2F%20ML-FF6F00?style=flat&logo=openai&logoColor=white)](docs/ai/)
 
-**285+ files · 10 domains · one place to actually understand the stack**
+**285+ files · 10 domains · structured for engineers who want depth, not summaries**
 
-*Deep explanations, mental models, implementations, and the tricky questions that separate good engineers from great ones.*
+[Live Site](https://atypicalesper.github.io/dev-atlas) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
 ---
 
-## 🚀 Start here
+## Overview
 
-| I want to... | Go here |
+dev atlas is a structured technical knowledge base covering the full backend and frontend stack — from JavaScript internals and system design to RAG pipelines and agentic AI. Every section is built around the depth required for mid-to-senior engineering interviews and day-to-day production work.
+
+---
+
+## Quick Reference
+
+| Goal | Resources |
 |---|---|
 | Crack a JS interview | [JavaScript rapid fire](docs/engineering/12-interview-practice/01-rapid-fire-qa/01-javascript-rapid-fire.md) · [Node.js rapid fire](docs/engineering/12-interview-practice/01-rapid-fire-qa/02-nodejs-rapid-fire.md) |
 | Understand React deeply | [Virtual DOM & reconciliation](docs/react/13-react/01-core-concepts/01-virtual-dom-and-reconciliation.md) · [Advanced patterns](docs/react/13-react/02-advanced-patterns/01-render-optimization.md) |
@@ -38,25 +43,25 @@
 
 ---
 
-## 🗂️ What's inside
+## Contents
 
 ```
-dev-atlas/
-├── 🧠 javascript        ← internals, closures, async, prototypes, TypeScript
-├── ⚛️  react             ← frontend fundamentals, React 19, Next.js, browser internals
-├── ⚙️  node              ← backend fundamentals, architecture, streams, API design
-├── 🗄️  databases         ← SQL, NoSQL, Redis, ORM, scaling
-├── 🏗️  engineering       ← system design, DSA, DevOps, testing, security, interview prep
-├── 🤖 ai                ← RAG, agents, LangChain, MCP, production AI
-├── 🐍 python            ← ML stack, FastAPI, asyncio, LLMs
-├── ☁️  cloud             ← AWS, IaC, serverless
-├── 📡 networks          ← TCP/IP, DNS, HTTP, real-time
-└── 📋 cheatsheets       ← JS, React, Frontend, Backend, DSA, System Design
+docs/
+├── javascript        — internals, closures, async, prototypes, TypeScript
+├── react             — frontend fundamentals, React 19, Next.js, browser internals
+├── node              — backend fundamentals, architecture, streams, API design
+├── databases         — SQL, NoSQL, Redis, ORM, scaling
+├── engineering       — system design, DSA, DevOps, testing, security, interview prep
+├── ai                — RAG, agents, LangChain, MCP, production AI
+├── python            — ML stack, FastAPI, asyncio, LLMs
+├── cloud             — AWS, IaC, serverless
+├── networks          — TCP/IP, DNS, HTTP, real-time
+└── cheatsheets       — JS, React, Frontend, Backend, DSA, System Design
 ```
 
 ---
 
-## 🧠 JavaScript
+## JavaScript
 
 <details>
 <summary><strong>Core Fundamentals</strong></summary>
@@ -92,10 +97,10 @@ dev-atlas/
 
 ---
 
-## ⚛️ React & Next.js
+## React & Next.js
 
 <details>
-<summary><strong>Frontend Fundamentals</strong> 🆕</summary>
+<summary><strong>Frontend Fundamentals</strong></summary>
 
 | Topic | What's covered |
 |---|---|
@@ -136,10 +141,10 @@ dev-atlas/
 
 ---
 
-## ⚙️ Node.js
+## Node.js
 
 <details>
-<summary><strong>Backend Fundamentals</strong> 🆕</summary>
+<summary><strong>Backend Fundamentals</strong></summary>
 
 | Topic | What's covered |
 |---|---|
@@ -168,7 +173,7 @@ dev-atlas/
 
 ---
 
-## 🏗️ Engineering
+## Engineering
 
 <details>
 <summary><strong>System Design</strong></summary>
@@ -215,9 +220,32 @@ dev-atlas/
 
 ---
 
-## 📋 Cheatsheets
+## AI Engineering
 
-> Quick-reference sheets for last-minute revision — all in one place.
+<details>
+<summary><strong>45+ files</strong></summary>
+
+| Topic | What's covered |
+|---|---|
+| [Fundamentals](docs/ai/01-ai-fundamentals/) | Overview · interview questions · deep dive |
+| [Generative AI](docs/ai/15-generative-ai/) | Transformers · training pipeline · tokens · temperature · interview questions |
+| [Prompt Engineering](docs/ai/02-prompt-engineering/) | Overview · advanced patterns |
+| [RAG & Vector DBs](docs/ai/03-rag-and-vector-databases/) | Overview · advanced RAG · embedding models · retrieval strategies |
+| [LangChain & LangGraph](docs/ai/04-langchain-and-langgraph/) | Overview · LangGraph deep dive · multi-agent patterns |
+| [Agentic AI](docs/ai/05-agentic-ai/) | Agents · memory systems · browser & computer agents |
+| [Hallucination & Reliability](docs/ai/16-hallucination-and-reliability/) | Causes · mitigation strategies · RAGAs evaluation |
+| [AI Ethics & Safety](docs/ai/17-ai-ethics-and-safety/) | Bias · alignment · privacy · EU AI Act |
+| [MCP](docs/ai/07-mcp/) | Overview · interview questions |
+| [AI in Production](docs/ai/08-ai-in-production/) | Observability · cost optimization |
+| [Quick Reference](docs/ai/00-cheat-sheet/01-ai-quick-reference.md) | AI cheat sheet |
+
+</details>
+
+---
+
+## Cheatsheets
+
+Quick-reference sheets for last-minute revision.
 
 | Sheet | Topics |
 |---|---|
@@ -230,27 +258,7 @@ dev-atlas/
 
 ---
 
-## 🤖 AI Engineering
-
-<details>
-<summary><strong>45+ files</strong></summary>
-
-| Topic | What's covered |
-|---|---|
-| [Fundamentals](docs/ai/01-ai-fundamentals/) | Overview · interview questions · deep dive |
-| [Prompt Engineering](docs/ai/02-prompt-engineering/) | Overview · advanced patterns |
-| [RAG & Vector DBs](docs/ai/03-rag-and-vector-databases/) | Overview · advanced RAG · embedding models |
-| [LangChain & LangGraph](docs/ai/04-langchain-and-langgraph/) | Overview · advanced patterns |
-| [Agentic AI](docs/ai/05-agentic-ai/) | Agents · memory systems |
-| [MCP](docs/ai/07-mcp/) | Overview · interview questions |
-| [AI in Production](docs/ai/08-ai-in-production/) | Observability · cost optimization |
-| [Quick Reference](docs/ai/00-cheat-sheet/01-ai-quick-reference.md) | AI cheat sheet |
-
-</details>
-
----
-
-## 🐍 Python · ☁️ Cloud · 📡 Networks
+## Python · Cloud · Networks
 
 <details>
 <summary><strong>Python</strong></summary>
@@ -281,9 +289,25 @@ dev-atlas/
 
 ---
 
+## Stack
+
+Built with Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, GSAP, marked, and highlight.js. Deployed as a static export to GitHub Pages.
+
+```bash
+cd web
+npm install
+npm run dev      # localhost:3333
+npm run build    # static export → out/
+npm run lint     # ESLint
+npm run typecheck
+```
+
+---
+
 <div align="center">
 
-[![Live site](https://img.shields.io/badge/Live%20Site-atypicalesper.github.io%2Fdev--atlas-4f46e5?style=flat)](https://atypicalesper.github.io/dev-atlas)
-[![Contribute](https://img.shields.io/badge/Contribute-GitHub-181717?style=flat&logo=github)](https://github.com/atypicalesper/dev-atlas)
+[![Live Site](https://img.shields.io/badge/Live%20Site-dev%20atlas-4f46e5?style=flat)](https://atypicalesper.github.io/dev-atlas)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat)](LICENSE)
+[![Contribute](https://img.shields.io/badge/Contribute-GitHub-181717?style=flat&logo=github)](CONTRIBUTING.md)
 
 </div>
