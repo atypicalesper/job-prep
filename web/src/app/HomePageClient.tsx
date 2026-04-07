@@ -5,8 +5,8 @@ import Image from 'next/image';
 import { useRef, useState, useLayoutEffect } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { Brain, Server, Layers, Wrench, Database, Cloud, Code2, Bot, Network, ClipboardList, BookOpen, type LucideIcon } from 'lucide-react';
-import { getVisitedCountBySection } from '@/lib/progress';
+import { Brain, Server, Layers, Wrench, Database, Cloud, Code2, Bot, Network, ClipboardList, BookOpen, Play, type LucideIcon } from 'lucide-react';
+import { getVisitedCountBySection, getRecent } from '@/lib/progress';
 import { useNotebook } from '@/lib/notebook';
 import RoughBorder from '@/components/RoughBorder';
 
@@ -83,6 +83,7 @@ export default function HomePageClient({ pageCounts }: Props) {
   const heroRef = useRef<HTMLDivElement>(null);
 
   const [visitedCounts, setVisitedCounts] = useState<Record<string, number>>({});
+  const [recentSlug, setRecentSlug] = useState<{ slug: string; title: string } | null>(null);
 
   useLayoutEffect(() => {
     const counts: Record<string, number> = {};
@@ -90,6 +91,11 @@ export default function HomePageClient({ pageCounts }: Props) {
       counts[s.slug] = getVisitedCountBySection(s.slug);
     }
     setVisitedCounts(counts);
+
+    const recent = getRecent();
+    if (recent.length > 0) {
+      setRecentSlug({ slug: recent[0].slug, title: recent[0].title });
+    }
   }, []);
 
   useGSAP(() => {
@@ -109,7 +115,7 @@ export default function HomePageClient({ pageCounts }: Props) {
       ease: 'power3.out',
       delay: 0.2,
     });
-  }, { scope: gridRef });
+  }, { scope: gridRef, dependencies: [] });
 
   const { notebook } = useNotebook();
   const totalVisited = Object.values(visitedCounts).reduce((a, b) => a + b, 0);
@@ -162,6 +168,17 @@ export default function HomePageClient({ pageCounts }: Props) {
             <BookOpen size={14} />
             Start Learning
           </Link>
+          {recentSlug && (
+            <Link
+              href={`/${recentSlug.slug}`}
+              className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105 active:scale-95 border inline-flex items-center gap-2"
+              style={{ color: 'var(--fg)', borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
+              title={`Continue: ${recentSlug.title}`}
+            >
+              <Play size={13} />
+              Continue
+            </Link>
+          )}
         </div>
 
       </div>{/* end hero */}
