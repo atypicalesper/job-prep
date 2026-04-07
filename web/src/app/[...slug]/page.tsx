@@ -12,7 +12,7 @@ import NotebookProseDecor from '@/components/NotebookProseDecor';
 import { Clock, FolderOpen, ChevronRight } from 'lucide-react';
 
 interface PageProps {
-  params: { slug: string[] };
+  params: Promise<{ slug: string[] }>;
 }
 
 function readingTime(markdown: string): string {
@@ -36,8 +36,9 @@ export async function generateStaticParams() {
 const SITE_URL = 'https://atypicalesper.github.io/dev-atlas';
 
 export async function generateMetadata({ params }: PageProps) {
-  const canonical = `${SITE_URL}/${params.slug.join('/')}/`;
-  const doc = getDocContent(params.slug);
+  const { slug } = await params;
+  const canonical = `${SITE_URL}/${slug.join('/')}/`;
+  const doc = getDocContent(slug);
   if (doc) {
     const description = extractExcerpt(doc.content);
     return {
@@ -48,7 +49,7 @@ export async function generateMetadata({ params }: PageProps) {
       twitter:   { title: `${doc.title} — dev atlas`, description },
     };
   }
-  const dir = getDirInfo(params.slug);
+  const dir = getDirInfo(slug);
   if (dir) {
     const description = `${dir.title} — ${dir.children.length} sections in the dev atlas developer knowledge base.`;
     return {
@@ -86,17 +87,18 @@ function Breadcrumb({ slug }: { slug: string[] }) {
   );
 }
 
-export default function DocPage({ params }: PageProps) {
-  const doc = getDocContent(params.slug);
+export default async function DocPage({ params }: PageProps) {
+  const { slug } = await params;
+  const doc = getDocContent(slug);
 
   // ── Directory index page ────────────────────────────────────────────────
   if (!doc) {
-    const dir = getDirInfo(params.slug);
+    const dir = getDirInfo(slug);
     if (!dir) notFound();
 
     return (
       <div className="page-content max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-        <Breadcrumb slug={params.slug} />
+        <Breadcrumb slug={slug} />
 
         <div className="flex items-center gap-3 mt-6 mb-2">
           <FolderOpen size={22} style={{ color: 'var(--accent)' }} />
@@ -170,22 +172,22 @@ export default function DocPage({ params }: PageProps) {
 
   // ── Regular doc page ────────────────────────────────────────────────────
 
-  const { prev, next } = getPrevNext(params.slug);
+  const { prev, next } = getPrevNext(slug);
   const headings = extractHeadings(doc.content);
   const prevHref = prev ? '/' + prev.slug.join('/') : undefined;
   const nextHref = next ? '/' + next.slug.join('/') : undefined;
 
-  const pageUrl = `${SITE_URL}/${params.slug.join('/')}/`;
+  const pageUrl = `${SITE_URL}/${slug.join('/')}/`;
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/` },
-      ...params.slug.map((segment, i) => ({
+      ...slug.map((segment, i) => ({
         '@type': 'ListItem',
         position: i + 2,
         name: humanize(segment),
-        item: `${SITE_URL}/${params.slug.slice(0, i + 1).join('/')}/`,
+        item: `${SITE_URL}/${slug.slice(0, i + 1).join('/')}/`,
       })),
     ],
   };
@@ -208,7 +210,7 @@ export default function DocPage({ params }: PageProps) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
       <ReadingProgress />
       <DocPageClient
-        slug={params.slug}
+        slug={slug}
         title={doc.title}
         prevHref={prevHref}
         nextHref={nextHref}
@@ -219,7 +221,7 @@ export default function DocPage({ params }: PageProps) {
 
           {/* Breadcrumb + meta row */}
           <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-            <Breadcrumb slug={params.slug} />
+            <Breadcrumb slug={slug} />
 
             {/* Reading time */}
             <span className="reading-badge">
