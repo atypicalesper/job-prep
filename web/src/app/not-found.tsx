@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { ArrowLeft, ClipboardList } from 'lucide-react';
 
 export default function NotFound() {
   return (
@@ -30,17 +31,19 @@ export default function NotFound() {
       <div className="flex gap-3 flex-wrap justify-center">
         <Link
           href="/"
-          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105 active:scale-95"
+          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105 active:scale-95 inline-flex items-center gap-2"
           style={{ backgroundColor: 'var(--accent)' }}
         >
-          ← Back to home
+          <ArrowLeft size={14} />
+          Back to home
         </Link>
         <Link
           href="/engineering/12-interview-practice/00-cheat-sheet/01-last-day-reference"
-          className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105 active:scale-95 border"
+          className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105 active:scale-95 border inline-flex items-center gap-2"
           style={{ color: 'var(--fg)', borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
         >
-          📋 Cheat Sheet
+          <ClipboardList size={14} />
+          Cheat Sheet
         </Link>
       </div>
 

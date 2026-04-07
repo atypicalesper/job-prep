@@ -1,6 +1,7 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { ChevronRight } from 'lucide-react';
 import { getDocContent, getDirInfo, getPrevNext, getAllDocSlugs, getAllDirSlugs, extractHeadings, extractExcerpt, humanize } from '@/lib/docs';
 import type { NavItem } from '@/lib/docs';
 import MarkdownContent from '@/components/MarkdownContent';
@@ -122,10 +123,11 @@ export default function DocPage({ params }: PageProps) {
                   <div className="flex items-center justify-between mb-3">
                     <Link
                       href={href}
-                      className="font-semibold text-sm hover:text-indigo-400 transition-colors"
+                      className="font-semibold text-sm hover:text-indigo-400 transition-colors inline-flex items-center gap-1"
                       style={{ color: 'var(--fg)' }}
                     >
-                      {child.title} →
+                      {child.title}
+                      <ChevronRight size={13} style={{ color: 'var(--muted)' }} />
                     </Link>
                     <span
                       className="text-[10px] font-medium px-1.5 py-0.5 rounded-md shrink-0 ml-2"

@@ -5,22 +5,22 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import gsap from 'gsap';
 import Image from 'next/image';
-import { ChevronRight, Search, ArrowLeft, Map } from 'lucide-react';
+import { ChevronRight, Search, ArrowLeft, Map, ExternalLink, Brain, Server, Layers, Wrench, Database, Cloud, Code2, Bot, Network, ClipboardList, FileText, type LucideIcon } from 'lucide-react';
 import type { NavItem } from '@/lib/docs';
 import ThemeToggle from './ThemeToggle';
 import NotebookToggle from './NotebookToggle';
 
-const SECTION_ICONS: Record<string, string> = {
-  'javascript': '🧠',
-  'node': '⚙️',
-  'react': '⚛️',
-  'engineering': '🏗️',
-  'databases': '🗄️',
-  'cloud': '☁️',
-  'python': '🐍',
-  'ai': '🤖',
-  'networks': '📡',
-  'cheatsheets': '📋',
+const SECTION_ICONS: Record<string, LucideIcon> = {
+  javascript: Brain,
+  node: Server,
+  react: Layers,
+  engineering: Wrench,
+  databases: Database,
+  cloud: Cloud,
+  python: Code2,
+  ai: Bot,
+  networks: Network,
+  cheatsheets: ClipboardList,
 };
 
 interface Props {
@@ -109,10 +109,11 @@ export default function Sidebar({ nav, onSearchOpen }: Props) {
         <a
           href="https://github.com/atypicalesper/dev-atlas"
           target="_blank" rel="noopener noreferrer"
-          className="text-[10px] opacity-50 hover:opacity-100 transition-opacity"
+          className="text-[10px] opacity-50 hover:opacity-100 transition-opacity inline-flex items-center gap-1"
           style={{ color: 'var(--accent)' }}
         >
-          ↗ contribute
+          <ExternalLink size={10} />
+          contribute
         </a>
         <kbd
           className="kbd cursor-pointer opacity-40 hover:opacity-80 transition-opacity text-[10px]"
@@ -138,7 +139,7 @@ function AllSectionsNav({ nav, pathname }: { nav: NavItem[]; pathname: string })
       </div>
       {nav.map(section => {
         const slug0 = section.slug[0];
-        const icon = SECTION_ICONS[slug0] ?? '📄';
+        const Icon = SECTION_ICONS[slug0] ?? FileText;
         // First leaf page in this section for the href
         const href = getFirstHref(section);
         const isActive = pathname.startsWith('/' + slug0);
@@ -150,7 +151,7 @@ function AllSectionsNav({ nav, pathname }: { nav: NavItem[]; pathname: string })
             className="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-[var(--sidebar-hover)]"
             style={{ color: isActive ? 'var(--sidebar-active-text)' : 'var(--muted)' }}
           >
-            <span className="text-sm shrink-0">{icon}</span>
+            <Icon size={13} className="shrink-0" style={{ color: 'var(--accent)', opacity: 0.75 }} />
             <span className="truncate font-medium">{section.title}</span>
           </Link>
         );
@@ -163,7 +164,7 @@ function AllSectionsNav({ nav, pathname }: { nav: NavItem[]; pathname: string })
 
 function SectionNav({ section, pathname }: { section: NavItem; pathname: string }) {
   const slug0 = section.slug[0];
-  const icon = SECTION_ICONS[slug0] ?? '📄';
+  const Icon = SECTION_ICONS[slug0] ?? FileText;
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -184,7 +185,7 @@ function SectionNav({ section, pathname }: { section: NavItem; pathname: string 
         className="flex items-center gap-2 px-3 py-2 mx-2 mt-1 mb-0.5 rounded-lg"
         style={{ backgroundColor: 'var(--sidebar-active)', color: 'var(--fg)' }}
       >
-        <span className="text-base shrink-0">{icon}</span>
+        <Icon size={14} className="shrink-0" style={{ color: 'var(--accent)' }} />
         <span className="font-semibold text-xs leading-tight truncate">{section.title}</span>
       </div>
 

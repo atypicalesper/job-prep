@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { Palette } from 'lucide-react';
+import { Palette, Check } from 'lucide-react';
 
 const THEMES: { id: string; label: string; swatch: string; dark: boolean }[] = [
   { id: 'light',    label: 'Light',    swatch: '#fafafa',  dark: false },
@@ -131,7 +131,7 @@ export default function ThemeToggle() {
                 }} />
                 {t.label}
                 {isActive && (
-                  <span style={{ marginLeft: 'auto', fontSize: '0.65rem' }}>✓</span>
+                  <Check size={11} style={{ marginLeft: 'auto', flexShrink: 0, color: 'var(--accent)' }} />
                 )}
               </button>
             );

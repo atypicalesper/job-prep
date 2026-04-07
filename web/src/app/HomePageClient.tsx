@@ -5,67 +5,68 @@ import Image from 'next/image';
 import { useRef, useState, useLayoutEffect } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
+import { Brain, Server, Layers, Wrench, Database, Cloud, Code2, Bot, Network, ClipboardList, BookOpen, type LucideIcon } from 'lucide-react';
 import { getVisitedCountBySection } from '@/lib/progress';
 import { useNotebook } from '@/lib/notebook';
 import RoughBorder from '@/components/RoughBorder';
 
-const SECTIONS: { icon: string; title: string; slug: string; desc: string; badge?: string }[] = [
+const SECTIONS: { icon: LucideIcon; title: string; slug: string; desc: string; badge?: string }[] = [
   {
-    icon: '🧠',
+    icon: Brain,
     title: 'JavaScript',
     slug: 'javascript',
     desc: 'Event loop, closures, prototypes, async/await, generators, TypeScript type system, generics, decorators, async patterns, concurrency models, functional & OOP programming',
   },
   {
-    icon: '⚙️',
+    icon: Server,
     title: 'Node.js',
     slug: 'node',
     desc: 'V8, libuv, streams, buffers, worker threads, cluster, child processes, HTTP internals, performance profiling, memory leaks, databases, SQL, NoSQL, Redis, API design, REST, GraphQL, gRPC, WebSockets',
   },
   {
-    icon: '⚛️',
+    icon: Layers,
     title: 'React & Frontend',
     slug: 'react',
     desc: 'React 19, hooks, concurrent features, state management, Next.js App Router, Server Actions, browser internals, critical rendering path, Core Web Vitals, bundle optimization, Bun, Deno, edge runtimes',
   },
   {
-    icon: '🏗️',
+    icon: Wrench,
     title: 'Engineering',
     slug: 'engineering',
     desc: 'System design, HLD/LLD, SOLID, microservices, DevOps, Docker, Kubernetes, CI/CD, testing (Jest, E2E), security (OWASP), DSA, algorithms, interview practice, behavioral STAR stories',
   },
   {
-    icon: '🗄️',
+    icon: Database,
     title: 'Databases',
     slug: 'databases',
     desc: 'SQL deep dive, indexing (B-trees, covering indexes), transactions & ACID, isolation levels, PostgreSQL internals, Redis patterns, MongoDB, connection pooling, sharding, replication, schema design, CQRS, event sourcing',
   },
   {
-    icon: '☁️',
+    icon: Cloud,
     title: 'Cloud',
     slug: 'cloud',
     desc: 'AWS core services (IAM, EC2, S3, RDS, Lambda, SQS/SNS, ECS), Terraform, CDK, serverless patterns, Step Functions, EventBridge, DynamoDB, CloudFront, observability, cost optimization',
   },
   {
-    icon: '🐍',
+    icon: Code2,
     title: 'Python',
     slug: 'python',
     desc: 'Python essentials, NumPy, Pandas, matplotlib/seaborn, scikit-learn, PyTorch, FastAPI, async Python, OpenAI/Anthropic/HuggingFace SDKs, structured outputs, prompt caching, tooling',
   },
   {
-    icon: '🤖',
+    icon: Bot,
     title: 'AI / ML',
     slug: 'ai',
     desc: 'LLM APIs, prompt engineering, RAG, vector DBs, LangChain, LangGraph, agentic AI, MCP, AI in production, fine-tuning, RAGAS evaluation, reasoning models, local LLMs, observability, cost optimization',
   },
   {
-    icon: '📡',
+    icon: Network,
     title: 'Networks',
     slug: 'networks',
     desc: 'OSI & TCP/IP models, IP addressing, subnetting, CIDR, TCP/UDP, DNS, HTTP/2/3, TLS handshake, routing, NAT, firewalls, VPC, security groups, load balancers, CDN, troubleshooting',
   },
   {
-    icon: '📋',
+    icon: ClipboardList,
     title: 'Cheatsheets',
     slug: 'cheatsheets',
     desc: 'All quick-reference cheatsheets in one place — JavaScript, React, Frontend, Backend, DSA patterns, System Design. Optimised for last-minute interview revision.',
@@ -147,17 +148,19 @@ export default function HomePageClient({ pageCounts }: Props) {
         <div className="flex gap-3 flex-wrap">
           <Link
             href="/engineering/12-interview-practice/00-cheat-sheet/01-last-day-reference"
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105 active:scale-95 hover:shadow-lg"
+            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105 active:scale-95 hover:shadow-lg inline-flex items-center gap-2"
             style={{ backgroundColor: 'var(--accent)' }}
           >
-            📋 Last-Day Cheat Sheet
+            <ClipboardList size={14} />
+            Last-Day Cheat Sheet
           </Link>
           <Link
             href="/javascript/01-javascript-fundamentals/01-event-loop/01-what-is-event-loop"
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105 active:scale-95 border"
+            className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105 active:scale-95 border inline-flex items-center gap-2"
             style={{ color: 'var(--fg)', borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
           >
-            🧠 Start Learning
+            <BookOpen size={14} />
+            Start Learning
           </Link>
         </div>
 
@@ -187,10 +190,10 @@ export default function HomePageClient({ pageCounts }: Props) {
               <div className="flex items-start gap-3">
                 {/* Icon with subtle background */}
                 <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-lg transition-all duration-200 group-hover:scale-110"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200 group-hover:scale-110"
                   style={{ background: 'var(--sidebar-active)' }}
                 >
-                  {s.icon}
+                  <s.icon size={16} style={{ color: 'var(--accent)' }} />
                 </div>
 
                 <div className="flex-1 min-w-0">
