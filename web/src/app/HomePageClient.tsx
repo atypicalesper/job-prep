@@ -81,7 +81,6 @@ interface Props {
 export default function HomePageClient({ pageCounts }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
-  const cardsRef = useRef<HTMLDivElement>(null);
 
   const [visitedCounts, setVisitedCounts] = useState<Record<string, number>>({});
   const [recentSlug, setRecentSlug] = useState<{ slug: string; title: string } | null>(null);
@@ -107,17 +106,6 @@ export default function HomePageClient({ pageCounts }: Props) {
       ease: 'power3.out',
     });
 
-    if (cardsRef.current) {
-      gsap.from(cardsRef.current.children, {
-        opacity: 0,
-        y: 40,
-        scale: 0.96,
-        duration: 0.55,
-        stagger: 0.06,
-        ease: 'power3.out',
-        delay: 0.2,
-      });
-    }
   }, { scope: gridRef, dependencies: [] });
 
   const { notebook } = useNotebook();
@@ -187,8 +175,8 @@ export default function HomePageClient({ pageCounts }: Props) {
       </div>{/* end hero */}
 
       {/* ── Section grid ─────────────────────────────────────── */}
-      <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {SECTIONS.map(s => {
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {SECTIONS.map((s, i) => {
           const visited = visitedCounts[s.slug] ?? 0;
           const total = pageCounts[s.slug] ?? 0;
           const pct = total > 0 ? Math.round((visited / total) * 100) : 0;
@@ -196,12 +184,12 @@ export default function HomePageClient({ pageCounts }: Props) {
             <Link
               key={s.slug}
               href={`/${s.slug}`}
-              className="group block rounded-xl border p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+              className="topic-card group block rounded-xl border p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
               style={{
-                position: 'relative',
+                '--stagger': `${i * 60}ms`,
                 backgroundColor: 'var(--card-bg)',
                 borderColor: notebook ? 'transparent' : 'var(--card-border)',
-              }}
+              } as React.CSSProperties}
             >
               {notebook && <RoughBorder />}
               {/* Accent bar on left edge */}
