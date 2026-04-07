@@ -16,7 +16,6 @@ export default function DocPageClient({ slug, title, prevHref, nextHref }: Props
   const router = useRouter();
 
   // Record visit + scroll to top on each new page
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     recordVisit(slug, title);
     window.scrollTo({ top: 0 });

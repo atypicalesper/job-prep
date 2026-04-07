@@ -151,7 +151,7 @@ export default function PathwayClient() {
         ))}
       </div>
 
-      {/* global stats */}
+      {/* summary stats */}
       {pathways.length > 0 && totalItems > 0 && (
         <div
           className="mt-8 pt-6 border-t flex gap-6 flex-wrap text-sm"
