@@ -81,6 +81,7 @@ interface Props {
 export default function HomePageClient({ pageCounts }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
+  const cardsRef = useRef<HTMLDivElement>(null);
 
   const [visitedCounts, setVisitedCounts] = useState<Record<string, number>>({});
   const [recentSlug, setRecentSlug] = useState<{ slug: string; title: string } | null>(null);
@@ -106,15 +107,17 @@ export default function HomePageClient({ pageCounts }: Props) {
       ease: 'power3.out',
     });
 
-    gsap.from('.topic-card', {
-      opacity: 0,
-      y: 40,
-      scale: 0.96,
-      duration: 0.55,
-      stagger: 0.06,
-      ease: 'power3.out',
-      delay: 0.2,
-    });
+    if (cardsRef.current) {
+      gsap.from(cardsRef.current.children, {
+        opacity: 0,
+        y: 40,
+        scale: 0.96,
+        duration: 0.55,
+        stagger: 0.06,
+        ease: 'power3.out',
+        delay: 0.2,
+      });
+    }
   }, { scope: gridRef, dependencies: [] });
 
   const { notebook } = useNotebook();
@@ -184,7 +187,7 @@ export default function HomePageClient({ pageCounts }: Props) {
       </div>{/* end hero */}
 
       {/* ── Section grid ─────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {SECTIONS.map(s => {
           const visited = visitedCounts[s.slug] ?? 0;
           const total = pageCounts[s.slug] ?? 0;
@@ -193,7 +196,7 @@ export default function HomePageClient({ pageCounts }: Props) {
             <Link
               key={s.slug}
               href={`/${s.slug}`}
-              className="topic-card group block rounded-xl border p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+              className="group block rounded-xl border p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
               style={{
                 position: 'relative',
                 backgroundColor: 'var(--card-bg)',

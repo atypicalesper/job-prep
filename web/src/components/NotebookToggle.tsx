@@ -14,6 +14,9 @@ export default function NotebookToggle() {
   useEffect(() => setMounted(true), []);
 
   function handleToggle() {
+    // Update state immediately — never tie it to animation completion
+    toggleNotebook();
+
     if (rippleRef.current) {
       gsap.fromTo(
         rippleRef.current,
@@ -23,23 +26,11 @@ export default function NotebookToggle() {
     }
 
     if (iconRef.current) {
-      gsap.to(iconRef.current, {
-        rotation: notebook ? -20 : 20,
-        scale: 0,
-        opacity: 0,
-        duration: 0.18,
-        ease: 'power2.in',
-        onComplete: () => {
-          toggleNotebook();
-          gsap.fromTo(
-            iconRef.current,
-            { rotation: notebook ? 20 : -20, scale: 0, opacity: 0 },
-            { rotation: 0, scale: 1, opacity: 1, duration: 0.28, ease: 'back.out(2)' },
-          );
-        },
-      });
-    } else {
-      toggleNotebook();
+      gsap.fromTo(
+        iconRef.current,
+        { rotation: notebook ? -20 : 20, scale: 0.7, opacity: 0.4 },
+        { rotation: 0, scale: 1, opacity: 1, duration: 0.28, ease: 'back.out(2)' },
+      );
     }
   }
 

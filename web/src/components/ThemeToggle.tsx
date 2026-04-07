@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTheme } from 'next-themes';
 import { Palette, Check } from 'lucide-react';
 
@@ -27,10 +27,11 @@ const ACCENT: Record<string, string> = {
 export default function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
+  const [panelPos, setPanelPos] = useState({ top: 0, left: 0 });
   const panelRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  // Close on outside click
+  // Close on outside click or scroll
   useEffect(() => {
     if (!open) return;
     function onDown(e: MouseEvent) {
@@ -40,8 +41,17 @@ export default function ThemeToggle() {
       ) setOpen(false);
     }
     document.addEventListener('mousedown', onDown);
+    document.addEventListener('scroll', () => setOpen(false), { capture: true, once: true });
     return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
+
+  const handleOpen = useCallback(() => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setPanelPos({ top: rect.bottom + 6, left: rect.right - 140 });
+    }
+    setOpen(o => !o);
+  }, []);
 
   // resolvedTheme is undefined until client-side JS runs
   if (!resolvedTheme) return <div className="theme-toggle-btn" aria-hidden />;
@@ -49,17 +59,16 @@ export default function ThemeToggle() {
   const current = THEMES.find(t => t.id === resolvedTheme) ?? THEMES[1];
 
   return (
-    <div style={{ position: 'relative' }}>
+    <>
       <button
         ref={btnRef}
-        onClick={() => setOpen(o => !o)}
+        onClick={handleOpen}
         aria-label="Change theme"
         aria-expanded={open}
         className="theme-toggle-btn"
         title="Change theme"
       >
         <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
-          {/* Colour swatch dot */}
           <span style={{
             width: 8, height: 8, borderRadius: '50%',
             backgroundColor: ACCENT[current.id] ?? current.swatch,
@@ -75,10 +84,10 @@ export default function ThemeToggle() {
           role="menu"
           aria-label="Theme options"
           style={{
-            position: 'absolute',
-            top: 'calc(100% + 6px)',
-            right: 0,
-            zIndex: 200,
+            position: 'fixed',
+            top: panelPos.top,
+            left: panelPos.left,
+            zIndex: 9999,
             background: 'var(--card-bg)',
             border: '1px solid var(--border)',
             borderRadius: 10,
@@ -138,6 +147,6 @@ export default function ThemeToggle() {
           })}
         </div>
       )}
-    </div>
+    </>
   );
 }
