@@ -2,7 +2,7 @@
 
 ## Memory Management
 
-Python uses **reference counting** as primary mechanism + **cyclic garbage collector** for cycles.
+Python manages memory automatically using two mechanisms working together. The first is **reference counting** — every object tracks how many names point to it, and when that count hits zero the object is immediately freed. The second is the **cyclic garbage collector**, which handles reference cycles that reference counting alone can't break (e.g., two objects pointing at each other). The `gc` module exposes this; objects that survive collection cycles get promoted through generations (gen0 → gen1 → gen2).
 
 ```python
 import sys
@@ -46,6 +46,8 @@ gc.disable()        # disable GC (risky — cycles won't be freed)
 
 ## Stack vs Heap
 
+This is a conceptual model that interviewers test to see if you know what actually lives where in memory. In Python, *all objects* live on the heap — the stack only holds function call frames and the local *names* (references) within them. Variables are not values; they're labels pointing at heap objects. This is why passing a mutable object into a function lets the function modify it — both the caller and callee hold a reference to the same heap object.
+
 | | Stack | Heap |
 |---|---|---|
 | Stores | Function frames, local variable names | All Python objects |
@@ -70,7 +72,7 @@ traceback.print_stack()   # see call stack
 
 ## GIL — Global Interpreter Lock
 
-The GIL is a mutex that ensures **only one thread executes Python bytecode at a time** in CPython.
+The GIL is a mutex inside CPython that allows only one thread to execute Python bytecode at any given moment. It simplifies CPython's memory model and makes C extensions easier to write safely, but it means CPU-bound multi-threaded Python programs don't actually run in parallel. The workaround for CPU work is `multiprocessing` — each process has its own GIL. For I/O-bound work, the GIL is released during I/O waits, so threading (or better, asyncio) still works well. C extensions like NumPy also release the GIL during heavy computation.
 
 ```python
 # CPU-bound — GIL hurts, use multiprocessing
@@ -107,6 +109,8 @@ import numpy as np
 ---
 
 ## Deep Copy vs Shallow Copy
+
+When you assign one variable to another, both point at the same object — no copy is made. A shallow copy creates a new container but still shares references to the nested objects inside. A deep copy recursively duplicates everything, giving you a fully independent object graph. The interview trap is the mutable default argument: Python evaluates default values once at function definition time, so a bare `[]` or `{}` default is shared across all calls.
 
 ```python
 import copy
@@ -162,6 +166,8 @@ def append_to(item, lst=None):
 
 ## String Interning
 
+CPython caches (interns) small integers and certain strings to save memory and speed up equality checks. Small integers from -5 to 256 always share the same object, so `is` comparisons work for them — but this is an implementation detail, not guaranteed. Strings that look like identifiers (no spaces, no special chars) are often interned automatically at compile time. Use `sys.intern()` to force interning for strings you'll compare many times, like dictionary keys in a hot path.
+
 ```python
 # Small integers (-5 to 256) and short strings are cached
 a = 256; b = 256
@@ -186,6 +192,8 @@ sys.intern("my_string")  # force interning
 ---
 
 ## `__slots__`
+
+By default every Python instance stores its attributes in a `__dict__` — a hash table that gives you the flexibility to add arbitrary attributes at any time. The cost is memory: each instance dict has significant overhead. Declaring `__slots__` tells Python to skip the instance dict and instead use a fixed-size array for attribute storage, cutting per-instance memory significantly. The tradeoff is you lose the ability to add attributes not declared in `__slots__`, and you lose `__dict__` and weak-reference support by default.
 
 ```python
 # Default: instance dict for every object (flexible but memory-heavy)

@@ -2,7 +2,7 @@
 
 ## Iterators Protocol
 
-Any object with `__iter__` + `__next__` is an iterator.
+An iterator is any object that implements two methods: `__iter__` (returns itself) and `__next__` (returns the next value or raises `StopIteration`). Every `for` loop is syntactic sugar over this protocol — Python calls `iter()` to get an iterator, then calls `next()` repeatedly until `StopIteration` is raised. Understanding this makes it clear why you can iterate over custom classes, files, databases, or any object — as long as it implements the protocol.
 
 ```python
 # iter() returns iterator, next() advances it
@@ -42,7 +42,7 @@ list(Countdown(3))  # [3, 2, 1]
 
 ## Generator Functions
 
-A function with `yield` — returns values lazily, suspends execution between yields.
+A generator function uses `yield` instead of `return`. When called, it doesn't execute immediately — it returns a generator object. Each call to `next()` runs the function until the next `yield`, suspends there, and hands the yielded value back to the caller. This makes generators ideal for large sequences you don't want to materialise in memory all at once, or infinite sequences. They can also receive values back via `send()`, enabling coroutine-like two-way communication.
 
 ```python
 # Generator function
@@ -86,6 +86,8 @@ acc.send(5)      # → 15
 
 ## Generator Expressions
 
+Generator expressions look like list comprehensions but use parentheses instead of brackets. The key difference is laziness — a list comprehension builds the entire list in memory immediately, while a generator expression produces values one at a time on demand. Use generator expressions whenever you're passing a sequence directly into a function like `sum()`, `max()`, or `any()` — no intermediate list is built, and memory usage stays flat regardless of input size.
+
 ```python
 # List comprehension — eager, builds full list
 squares_list = [x**2 for x in range(1_000_000)]   # 8MB in memory
@@ -108,6 +110,8 @@ result  = list(squared)    # only materialized here
 
 ## `yield from`
 
+`yield from` delegates to a sub-generator, transparently passing all values through — including `send()` values and exceptions. Without it you'd need a `for item in subgen: yield item` loop. It's cleaner and also wires up the two-way communication channel so `send()` reaches the inner generator directly. The most common use is recursive delegation, like a tree-flattening function that calls itself.
+
 ```python
 # Delegating to sub-generator
 def flatten(nested):
@@ -126,7 +130,7 @@ list(flatten([1, [2, [3, 4]], 5]))   # [1, 2, 3, 4, 5]
 
 ## Async / Await
 
-Python's async model is **single-threaded cooperative concurrency** — tasks yield control at `await` points.
+Python's async model is **single-threaded cooperative concurrency** — tasks yield control at `await` points, allowing other tasks to run while waiting for I/O. An `async def` function is a coroutine — calling it returns a coroutine object, not a result. You need to either `await` it or pass it to `asyncio.run()`. The critical distinction from threads: only one coroutine runs at a time, and it runs until it explicitly yields at an `await`. There's no preemption.
 
 ```python
 import asyncio
@@ -158,6 +162,8 @@ asyncio.run(main())
 ---
 
 ## Event Loop
+
+The event loop is the engine that drives async Python. It maintains a queue of tasks and runs them one at a time. When a task hits an `await`, the loop suspends it and picks up the next ready task. When the awaited I/O completes, the loop wakes the suspended task back up. `asyncio.create_task()` schedules a coroutine to run concurrently with the current task, while plain `await` runs it inline and blocks until done.
 
 ```python
 import asyncio
@@ -198,6 +204,8 @@ async def with_timeout():
 
 ## Async Patterns
 
+Beyond basic `await`, async Python has `async with` for async context managers (e.g., async HTTP sessions, database connections) and `async for` for async generators (e.g., streaming data). `asyncio.Queue` is the standard producer/consumer primitive — both producer and consumer are coroutines that await the queue rather than blocking a thread.
+
 ```python
 # Async context manager
 async def main():
@@ -235,6 +243,8 @@ async def main():
 ---
 
 ## Concurrency vs Parallelism
+
+Concurrency means tasks make progress by interleaving — only one runs at a time but they take turns. Parallelism means tasks literally run simultaneously on different CPU cores. Python's GIL makes true parallelism impossible within a single process for pure Python code, which is why CPU-bound work needs `multiprocessing`. For I/O-bound work the distinction barely matters — `asyncio` is fastest (lowest overhead), threading works fine, and multiprocessing is overkill.
 
 | | Concurrency | Parallelism |
 |---|---|---|

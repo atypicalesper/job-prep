@@ -2,7 +2,7 @@
 
 ## Decorators
 
-A decorator is a function that wraps another function to extend behavior without modifying it.
+A decorator is a function that takes another function, wraps it with extra behaviour, and returns the wrapper. The `@decorator` syntax is just shorthand for `func = decorator(func)`. Always use `@functools.wraps(func)` inside the wrapper to preserve the original function's `__name__` and `__doc__` — without it, introspection and tooling breaks. Decorators with arguments require an extra level of nesting: a function that returns a decorator that returns a wrapper. Stacking decorators applies them bottom-up.
 
 ```python
 import functools
@@ -69,6 +69,8 @@ def risky():   # applied as: log(retry(3)(risky))
 
 ## Context Managers
 
+A context manager is any object that implements `__enter__` and `__exit__`. The `with` statement calls `__enter__` on entry and guarantees `__exit__` is called on exit — even if an exception occurs. `__exit__` receives the exception info; returning `True` suppresses the exception, `False` (or `None`) lets it propagate. The `@contextmanager` decorator from `contextlib` lets you write a context manager as a generator with a single `yield`, eliminating the need for a class entirely.
+
 ```python
 # Using with — ensures __exit__ runs even on exception
 with open("file.txt") as f:
@@ -127,7 +129,7 @@ async def lifespan(app):
 
 ## Metaclasses
 
-A metaclass is the class of a class — controls how classes are created. `type` is the default metaclass.
+A metaclass is the class of a class — it controls how a class itself is created, not how its instances are created. By default, every class is an instance of `type`. You can intercept class creation by subclassing `type` and overriding `__call__` or `__new__`. Real-world uses include ORMs (where field declarations are auto-collected), plugin registries, and validation frameworks. In practice, reach for `__init_subclass__` or class decorators first — they handle most cases with far less complexity.
 
 ```python
 # type() creates classes dynamically
@@ -176,7 +178,7 @@ Plugin._registry["json"]   # <class 'JSONPlugin'>
 
 ## Monkey Patching
 
-Modifying a class or module at runtime — useful in testing, not in production.
+Monkey patching is replacing or extending a method or attribute on a class or module at runtime. It's occasionally useful in testing (patching out network calls) but dangerous in production — it applies globally, silently, and makes code hard to reason about. The right tool for testing is `unittest.mock.patch`, which restores the original after the `with` block exits. In production, prefer dependency injection over patching.
 
 ```python
 # Patching a method
@@ -208,6 +210,8 @@ with patch("requests.get") as mock_get:
 ---
 
 ## Modules & Packages
+
+A module is any `.py` file. A package is a directory with an `__init__.py`. When Python imports a module, it runs it top to bottom and caches it in `sys.modules` — subsequent imports return the cached version. The `if __name__ == "__main__"` guard is how you write code that runs only when a file is executed directly, not when it's imported. Relative imports (`.utils`, `..models`) only work inside packages and keep internal structure portable.
 
 ```python
 # Import variants
@@ -252,6 +256,8 @@ sys.path.append("/custom/path")
 
 ## Logging (Production Pattern)
 
+Python's `logging` module is the right tool for any output that isn't user-facing. It's hierarchical (loggers inherit from parent loggers), configurable at runtime, and can route to multiple handlers (stdout, file, external service) simultaneously. The critical rule: use `logger = logging.getLogger(__name__)` in every module — this creates a named logger that participates in the hierarchy and can be silenced or configured without touching the module. For production, prefer structured logging (e.g., `structlog`) so log lines are machine-parseable.
+
 ```python
 import logging
 import sys
@@ -284,6 +290,8 @@ log.info("request received", method="POST", path="/api/items", user_id=42)
 ---
 
 ## Python vs JavaScript — Deeper Comparison
+
+Python and JavaScript are both dynamically typed, garbage-collected, and support async programming — but their execution models differ fundamentally. Node.js runs on an event loop that's always on; Python is synchronous by default and you opt into async with `asyncio`. Python's answer to CPU parallelism is `multiprocessing` (separate processes); Node's is `worker_threads` (shared memory). Python's `self` is explicit and unambiguous; JavaScript's `this` is famously context-dependent. Both now support type annotations — Python via type hints + mypy, JavaScript via TypeScript.
 
 | | Python | JavaScript |
 |---|---|---|

@@ -2,6 +2,8 @@
 
 ## map, filter, reduce
 
+`map`, `filter`, and `reduce` are functional programming tools that operate on iterables. `map` applies a function to every element and returns a lazy iterator. `filter` keeps only elements where the function returns truthy. `reduce` folds a sequence down to a single value by repeatedly applying a binary function left-to-right. In modern Python, list comprehensions are usually preferred over `map`/`filter` for readability — but `map` still shines when the function already exists (e.g., `map(str, nums)`), and `reduce` has no direct comprehension equivalent.
+
 ```python
 from functools import reduce
 
@@ -27,6 +29,8 @@ evens   = [x for x in nums if x % 2 == 0]
 ---
 
 ## zip & enumerate
+
+`zip` pairs up elements from multiple iterables, stopping at the shortest. It's the idiomatic way to iterate two lists in parallel or to build a dict from two lists. `enumerate` adds an index to any iterable, eliminating the need for a manual counter variable. Both return lazy iterators. Use `itertools.zip_longest` when you need to handle iterables of different lengths without truncating.
 
 ```python
 names  = ["Alice", "Bob", "Carol"]
@@ -54,6 +58,8 @@ for i, name in enumerate(names, start=1):  # start from 1
 ---
 
 ## collections
+
+The `collections` module provides specialised container types that cover the most common gaps in the built-in dict, list, and set. `Counter` counts hashable elements and supports arithmetic. `defaultdict` eliminates `KeyError` by providing a factory for missing keys. `deque` is a double-ended queue with O(1) append and pop from both ends — use it instead of a list when you need a queue or sliding window. `namedtuple` gives you a lightweight immutable record with named fields and no overhead compared to a plain tuple.
 
 ```python
 from collections import Counter, defaultdict, OrderedDict, deque, namedtuple
@@ -97,6 +103,8 @@ p._asdict()  # {'x': 3, 'y': 4}
 
 ## itertools
 
+`itertools` is a collection of building blocks for working with iterators in a memory-efficient, composable way. Infinite iterators like `count` and `cycle` produce values forever. Combinatoric iterators like `combinations` and `product` generate all possible groupings without building an intermediate list. `groupby` is powerful but requires sorted input — it groups *consecutive* equal keys, not global ones. Chain these together to build efficient lazy pipelines.
+
 ```python
 import itertools as it
 
@@ -126,6 +134,8 @@ list(it.accumulate([1,2,3,4], lambda acc, x: acc+x))  # [1,3,6,10]
 ---
 
 ## Exception Handling
+
+Python's exception model follows a "better to ask forgiveness than permission" (EAFP) style — try the operation, catch the failure. The `else` clause runs only when no exception occurs, which is useful for separating the happy-path code from the error handling. `finally` always runs and is the right place for teardown (though `with` statements handle most cleanup more cleanly). Chain exceptions with `raise X from Y` to preserve the original traceback while wrapping it in a domain error.
 
 ```python
 # Basic
@@ -181,6 +191,8 @@ except* ValueError as eg:
 
 ## Multithreading & Multiprocessing
 
+Python offers three concurrency primitives: `threading` (OS threads, shared memory, GIL-limited for CPU), `multiprocessing` (separate processes, separate GIL, true parallelism for CPU work), and `asyncio` (single thread, cooperative, best for I/O). `concurrent.futures` provides a unified high-level interface over both threads and processes — prefer it over managing raw threads or processes directly. Shared mutable state between threads requires locks; between processes you need explicit shared memory (`Value`, `Array`) or queues.
+
 ```python
 import threading
 import multiprocessing
@@ -235,6 +247,8 @@ arr = Array('d', [1.0, 2.0, 3.0])  # shared float array
 ---
 
 ## File I/O & Serialization
+
+Always open files with a `with` statement — it guarantees the file is closed even if an exception occurs. For text files, specify `encoding="utf-8"` explicitly to avoid platform-specific defaults. JSON is the standard format for structured data exchange; `json.dumps`/`json.loads` work with strings, while `json.dump`/`json.load` work with file objects. Pickle can serialise arbitrary Python objects but is Python-specific and unsafe to unpickle from untrusted sources.
 
 ```python
 # Text files
